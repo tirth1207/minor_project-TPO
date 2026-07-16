@@ -1,4 +1,4 @@
-# CLAUDE.md - Developer Guidelines
+# CLAUDE.md - Developer Guidelines & Vibecoding Rules
 
 ## 🚀 Commands Cheat Sheet
 - **Dev Server**: `npm run dev`
@@ -16,7 +16,8 @@
 - **Next.js**: Use App Router layout conventions (`layout.tsx`, `page.tsx`, `error.tsx`). Use React Server Components (RSC) by default; only use Client Components (`"use client"`) when state or browser APIs are required.
 - **Database Access**: Fetch data using `@supabase/ssr` client helper libraries inside components/actions (no Prisma/Drizzle).
 - **Error Handling**: Standardize API and action responses: `{ data: T | null, error: string | null }`. Use `try-catch` blocks extensively in Server Actions.
-- **CSS / UI**: Tailwind CSS + shadcn/ui. Strictly follow the Apple Minimalism design guidelines (soft slates/zincs, high whitespace, Outift/Inter font, smooth hover micro-animations).
+- **CSS / UI**: Tailwind CSS + shadcn/ui. Strictly follow the Apple Minimalism design guidelines (soft slates/zincs, high whitespace, Outfit/Inter font, smooth hover micro-animations).
+- **Colors**: Curated, harmonious, Apple-minimalist palettes (shadcn primaru,foreground,background defined colors,etc). Avoid raw prime colors (e.g., bright red/blue/green). Use dark modes cleanly.
 
 ## 🔄 Strict Vibecoding Workflow
 1. **Get Context First**: Before implementing any requested feature, read the relevant specification documents inside the `/documents` folder.
