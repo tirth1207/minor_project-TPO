@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
@@ -33,7 +35,7 @@ export async function GET() {
       .from("job_postings")
       .select(`
         *,
-        company:company_id (
+        company:company_profiles (
           company_name,
           website
         ),
@@ -46,9 +48,9 @@ export async function GET() {
     if (error) throw error
 
     return NextResponse.json({ jobs: jobs || [] })
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred retrieving job postings" },
+      { error: error instanceof Error ? error.message : "An unexpected error occurred retrieving job postings" },
       { status: 500 }
     )
   }

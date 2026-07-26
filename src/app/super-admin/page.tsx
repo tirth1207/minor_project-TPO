@@ -97,6 +97,7 @@ function SuperAdminDashboardInner() {
     // Sync tab from URL
     React.useEffect(() => {
         if (tabParam && ["overview", "colleges", "companies", "jobs"].includes(tabParam)) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setActiveTab(tabParam)
         }
     }, [tabParam])
@@ -132,7 +133,7 @@ function SuperAdminDashboardInner() {
         setExpandedCollegeIds(prev => ({ ...prev, [id]: !prev[id] }))
     }
 
-    const fetchData = async (isRefresh = false) => {
+    const fetchData = React.useCallback(async (isRefresh = false) => {
         if (isRefresh) setRefreshing(true)
         else setLoading(true)
         setError(null)
@@ -182,17 +183,18 @@ function SuperAdminDashboardInner() {
             const jobsData = await jobsRes.json()
             setJobs(jobsData.jobs)
 
-        } catch (err: any) {
-            setError(err?.message || "Something went wrong loading dashboard data")
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Something went wrong loading dashboard data")
         } finally {
             setLoading(false)
             setRefreshing(false)
         }
-    }
+    }, [router, supabase])
 
     React.useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         fetchData()
-    }, [])
+    }, [fetchData])
 
     // Handler: Update Organization (College) Status
     const handleUpdateOrgStatus = async (orgId: string, status: "ACTIVE" | "PENDING" | "REJECTED") => {
@@ -207,8 +209,8 @@ function SuperAdminDashboardInner() {
             // Local state update
             setOrganizations(prev => prev.map(o => o.id === orgId ? { ...o, status } : o))
             fetchData(true) // Silent stats refresh
-        } catch (err: any) {
-            alert(err.message)
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "An unexpected error occurred")
         }
     }
 
@@ -223,8 +225,8 @@ function SuperAdminDashboardInner() {
 
             setOrganizations(prev => prev.filter(o => o.id !== orgId))
             fetchData(true)
-        } catch (err: any) {
-            alert(err.message)
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "An unexpected error occurred")
         }
     }
 
@@ -247,8 +249,8 @@ function SuperAdminDashboardInner() {
                 }
             }))
             fetchData(true)
-        } catch (err: any) {
-            alert(err.message)
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "An unexpected error occurred")
         }
     }
 
@@ -264,8 +266,8 @@ function SuperAdminDashboardInner() {
 
             setCompanies(prev => prev.map(c => c.id === companyId ? { ...c, status } : c))
             fetchData(true)
-        } catch (err: any) {
-            alert(err.message)
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "An unexpected error occurred")
         }
     }
 
@@ -281,8 +283,8 @@ function SuperAdminDashboardInner() {
 
             setJobs(prev => prev.map(j => j.id === jobId ? { ...j, global_status: status } : j))
             fetchData(true)
-        } catch (err: any) {
-            alert(err.message)
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "An unexpected error occurred")
         }
     }
 
@@ -303,8 +305,8 @@ function SuperAdminDashboardInner() {
             setOrganizations(prev => [data.organization, ...prev])
             setNewCollegeName("")
             fetchData(true)
-        } catch (err: any) {
-            alert(err.message)
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "An unexpected error occurred")
         } finally {
             setCreatingCollege(false)
         }
@@ -341,8 +343,8 @@ function SuperAdminDashboardInner() {
 
             setNewDeptName("")
             fetchData(true)
-        } catch (err: any) {
-            alert(err.message)
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "An unexpected error occurred")
         } finally {
             setCreatingDept(false)
         }
@@ -1010,6 +1012,8 @@ function SuperAdminDashboardInner() {
         </SidebarProvider>
     )
 }
+
+export const dynamic = "force-dynamic"
 
 export default function SuperAdminPage() {
     return (

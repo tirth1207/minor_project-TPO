@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic"
+
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
@@ -16,7 +18,7 @@ export async function GET() {
     }
 
     // 2. Authorize user (Must be Super Admin 'SA')
-    const { data: dbUser, error: dbUserError } = await supabase
+    const { data: dbUser } = await supabase
       .from("users")
       .select("role")
       .eq("id", user.id)
@@ -54,32 +56,32 @@ export async function GET() {
     const stats = {
       organizations: {
         total: orgs.length,
-        active: orgs.filter(o => o.status === "ACTIVE").length,
-        pending: orgs.filter(o => o.status === "PENDING").length,
-        rejected: orgs.filter(o => o.status === "REJECTED").length,
+        active: orgs.filter((o: { status: string }) => o.status === "ACTIVE").length,
+        pending: orgs.filter((o: { status: string }) => o.status === "PENDING").length,
+        rejected: orgs.filter((o: { status: string }) => o.status === "REJECTED").length,
       },
       companies: {
         total: companies.length,
-        active: companies.filter(c => c.status === "ACTIVE").length,
-        pending: companies.filter(c => c.status === "PENDING").length,
-        rejected: companies.filter(c => c.status === "REJECTED").length,
+        active: companies.filter((c: { status: string }) => c.status === "ACTIVE").length,
+        pending: companies.filter((c: { status: string }) => c.status === "PENDING").length,
+        rejected: companies.filter((c: { status: string }) => c.status === "REJECTED").length,
       },
       jobs: {
         total: jobs.length,
-        active: jobs.filter(j => j.global_status === "APPROVED").length,
-        pending: jobs.filter(j => j.global_status === "PENDING").length,
-        rejected: jobs.filter(j => j.global_status === "REJECTED").length,
+        active: jobs.filter((j: { global_status: string }) => j.global_status === "APPROVED").length,
+        pending: jobs.filter((j: { global_status: string }) => j.global_status === "PENDING").length,
+        rejected: jobs.filter((j: { global_status: string }) => j.global_status === "REJECTED").length,
       },
       students: {
         total: students.length,
-        placed: students.filter(s => s.is_placed).length,
-        unplaced: students.filter(s => !s.is_placed).length,
+        placed: students.filter((s: { is_placed: boolean }) => s.is_placed).length,
+        unplaced: students.filter((s: { is_placed: boolean }) => !s.is_placed).length,
       }
     }
     return NextResponse.json(stats)
-  } catch (error: any) {
+  } catch (error) {
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred retrieving dashboard stats" },
+      { error: error instanceof Error ? error.message : "An unexpected error occurred retrieving dashboard stats" },
       { status: 500 }
     )
   }
