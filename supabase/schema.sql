@@ -273,6 +273,196 @@ begin
 end;
 $$ language plpgsql stable security definer;
 
+-- 4.3 Policy Security Definer Helper Functions
+-- Used to prevent infinite recursion in RLS policies by bypassing policy evaluation internally
+
+create or replace function public.get_student_id_by_user_id(p_user_id uuid)
+returns uuid as $$
+  select id from public.student_profiles where user_id = p_user_id;
+$$ language sql stable security definer;
+
+create or replace function public.get_company_id_by_user_id(p_user_id uuid)
+returns uuid as $$
+  select id from public.company_profiles where user_id = p_user_id;
+$$ language sql stable security definer;
+
+create or replace function public.get_job_id_by_mapping_id(p_mapping_id uuid)
+returns uuid as $$
+  select job_id from public.job_college_mappings where id = p_mapping_id;
+$$ language sql stable security definer;
+
+create or replace function public.check_company_view_student(p_student_id uuid, p_company_user_id uuid)
+returns boolean as $$
+declare
+    v_company_id uuid;
+begin
+    select id into v_company_id from public.company_profiles where user_id = p_company_user_id;
+    if v_company_id is null then
+        return false;
+    end if;
+
+    return exists (
+        select 1
+        from public.applications a
+        join public.job_college_mappings jcm on a.job_college_map_id = jcm.id
+        join public.job_postings jp on jcm.job_id = jp.id
+        where a.student_id = p_student_id
+          and jp.company_id = v_company_id
+    );
+end;
+$$ language plpgsql stable security definer;
+
+create or replace function public.check_college_admin_view_student(p_student_id uuid, p_org_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.student_profiles s
+    join public.users u on s.user_id = u.id
+    where s.id = p_student_id and u.org_id = p_org_id
+  );
+$$ language sql stable security definer;
+
+create or replace function public.check_mentor_view_student(p_student_id uuid, p_dept_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.student_profiles s
+    join public.users u on s.user_id = u.id
+    where s.id = p_student_id and u.dept_id = p_dept_id
+  );
+$$ language sql stable security definer;
+
+create or replace function public.check_mentor_update_student(p_student_id uuid, p_mentor_uid uuid, p_dept_id uuid)
+returns boolean as $$
+declare
+    v_mentor_id uuid;
+begin
+    select mentor_id into v_mentor_id from public.student_profiles where id = p_student_id;
+    if v_mentor_id = p_mentor_uid then
+        return true;
+    end if;
+    if v_mentor_id is null then
+        return exists (
+            select 1 from public.student_profiles s
+            join public.users u on s.user_id = u.id
+            where s.id = p_student_id and u.dept_id = p_dept_id
+        );
+    end if;
+    return false;
+end;
+$$ language plpgsql stable security definer;
+
+create or replace function public.check_job_mapped_to_college(p_job_id uuid, p_org_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.job_college_mappings
+    where job_id = p_job_id and org_id = p_org_id
+  );
+$$ language sql stable security definer;
+
+create or replace function public.check_job_mapped_and_approved(p_job_id uuid, p_org_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.job_college_mappings
+    where job_id = p_job_id and org_id = p_org_id and local_status = 'APPROVED'
+  );
+$$ language sql stable security definer;
+
+create or replace function public.check_user_can_view_job(p_job_id uuid, p_user_id uuid, p_role varchar, p_org_id uuid, p_dept_id uuid)
+returns boolean as $$
+begin
+    if p_role = 'SA' then
+        return true;
+    end if;
+    if p_role = 'COMPANY' then
+        return exists (
+            select 1 from public.job_postings jp
+            join public.company_profiles cp on jp.company_id = cp.id
+            where jp.id = p_job_id and cp.user_id = p_user_id
+        );
+    end if;
+    if p_role = 'COLLEGE_ADMIN' then
+        return exists (
+            select 1 from public.job_college_mappings
+            where job_id = p_job_id and org_id = p_org_id
+        );
+    end if;
+    if p_role = 'MENTOR' then
+        return exists (
+            select 1 from public.job_college_mappings
+            where job_id = p_job_id and org_id = p_org_id and local_status = 'APPROVED'
+        );
+    end if;
+    if p_role = 'STUDENT' then
+        return public.check_student_eligibility(
+            (select id from public.student_profiles where user_id = p_user_id),
+            p_job_id
+        );
+    end if;
+    return false;
+end;
+$$ language plpgsql stable security definer;
+
+create or replace function public.check_company_owns_job(p_job_id uuid, p_user_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.job_postings jp
+    join public.company_profiles cp on jp.company_id = cp.id
+    where jp.id = p_job_id and cp.user_id = p_user_id
+  );
+$$ language sql stable security definer;
+
+create or replace function public.check_company_owns_mapping(p_mapping_id uuid, p_user_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.job_college_mappings jcm
+    join public.job_postings jp on jcm.job_id = jp.id
+    join public.company_profiles cp on jp.company_id = cp.id
+    where jcm.id = p_mapping_id and cp.user_id = p_user_id
+  );
+$$ language sql stable security definer;
+
+create or replace function public.check_college_admin_view_application(p_application_id uuid, p_org_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.applications a
+    join public.student_profiles s on a.student_id = s.id
+    join public.users u on s.user_id = u.id
+    where a.id = p_application_id and u.org_id = p_org_id
+  );
+$$ language sql stable security definer;
+
+create or replace function public.check_student_owns_application(p_application_id uuid, p_user_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.applications a
+    join public.student_profiles s on a.student_id = s.id
+    where a.id = p_application_id and s.user_id = p_user_id
+  );
+$$ language sql stable security definer;
+
+create or replace function public.check_company_owns_application(p_application_id uuid, p_user_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.applications a
+    join public.job_college_mappings jcm on a.job_college_map_id = jcm.id
+    join public.job_postings jp on jcm.job_id = jp.id
+    join public.company_profiles cp on jp.company_id = cp.id
+    where a.id = p_application_id and cp.user_id = p_user_id
+  );
+$$ language sql stable security definer;
+
+create or replace function public.check_company_view_mock(p_student_id uuid, p_user_id uuid)
+returns boolean as $$
+  select exists (
+    select 1 from public.applications a
+    join public.job_college_mappings jcm on a.job_college_map_id = jcm.id
+    join public.job_postings jp on jcm.job_id = jp.id
+    join public.company_profiles cp on jp.company_id = cp.id
+    where a.student_id = p_student_id
+      and cp.user_id = p_user_id
+      and jp.require_mock = true
+  );
+$$ language sql stable security definer;
+
 -- =====================================================================
 -- 5. Trigger Functions
 -- =====================================================================
@@ -530,25 +720,19 @@ create policy "Super Admins can view all student profiles" on public.student_pro
 create policy "College Admins can view student profiles in their college" on public.student_profiles
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COLLEGE_ADMIN' 
-        and user_id in (select id from public.users where org_id = (auth.jwt() ->> 'org_id')::uuid)
+        and public.check_college_admin_view_student(id, (auth.jwt() ->> 'org_id')::uuid)
     );
 
 create policy "Mentors can view student profiles in their department" on public.student_profiles
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'MENTOR' 
-        and user_id in (select id from public.users where dept_id = (auth.jwt() ->> 'dept_id')::uuid)
+        and public.check_mentor_view_student(id, (auth.jwt() ->> 'dept_id')::uuid)
     );
 
 create policy "Mentors can update student profiles in their department" on public.student_profiles
     for update to authenticated using (
         (auth.jwt() ->> 'role') = 'MENTOR' 
-        and (
-            mentor_id = auth.uid()
-            or (
-                mentor_id is null
-                and user_id in (select id from public.users where dept_id = (auth.jwt() ->> 'dept_id')::uuid)
-            )
-        )
+        and public.check_mentor_update_student(id, auth.uid(), (auth.jwt() ->> 'dept_id')::uuid)
     );
 
 create policy "Students can view self profile" on public.student_profiles
@@ -563,14 +747,7 @@ create policy "Students can update self profile" on public.student_profiles
 create policy "Companies can view applicant student profiles" on public.student_profiles
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and id in (
-            select a.student_id 
-            from public.applications a
-            join public.job_college_mappings jcm on a.job_college_map_id = jcm.id
-            join public.job_postings jp on jcm.job_id = jp.id
-            join public.company_profiles cp on jp.company_id = cp.id
-            where cp.user_id = auth.uid()
-        )
+        and public.check_company_view_student(id, auth.uid())
     );
 
 -- 6.7 job_postings Policies
@@ -583,45 +760,38 @@ create policy "Super Admins can update all job postings" on public.job_postings
 create policy "Companies can view own job postings" on public.job_postings
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and company_id = (select id from public.company_profiles where user_id = auth.uid())
+        and company_id = public.get_company_id_by_user_id(auth.uid())
     );
 
 create policy "Companies can insert own job postings" on public.job_postings
     for insert to authenticated with check (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and company_id = (select id from public.company_profiles where user_id = auth.uid())
+        and company_id = public.get_company_id_by_user_id(auth.uid())
     );
 
 create policy "Companies can update own job postings" on public.job_postings
     for update to authenticated using (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and company_id = (select id from public.company_profiles where user_id = auth.uid())
+        and company_id = public.get_company_id_by_user_id(auth.uid())
     );
 
 create policy "College Admins can view jobs mapped to their college" on public.job_postings
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COLLEGE_ADMIN'
-        and id in (
-            select job_id from public.job_college_mappings 
-            where org_id = (auth.jwt() ->> 'org_id')::uuid
-        )
+        and public.check_job_mapped_to_college(id, (auth.jwt() ->> 'org_id')::uuid)
     );
 
 create policy "Mentors can view approved jobs mapped to their college" on public.job_postings
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'MENTOR'
-        and id in (
-            select job_id from public.job_college_mappings 
-            where org_id = (auth.jwt() ->> 'org_id')::uuid
-              and local_status = 'APPROVED'
-        )
+        and public.check_job_mapped_and_approved(id, (auth.jwt() ->> 'org_id')::uuid)
     );
 
 create policy "Students can view eligible job postings" on public.job_postings
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'STUDENT'
         and public.check_student_eligibility(
-            (select id from public.student_profiles where user_id = auth.uid()),
+            public.get_student_id_by_user_id(auth.uid()),
             id
         )
     );
@@ -629,15 +799,18 @@ create policy "Students can view eligible job postings" on public.job_postings
 -- 6.8 job_eligible_branches Policies
 create policy "Allow select on job_eligible_branches if user can select job" on public.job_eligible_branches
     for select to authenticated using (
-        job_id in (select id from public.job_postings)
+        public.check_user_can_view_job(
+            job_id,
+            auth.uid(),
+            (auth.jwt() ->> 'role'),
+            (auth.jwt() ->> 'org_id')::uuid,
+            (auth.jwt() ->> 'dept_id')::uuid
+        )
     );
 
 create policy "Companies can manage branches for own jobs" on public.job_eligible_branches
     for all to authenticated using (
-        job_id in (
-            select id from public.job_postings 
-            where company_id = (select id from public.company_profiles where user_id = auth.uid())
-        )
+        public.check_company_owns_job(job_id, auth.uid())
     );
 
 -- 6.9 job_college_mappings Policies
@@ -659,19 +832,13 @@ create policy "College Admins can update own college mappings status" on public.
 create policy "Companies can view mappings for their own jobs" on public.job_college_mappings
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and job_id in (
-            select id from public.job_postings 
-            where company_id = (select id from public.company_profiles where user_id = auth.uid())
-        )
+        and public.check_company_owns_job(job_id, auth.uid())
     );
 
 create policy "Companies can create mappings for their own jobs" on public.job_college_mappings
     for insert to authenticated with check (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and job_id in (
-            select id from public.job_postings 
-            where company_id = (select id from public.company_profiles where user_id = auth.uid())
-        )
+        and public.check_company_owns_job(job_id, auth.uid())
     );
 
 create policy "Students can view mappings for their own college" on public.job_college_mappings
@@ -687,53 +854,35 @@ create policy "Super Admins can view all applications" on public.applications
 create policy "College Admins can view applications from their college" on public.applications
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COLLEGE_ADMIN'
-        and student_id in (
-            select id from public.student_profiles 
-            where user_id in (
-                select id from public.users 
-                where org_id = (auth.jwt() ->> 'org_id')::uuid
-            )
-        )
+        and public.check_college_admin_view_student(student_id, (auth.jwt() ->> 'org_id')::uuid)
     );
 
 create policy "Students can view own applications" on public.applications
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'STUDENT'
-        and student_id = (select id from public.student_profiles where user_id = auth.uid())
+        and student_id = public.get_student_id_by_user_id(auth.uid())
     );
 
 create policy "Students can create own applications if eligible" on public.applications
     for insert to authenticated with check (
         (auth.jwt() ->> 'role') = 'STUDENT'
-        and student_id = (select id from public.student_profiles where user_id = auth.uid())
+        and student_id = public.get_student_id_by_user_id(auth.uid())
         and public.check_student_eligibility(
             student_id,
-            (select job_id from public.job_college_mappings where id = job_college_map_id)
+            public.get_job_id_by_mapping_id(job_college_map_id)
         )
     );
 
 create policy "Companies can view applications for their jobs" on public.applications
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and job_college_map_id in (
-            select id from public.job_college_mappings 
-            where job_id in (
-                select id from public.job_postings 
-                where company_id = (select id from public.company_profiles where user_id = auth.uid())
-            )
-        )
+        and public.check_company_owns_mapping(job_college_map_id, auth.uid())
     );
 
 create policy "Companies can update status of applications for their jobs" on public.applications
     for update to authenticated using (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and job_college_map_id in (
-            select id from public.job_college_mappings 
-            where job_id in (
-                select id from public.job_postings 
-                where company_id = (select id from public.company_profiles where user_id = auth.uid())
-            )
-        )
+        and public.check_company_owns_mapping(job_college_map_id, auth.uid())
     );
 
 -- 6.11 application_rounds Policies
@@ -743,55 +892,25 @@ create policy "Super Admins can view all application rounds" on public.applicati
 create policy "College Admins can view rounds for their college students" on public.application_rounds
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COLLEGE_ADMIN'
-        and application_id in (
-            select id from public.applications 
-            where student_id in (
-                select id from public.student_profiles 
-                where user_id in (
-                    select id from public.users 
-                    where org_id = (auth.jwt() ->> 'org_id')::uuid
-                )
-            )
-        )
+        and public.check_college_admin_view_application(application_id, (auth.jwt() ->> 'org_id')::uuid)
     );
 
 create policy "Students can view own application rounds" on public.application_rounds
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'STUDENT'
-        and application_id in (
-            select id from public.applications 
-            where student_id = (select id from public.student_profiles where user_id = auth.uid())
-        )
+        and public.check_student_owns_application(application_id, auth.uid())
     );
 
 create policy "Companies can view rounds for their jobs" on public.application_rounds
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and application_id in (
-            select id from public.applications 
-            where job_college_map_id in (
-                select id from public.job_college_mappings 
-                where job_id in (
-                    select id from public.job_postings 
-                    where company_id = (select id from public.company_profiles where user_id = auth.uid())
-                )
-            )
-        )
+        and public.check_company_owns_application(application_id, auth.uid())
     );
 
 create policy "Companies can manage rounds for their jobs" on public.application_rounds
     for all to authenticated using (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and application_id in (
-            select id from public.applications 
-            where job_college_map_id in (
-                select id from public.job_college_mappings 
-                where job_id in (
-                    select id from public.job_postings 
-                    where company_id = (select id from public.company_profiles where user_id = auth.uid())
-                )
-            )
-        )
+        and public.check_company_owns_application(application_id, auth.uid())
     );
 
 -- 6.12 offers Policies
@@ -801,85 +920,44 @@ create policy "Super Admins can view all offers" on public.offers
 create policy "College Admins can view offers for their college students" on public.offers
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COLLEGE_ADMIN'
-        and application_id in (
-            select id from public.applications 
-            where student_id in (
-                select id from public.student_profiles 
-                where user_id in (
-                    select id from public.users 
-                    where org_id = (auth.jwt() ->> 'org_id')::uuid
-                )
-            )
-        )
+        and public.check_college_admin_view_application(application_id, (auth.jwt() ->> 'org_id')::uuid)
     );
 
 create policy "Students can view own offers" on public.offers
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'STUDENT'
-        and application_id in (
-            select id from public.applications 
-            where student_id = (select id from public.student_profiles where user_id = auth.uid())
-        )
+        and public.check_student_owns_application(application_id, auth.uid())
     );
 
 create policy "Students can update own offers (accept/reject)" on public.offers
     for update to authenticated using (
         (auth.jwt() ->> 'role') = 'STUDENT'
-        and application_id in (
-            select id from public.applications 
-            where student_id = (select id from public.student_profiles where user_id = auth.uid())
-        )
+        and public.check_student_owns_application(application_id, auth.uid())
     );
 
 create policy "Companies can view offers for their jobs" on public.offers
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and application_id in (
-            select id from public.applications 
-            where job_college_map_id in (
-                select id from public.job_college_mappings 
-                where job_id in (
-                    select id from public.job_postings 
-                    where company_id = (select id from public.company_profiles where user_id = auth.uid())
-                )
-            )
-        )
+        and public.check_company_owns_application(application_id, auth.uid())
     );
 
 create policy "Companies can manage offers for their jobs" on public.offers
     for all to authenticated using (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and application_id in (
-            select id from public.applications 
-            where job_college_map_id in (
-                select id from public.job_college_mappings 
-                where job_id in (
-                    select id from public.job_postings 
-                    where company_id = (select id from public.company_profiles where user_id = auth.uid())
-                )
-            )
-        )
+        and public.check_company_owns_application(application_id, auth.uid())
     );
 
 -- 6.13 mock_interviews Policies
 create policy "Students can manage own mock interviews" on public.mock_interviews
     for all to authenticated using (
         (auth.jwt() ->> 'role') = 'STUDENT'
-        and student_id = (select id from public.student_profiles where user_id = auth.uid())
+        and student_id = public.get_student_id_by_user_id(auth.uid())
     );
 
 create policy "Companies can read applicant mock scores if mock required" on public.mock_interviews
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'COMPANY'
-        and student_id in (
-            select a.student_id 
-            from public.applications a
-            join public.job_college_mappings jcm on a.job_college_map_id = jcm.id
-            join public.job_postings jp on jcm.job_id = jp.id
-            join public.company_profiles cp on jp.company_id = cp.id
-            where cp.user_id = auth.uid()
-              and jp.require_mock = true
-        )
+        and public.check_company_view_mock(student_id, auth.uid())
     );
 
 -- 6.14 notifications Policies
