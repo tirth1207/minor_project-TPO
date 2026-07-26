@@ -160,9 +160,11 @@ function SuperAdminDashboardInner() {
 
             // Fetch statistics
             const statsRes = await fetch("/api/super-admin/stats")
-            console.log(statsRes);
-            if (!statsRes.ok) throw new Error("Failed to fetch stats")
             const statsData = await statsRes.json()
+            if (!statsRes.ok) {
+                //console.error("Stats API error:", statsData)
+                throw new Error(statsData.error || "Failed to fetch stats")
+            }
             setStats(statsData)
 
             // Fetch organizations (colleges)

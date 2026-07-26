@@ -225,34 +225,48 @@ create index idx_notifications_user_id_is_read on public.notifications(user_id, 
 
 -- 4.1 Job Eligibility Engine
 -- Verifies if a student is eligible for a specific job posting
-create or replace function public.check_student_eligibility(p_student_id uuid, p_job_id uuid)
-returns boolean as $$
+create or replace function public.check_student_eligibility(
+    p_student_id uuid,
+    p_job_id uuid
+)
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = ''
+as $$
 declare
     v_eligible boolean;
 begin
     select exists (
         select 1
         from public.student_profiles s
-        join public.users u on s.user_id = u.id
-        cross join public.job_postings j
-        join public.job_college_mappings jcm on jcm.job_id = j.id and jcm.org_id = u.org_id
+        join public.users u
+          on s.user_id = u.id
+        join public.job_college_mappings jcm
+          on jcm.org_id = u.org_id
+         and jcm.job_id = p_job_id
+        join public.job_postings j
+          on j.id = p_job_id
         where s.id = p_student_id
-          and j.id = p_job_id
-          -- Student Profile MUST be APPROVED and student must NOT be placed
+
           and s.profile_status = 'APPROVED'
           and s.is_placed = false
-          -- Job Posting MUST be approved globally (Super Admin) and locally (College Admin)
+
           and j.global_status = 'APPROVED'
           and jcm.local_status = 'APPROVED'
-          -- Rule-based eligibility: branch check
+
           and exists (
-              select 1 from public.job_eligible_branches jeb
-              where jeb.job_id = j.id and jeb.branch_name = s.branch
+              select 1
+              from public.job_eligible_branches jeb
+              where jeb.job_id = p_job_id
+                and jeb.branch_name = s.branch
           )
-          -- Rule-based eligibility: academic criteria check
+
           and s.cgpa >= j.min_cgpa
           and s.active_backlogs <= j.max_backlogs
-    ) into v_eligible;
+    )
+    into v_eligible;
 
     return coalesce(v_eligible, false);
 end;

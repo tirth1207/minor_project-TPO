@@ -26,6 +26,10 @@ export async function GET() {
 
     const role = dbUser?.role || user.app_metadata?.role
 
+    console.log(dbUser);
+    console.log(user);
+    console.log(role);
+
     if (role !== "SA") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
@@ -43,10 +47,15 @@ export async function GET() {
       supabase.from("student_profiles").select("is_placed"),
     ])
 
-    if (orgsRes.error) throw orgsRes.error
-    if (companiesRes.error) throw companiesRes.error
-    if (jobsRes.error) throw jobsRes.error
-    if (studentsRes.error) throw studentsRes.error
+    console.error("Organizations error:", orgsRes.error)
+    console.error("Companies error:", companiesRes.error)
+    console.error("Jobs error:", jobsRes.error)
+    console.error("Students error:", studentsRes.error)
+
+    if (orgsRes.error) throw new Error(`Organizations: ${orgsRes.error.message}`)
+    if (companiesRes.error) throw new Error(`Companies: ${companiesRes.error.message}`)
+    if (jobsRes.error) throw new Error(`Jobs: ${jobsRes.error.message}`)
+    if (studentsRes.error) throw new Error(`Students: ${studentsRes.error.message}`)
 
     const orgs = orgsRes.data || []
     const companies = companiesRes.data || []
