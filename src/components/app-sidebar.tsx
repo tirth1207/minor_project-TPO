@@ -29,7 +29,11 @@ import {
   IconBuilding,
   IconBriefcase,
   IconDashboard,
-  IconUsers
+  IconUsers,
+  IconUser,
+  IconFileCertificate,
+  IconListCheck,
+  IconPlus
 } from "@tabler/icons-react"
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
@@ -102,63 +106,109 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ]
     }
 
-    // Default/Fallback main links (e.g. for student/mentor or placeholder)
+    if (role === "COLLEGE_ADMIN") {
+      return [
+        {
+          title: "Departments",
+          url: "/college-admin",
+          icon: <IconSchool className="size-4" />,
+          isActive: true,
+        },
+        {
+          title: "Onboarding Invites",
+          url: "/college-admin",
+          icon: <IconListCheck className="size-4" />,
+        },
+        {
+          title: "Job Approvals",
+          url: "/college-admin",
+          icon: <IconBriefcase className="size-4" />,
+        },
+        {
+          title: "Student Roster",
+          url: "/college-admin",
+          icon: <IconUsers className="size-4" />,
+        },
+      ]
+    }
+
+    if (role === "MENTOR") {
+      return [
+        {
+          title: "Dashboard Overview",
+          url: "/mentor",
+          icon: <IconDashboard className="size-4" />,
+          isActive: true,
+        },
+        {
+          title: "Assigned Students",
+          url: "/mentor",
+          icon: <IconUsers className="size-4" />,
+        },
+      ]
+    }
+
+    if (role === "STUDENT") {
+      return [
+        {
+          title: "Candidate Profile",
+          url: "/student/dashboard",
+          icon: <IconUser className="size-4" />,
+          isActive: true,
+        },
+        {
+          title: "Eligible Jobs",
+          url: "/student/dashboard",
+          icon: <IconBriefcase className="size-4" />,
+        },
+        {
+          title: "My Applications",
+          url: "/student/dashboard",
+          icon: <IconFileCertificate className="size-4" />,
+        },
+        {
+          title: "AI Mock Prep",
+          url: "/student/dashboard",
+          icon: <IconRobot className="size-4" />,
+        },
+      ]
+    }
+
+    if (role === "COMPANY") {
+      return [
+        {
+          title: "Posted Jobs",
+          url: "/company/dashboard",
+          icon: <IconBriefcase className="size-4" />,
+          isActive: true,
+        },
+        {
+          title: "Post New Opening",
+          url: "/company/dashboard",
+          icon: <IconPlus className="size-4" />,
+        },
+        {
+          title: "Review Applicants",
+          url: "/company/dashboard",
+          icon: <IconUsers className="size-4" />,
+        },
+      ]
+    }
+
+    // Default/Fallback main links (e.g. for loading or placeholder)
     return [
       {
-        title: "Playground",
-        url: "#",
-        icon: <IconTerminal2 className="size-4" />,
-        isActive: true,
-        items: [
-          { title: "History", url: "#" },
-          { title: "Starred", url: "#" },
-          { title: "Settings", url: "#" },
-        ],
-      },
-      {
-        title: "Models",
-        url: "#",
-        icon: <IconRobot className="size-4" />,
-        items: [
-          { title: "Genesis", url: "#" },
-          { title: "Explorer", url: "#" },
-          { title: "Quantum", url: "#" },
-        ],
-      },
-      {
-        title: "Documentation",
+        title: "Introduction",
         url: "#",
         icon: <IconBook className="size-4" />,
-        items: [
-          { title: "Introduction", url: "#" },
-          { title: "Get Started", url: "#" },
-          { title: "Tutorials", url: "#" },
-          { title: "Changelog", url: "#" },
-        ],
-      },
+        isActive: true,
+      }
     ]
   }
 
   // Sidebar Projects Section
   const getProjects = () => {
-    if (role === "SA") return [] // Super admin does not need default projects
-    return [
-      {
-        name: "Design Engineering",
-        url: "#",
-        icon: <IconFrame className="size-4" />,
-      },
-      {
-        name: "Sales & Marketing",
-        url: "#",
-        icon: <IconChartPie className="size-4" />,
-      },
-      {
-        name: "Travel",
-        url: "#",
-        icon: <IconMap className="size-4" />,
-      },
-    ]
+    return [] // No projects needed for standard minimal Apple layout
   }
 
   const secondaryNav = [
@@ -186,7 +236,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">TPO Portal</span>
                 <span className="truncate text-xs">
-                  {role === "SA" ? "Super Admin" : "Acme Inc"}
+                  {role === "SA" ? "Super Admin"
+                   : role === "COLLEGE_ADMIN" ? "College Admin"
+                   : role === "MENTOR" ? "Faculty Mentor"
+                   : role === "STUDENT" ? "Student Candidate"
+                   : role === "COMPANY" ? "Corporate Partner"
+                   : "TPO Portal"}
                 </span>
               </div>
             </SidebarMenuButton>
