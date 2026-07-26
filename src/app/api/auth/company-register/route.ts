@@ -2,6 +2,8 @@ import { createServiceClient } from "@/lib/supabase/service"
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
+export const dynamic = "force-dynamic"
+
 export async function POST(request: Request) {
   try {
     const { email, password, companyName, website } = await request.json()
@@ -87,9 +89,10 @@ export async function POST(request: Request) {
       user: authUser,
       session: signInData.session,
     })
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "An unexpected error occurred during company registration"
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred during company registration" },
+      { error: message },
       { status: 500 }
     )
   }

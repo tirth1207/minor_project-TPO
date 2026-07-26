@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, Suspense } from "react"
+import React, { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
@@ -23,12 +23,16 @@ import {
 function RegisterFormContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [activeTab, setActiveTab] = useState<"student" | "company">("student")
+  const [activeTab, setActiveTab] = useState<"student" | "company">(() => {
+    const roleParam = searchParams?.get("role")
+    if (roleParam === "company") return "company"
+    return "student"
+  })
   
   // Student fields
   const [studentEmail, setStudentEmail] = useState("")
   const [studentPassword, setStudentPassword] = useState("")
-  const [inviteToken, setInviteToken] = useState("")
+  const [inviteToken, setInviteToken] = useState(() => searchParams?.get("token") || "")
   
   // Company fields
   const [companyEmail, setCompanyEmail] = useState("")
@@ -41,15 +45,6 @@ function RegisterFormContent() {
   const [error, setError] = useState<string | null>(null)
   const [isSuccess, setIsSuccess] = useState(false)
   const [successRole, setSuccessRole] = useState<string | null>(null)
-
-  // Pre-fill invite token from URL search parameters if available
-  useEffect(() => {
-    const token = searchParams.get("token")
-    if (token) {
-      setInviteToken(token)
-      setActiveTab("student")
-    }
-  }, [searchParams])
 
   const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,8 +70,9 @@ function RegisterFormContent() {
 
       setIsSuccess(true)
       setSuccessRole("STUDENT")
-    } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred.")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An unexpected error occurred."
+      setError(message)
       setIsLoading(false)
     }
   }
@@ -106,8 +102,9 @@ function RegisterFormContent() {
 
       setIsSuccess(true)
       setSuccessRole("COMPANY")
-    } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred.")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An unexpected error occurred."
+      setError(message)
       setIsLoading(false)
     }
   }

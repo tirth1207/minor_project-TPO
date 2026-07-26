@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
+
+export const dynamic = "force-dynamic"
 import { IconSchool, IconArrowRight, IconUser, IconBuilding, IconDashboard, IconShieldLock } from "@tabler/icons-react"
 
 export default async function Home() {
@@ -20,7 +22,7 @@ export default async function Home() {
       else if (role === "MENTOR") dashboardPath = "/mentor"
       else if (role === "SA") dashboardPath = "/super-admin"
     }
-  } catch (e) {
+  } catch {
     // Ignore error, session not set
   }
 

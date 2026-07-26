@@ -52,8 +52,9 @@ export default function LoginPage() {
       
       // Refresh the page/router to ensure the middleware picks up the new cookies
       router.refresh()
-    } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred.")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An unexpected error occurred."
+      setError(message)
       setIsLoading(false)
     }
   }

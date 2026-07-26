@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
+export const dynamic = "force-dynamic"
+
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json()
@@ -26,7 +28,7 @@ export async function POST(request: Request) {
     const { user, session } = data
 
     // Fetch the role and org details from the public.users table
-    const { data: dbUser, error: dbUserError } = await supabase
+    const { data: dbUser } = await supabase
       .from("users")
       .select("role, org_id, dept_id")
       .eq("id", user.id)
@@ -43,9 +45,10 @@ export async function POST(request: Request) {
       org_id,
       dept_id,
     })
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "An unexpected error occurred"
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred" },
+      { error: message },
       { status: 500 }
     )
   }
