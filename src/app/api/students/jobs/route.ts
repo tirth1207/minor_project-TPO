@@ -1,44 +1,27 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireApprovedStudent()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
+    const { supabase, studentId, orgId } = auth
 
-    const role = dbUser?.role || user.app_metadata?.role
-    if (role !== "STUDENT") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    // Retrieve the student's profile details
+    // Fetch the student's profile details needed for eligibility matching
     const { data: student, error: studentError } = await supabase
       .from("student_profiles")
-      .select("id, cgpa, active_backlogs, branch, user:users!inner(org_id)")
-      .eq("user_id", user.id)
+      .select("cgpa, active_backlogs, branch")
+      .eq("id", studentId)
       .maybeSingle()
 
     if (studentError || !student) {
       return NextResponse.json({ error: "Student profile not found" }, { status: 404 })
     }
-
-    const org_id = (student.user as any)?.org_id
 
     // Fetch all mappings that are APPROVED and correspond to the student's college
     const { data: mappings, error: mappingsError } = await supabase
@@ -71,7 +54,7 @@ export async function GET() {
           )
         )
       `)
-      .eq("org_id", org_id)
+      .eq("org_id", orgId)
       .eq("local_status", "APPROVED")
       .eq("job.global_status", "APPROVED")
 

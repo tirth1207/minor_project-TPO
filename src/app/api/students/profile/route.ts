@@ -1,26 +1,16 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireUser } from "@/lib/auth/require-user"
 import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireUser()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role, org_id, dept_id")
-      .eq("id", user.id)
-      .maybeSingle()
+    const { supabase, user, dbUser } = auth
 
     const role = dbUser?.role || user.app_metadata?.role
     if (role !== "STUDENT") {
@@ -64,22 +54,12 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireUser()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
+    const { supabase, user, dbUser } = auth
 
     const role = dbUser?.role || user.app_metadata?.role
     if (role !== "STUDENT") {

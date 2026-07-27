@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireActiveMentor } from "@/lib/auth/require-active-mentor"
 import { NextResponse } from "next/server"
 
 export async function PATCH(
@@ -9,30 +9,12 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireActiveMentor()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role, org_id, dept_id")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    const role = dbUser?.role || user.app_metadata?.role
-    const org_id = dbUser?.org_id || user.app_metadata?.org_id
-    const dept_id = dbUser?.dept_id || user.app_metadata?.dept_id
-
-    if (role !== "MENTOR" || !dept_id || !org_id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    const { supabase, deptId, user } = auth
 
     const { profile_status } = await request.json()
     if (!profile_status || !["APPROVED", "REJECTED", "PENDING"].includes(profile_status)) {
@@ -59,7 +41,7 @@ export async function PATCH(
 
     // Check if student belongs to the same department as the mentor
     const student_dept_id = (student.user as any)?.dept_id
-    if (student_dept_id !== dept_id) {
+    if (student_dept_id !== deptId) {
       return NextResponse.json({ error: "Forbidden: Student department boundary violation" }, { status: 403 })
     }
 

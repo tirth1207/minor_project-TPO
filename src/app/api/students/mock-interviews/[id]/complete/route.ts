@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
+import { requireUser } from "@/lib/auth/require-user"
 import { NextResponse } from "next/server"
 
 export async function GET(
@@ -9,22 +10,12 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireUser()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
+    const { supabase, user, dbUser } = auth
 
     const role = dbUser?.role || user.app_metadata?.role
     if (role !== "STUDENT") {
@@ -67,37 +58,12 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireApprovedStudent()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    const role = dbUser?.role || user.app_metadata?.role
-    if (role !== "STUDENT") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const { data: student } = await supabase
-      .from("student_profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle()
-
-    if (!student) {
-      return NextResponse.json({ error: "Student profile not found" }, { status: 404 })
-    }
+    const { supabase, studentId } = auth
 
     const body = await request.json()
     const { answers } = body
@@ -111,7 +77,7 @@ export async function POST(
       .from("mock_interviews")
       .select("*")
       .eq("id", id)
-      .eq("student_id", student.id)
+      .eq("student_id", studentId)
       .maybeSingle()
 
     if (mockError || !mock) {

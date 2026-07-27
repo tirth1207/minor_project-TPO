@@ -1,33 +1,16 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireActiveCollegeAdmin } from "@/lib/auth/require-active-college-admin"
 import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireActiveCollegeAdmin()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role, org_id")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    const role = dbUser?.role || user.app_metadata?.role
-    const org_id = dbUser?.org_id || user.app_metadata?.org_id
-
-    if (role !== "COLLEGE_ADMIN" || !org_id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    const { supabase, orgId } = auth
 
     // Retrieve all mappings matching the admin's college (org_id)
     const { data: mappings, error: fetchError } = await supabase
@@ -58,7 +41,7 @@ export async function GET() {
           )
         )
       `)
-      .eq("org_id", org_id)
+      .eq("org_id", orgId)
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 400 })

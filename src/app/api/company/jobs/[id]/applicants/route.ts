@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireActiveCompany } from "@/lib/auth/require-active-company"
 import { NextResponse } from "next/server"
 
 export async function GET(
@@ -9,45 +9,19 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireActiveCompany()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    const role = dbUser?.role || user.app_metadata?.role
-    if (role !== "COMPANY") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    // Retrieve company profile
-    const { data: companyProfile, error: cpError } = await supabase
-      .from("company_profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle()
-
-    if (cpError || !companyProfile) {
-      return NextResponse.json({ error: "Company profile not found" }, { status: 404 })
-    }
+    const { supabase, companyId } = auth
 
     // Validate company owns this job posting
     const { data: job, error: jobError } = await supabase
       .from("job_postings")
       .select("id")
       .eq("id", id)
-      .eq("company_id", companyProfile.id)
+      .eq("company_id", companyId)
       .maybeSingle()
 
     if (jobError || !job) {

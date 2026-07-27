@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireActiveCompany } from "@/lib/auth/require-active-company"
 import { NextResponse } from "next/server"
 
 export async function POST(
@@ -9,27 +9,12 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireActiveCompany()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    const role = dbUser?.role || user.app_metadata?.role
-    if (role !== "COMPANY") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    const { supabase, companyId } = auth
 
     const { ctcOffered } = await request.json()
     if (!ctcOffered) {
@@ -39,6 +24,29 @@ export async function POST(
     const parsedCtc = parseFloat(ctcOffered)
     if (isNaN(parsedCtc) || parsedCtc <= 0) {
       return NextResponse.json({ error: "ctcOffered must be a valid positive package value" }, { status: 400 })
+    }
+
+    // Verify application ownership
+    const { data: application, error: appError } = await supabase
+      .from("applications")
+      .select(`
+        id,
+        job_college_mapping:job_college_mappings!inner(
+          job:job_postings!inner(
+            company_id
+          )
+        )
+      `)
+      .eq("id", id)
+      .maybeSingle()
+
+    if (appError || !application) {
+      return NextResponse.json({ error: "Application not found" }, { status: 404 })
+    }
+
+    const appCompanyId = (application.job_college_mapping as any)?.job?.company_id
+    if (appCompanyId !== companyId) {
+      return NextResponse.json({ error: "Forbidden: You do not own this application" }, { status: 403 })
     }
 
     // Insert new offer for the application as EXTENDED
