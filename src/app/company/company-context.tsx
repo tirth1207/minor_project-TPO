@@ -47,8 +47,8 @@ interface CompanyContextType {
   error: string | null
   jobs: JobPosting[]
   companyStatus: string
-  selectedJobId: string
-  setSelectedJobId: (id: string) => void
+  selectedJob: JobPosting | null
+  setSelectedJob: (job: JobPosting | null) => void
   applicants: Applicant[]
 
   // New Job Form fields
@@ -104,7 +104,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   // Data state
   const [jobs, setJobs] = React.useState<JobPosting[]>([])
   const [companyStatus, setCompanyStatus] = React.useState<string>("PENDING")
-  const [selectedJobId, setSelectedJobId] = React.useState<string>("")
+  const [selectedJob, setSelectedJob] = React.useState<JobPosting | null>(null)
   const [applicants, setApplicants] = React.useState<Applicant[]>([])
 
   // New Job Form fields
@@ -161,8 +161,8 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
       // Keep selected job ID updated or pick first if empty
       if (jobsData.jobs && jobsData.jobs.length > 0) {
-        if (!selectedJobId) {
-          setSelectedJobId(jobsData.jobs[0].id)
+        if (!selectedJob) {
+          setSelectedJob(jobsData.jobs[0])
         }
       }
 
@@ -172,16 +172,16 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [router, supabase, selectedJobId])
+  }, [router, supabase, selectedJob])
 
   // Fetch applicants whenever selectedJobId changes
   const fetchApplicants = React.useCallback(async () => {
-    if (!selectedJobId) {
+    if (!selectedJob) {
       setApplicants([])
       return
     }
     try {
-      const res = await fetch(`/api/company/jobs/${selectedJobId}/applicants`)
+      const res = await fetch(`/api/company/jobs/${selectedJob?.id}/applicants`)
       if (res.ok) {
         const data = await res.json()
         setApplicants(data.applicants || [])
@@ -190,7 +190,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("Error fetching applicants:", err)
     }
-  }, [selectedJobId])
+  }, [selectedJob])
 
   React.useEffect(() => {
     fetchData()
@@ -323,8 +323,8 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         error,
         jobs,
         companyStatus,
-        selectedJobId,
-        setSelectedJobId,
+        selectedJob,
+        setSelectedJob,
         applicants,
         jobTitle,
         setJobTitle,
