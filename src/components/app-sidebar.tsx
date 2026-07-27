@@ -273,6 +273,7 @@ import { NavProjects } from "@/components/nav-projects"
 import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import { IconCommand } from "@tabler/icons-react"
+import Link from "next/link"
 
 type NavItem = {
   title: string
@@ -322,7 +323,7 @@ export function AppSidebar({
           <SidebarMenuItem>
             <SidebarMenuButton
               size="lg"
-              render={<a href="/" />}
+              render={<Link href="/" />}
             >
               <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
                 <IconCommand className="size-4" />
