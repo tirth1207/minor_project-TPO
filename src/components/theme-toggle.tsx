@@ -6,7 +6,7 @@ import { Switch } from "./ui/switch"
 import { Label } from "./ui/label"
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark">("light")
+  const [theme, setTheme] = useState<"light" | "dark">("dark")
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
