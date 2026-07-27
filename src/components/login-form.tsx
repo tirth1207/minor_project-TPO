@@ -123,7 +123,7 @@ export function LoginForm({
                             <Field>
                                 <Button type="submit">Login</Button>
                             </Field>
-                            <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
+                            {/* <FieldSeparator className="*:data-[slot=field-separator-content]:bg-card">
                                 Or continue with
                             </FieldSeparator>
                             <Field className="grid grid-cols-3 gap-4">
@@ -154,7 +154,7 @@ export function LoginForm({
                                     </svg>
                                     <span className="sr-only">Login with Meta</span>
                                 </Button>
-                            </Field>
+                            </Field> */}
                             <FieldDescription className="text-center">
                                 Don&apos;t have an account? <Link href="/register">Sign up</Link>
                             </FieldDescription>
@@ -162,7 +162,7 @@ export function LoginForm({
                     </form>
                     <div className="relative hidden bg-muted md:block">
                         <img
-                            src="/placeholder.svg"
+                            src="https://i.natgeofe.com/n/c9107b46-78b1-4394-988d-53927646c72b/1095.jpg"
                             alt="Image"
                             className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
                         />

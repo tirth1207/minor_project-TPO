@@ -302,6 +302,7 @@ type AppSidebarProps = React.ComponentProps<typeof Sidebar> & {
   projects?: ProjectItem[]
 
   user?: SidebarUser
+  func?: () => void
 }
 
 export function AppSidebar({
@@ -311,6 +312,7 @@ export function AppSidebar({
   navSecondary = [],
   projects = [],
   user,
+  func,
   ...props
 }: AppSidebarProps) {
   return (
@@ -361,7 +363,7 @@ export function AppSidebar({
 
       {user && (
         <SidebarFooter>
-          <NavUser user={user} />
+          <NavUser user={user} func={func} />
         </SidebarFooter>
       )}
     </Sidebar>

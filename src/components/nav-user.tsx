@@ -25,12 +25,14 @@ import ThemeToggle from "@/components/theme-toggle"
 
 export function NavUser({
   user,
+  func
 }: {
   user: {
     name: string
     email: string
     avatar: string
-  }
+  },
+  func: () => void
 }) {
   const { isMobile } = useSidebar()
   return (
@@ -102,7 +104,7 @@ export function NavUser({
             <DropdownMenuItem>
               <ThemeToggle />
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={func}>
               <IconLogout
               />
               Log out

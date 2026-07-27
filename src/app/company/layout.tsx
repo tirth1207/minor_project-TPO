@@ -178,6 +178,7 @@ function CompanyDashboardShell({
         navMain={navMain}
         navSecondary={navSecondary}
         user={user}
+        func={handleLogout}
       />
 
       <SidebarInset>
