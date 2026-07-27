@@ -24,7 +24,7 @@ export default function SuperAdminOverviewPage() {
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       {/* Pending Colleges & Departments */}
-      <div className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 p-6 flex flex-col gap-4">
+      <div className="rounded-2xl border border-secondary bg-background dark:border-secondary dark:bg-background p-6 flex flex-col gap-4">
         <h3 className="text-lg font-bold flex items-center gap-2">
           <IconSchool className="h-5 w-5 text-zinc-400" /> Pending College Approvals
         </h3>
@@ -63,7 +63,7 @@ export default function SuperAdminOverviewPage() {
       </div>
 
       {/* Pending Company Profiles */}
-      <div className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 p-6 flex flex-col gap-4">
+      <div className="rounded-2xl border border-secondary bg-background dark:border-secondary dark:bg-background p-6 flex flex-col gap-4">
         <h3 className="text-lg font-bold flex items-center gap-2">
           <IconBuilding className="h-5 w-5 text-zinc-400" /> Pending Company Registrations
         </h3>
@@ -111,7 +111,7 @@ export default function SuperAdminOverviewPage() {
       </div>
 
       {/* Pending Job Postings (Global status) */}
-      <div className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 p-6 flex flex-col gap-4 lg:col-span-2">
+      <div className="rounded-2xl border border-secondary bg-background dark:border-secondary dark:bg-background p-6 flex flex-col gap-4 lg:col-span-2">
         <h3 className="text-lg font-bold flex items-center gap-2">
           <IconBriefcase className="h-5 w-5 text-zinc-400" /> Pending Global Job Approvals
         </h3>

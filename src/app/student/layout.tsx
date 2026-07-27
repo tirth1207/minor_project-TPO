@@ -54,7 +54,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <SidebarInset>
         {/* Header navbar */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800 px-6">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-100 dark:border-secondary px-6">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1 text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50" />
             <Separator
@@ -78,7 +78,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
             <button
               onClick={() => fetchData(true)}
               disabled={loading || refreshing}
-              className="p-1.5 rounded-lg border border-zinc-200 text-zinc-500 hover:text-zinc-950 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-50 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
+              className="p-1.5 rounded-lg border border-secondary text-zinc-500 hover:text-zinc-950 hover:bg-zinc-50 dark:border-secondary dark:text-zinc-400 dark:hover:text-zinc-50 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
               title="Refresh Data"
             >
               <IconRefresh className={`h-4.5 w-4.5 ${refreshing ? "animate-spin" : ""}`} />
@@ -133,7 +133,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
               )}
 
               {/* Tabs bar (Folder routing) */}
-              <div className="flex items-center gap-1.5 border-b border-zinc-200 dark:border-zinc-800">
+              <div className="flex items-center gap-1.5 border-b border-secondary dark:border-secondary">
                 <Link
                   href="/student/profile"
                   className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all capitalize ${

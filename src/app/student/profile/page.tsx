@@ -25,7 +25,7 @@ export default function StudentProfilePage() {
   } = useStudent()
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 max-w-3xl">
+    <div className="rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background max-w-3xl">
       <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
         <IconUser className="h-5 w-5 text-zinc-400" /> Manage Candidate Profile
       </h3>
@@ -46,7 +46,7 @@ export default function StudentProfilePage() {
             type="text"
             value={editName}
             onChange={e => setEditName(e.target.value)}
-            className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
             required
           />
         </div>
@@ -59,7 +59,7 @@ export default function StudentProfilePage() {
             max="10"
             value={editCgpa}
             onChange={e => setEditCgpa(e.target.value)}
-            className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900"
+            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
             required
           />
         </div>
@@ -70,7 +70,7 @@ export default function StudentProfilePage() {
             value={editBranch}
             onChange={e => setEditBranch(e.target.value)}
             placeholder="e.g. Computer Science"
-            className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900"
+            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
             required
           />
         </div>
@@ -79,7 +79,7 @@ export default function StudentProfilePage() {
           <select
             value={editSemester}
             onChange={e => setEditSemester(e.target.value)}
-            className="w-full h-9 rounded-lg border border-zinc-200 px-2.5 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900"
+            className="w-full h-9 rounded-lg border border-secondary px-2.5 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
             required
           >
             {[...Array(10)].map((_, i) => (
@@ -93,7 +93,7 @@ export default function StudentProfilePage() {
             type="text"
             value={editPhone}
             onChange={e => setEditPhone(e.target.value)}
-            className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900"
+            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
           />
         </div>
         <div>
@@ -103,7 +103,7 @@ export default function StudentProfilePage() {
             value={editResumeUrl}
             onChange={e => setEditResumeUrl(e.target.value)}
             placeholder="e.g. https://drive.google.com/..."
-            className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900"
+            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
             required
           />
         </div>
@@ -114,7 +114,7 @@ export default function StudentProfilePage() {
             onChange={e => setEditBio(e.target.value)}
             rows={3}
             placeholder="Write a brief professional summary about yourself..."
-            className="w-full rounded-lg border border-zinc-200 p-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900"
+            className="w-full rounded-lg border border-secondary p-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
           />
         </div>
 

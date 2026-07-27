@@ -31,7 +31,7 @@ export default function CompanyPostJobPage() {
   } = useCompany()
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 max-w-3xl">
+    <div className="rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background max-w-3xl">
       <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
         <IconPlus className="h-5 w-5 text-zinc-400" /> Create Campus Recruitment Drive
       </h3>
@@ -43,7 +43,7 @@ export default function CompanyPostJobPage() {
             placeholder="e.g. Software Engineer (Frontend)"
             value={jobTitle}
             onChange={e => setJobTitle(e.target.value)}
-            className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
             required
           />
         </div>
@@ -54,7 +54,7 @@ export default function CompanyPostJobPage() {
             value={jobDesc}
             onChange={e => setJobDesc(e.target.value)}
             rows={4}
-            className="w-full rounded-lg border border-zinc-200 p-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+            className="w-full rounded-lg border border-secondary p-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
             required
           />
         </div>
@@ -65,7 +65,7 @@ export default function CompanyPostJobPage() {
             placeholder="e.g. Bangalore, India"
             value={jobLocation}
             onChange={e => setJobLocation(e.target.value)}
-            className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
             required
           />
         </div>
@@ -74,7 +74,7 @@ export default function CompanyPostJobPage() {
           <select
             value={workMode}
             onChange={e => setWorkMode(e.target.value as any)}
-            className="w-full h-9 rounded-lg border border-zinc-200 px-2.5 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+            className="w-full h-9 rounded-lg border border-secondary px-2.5 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
             required
           >
             <option value="ONSITE">Onsite</option>
@@ -90,7 +90,7 @@ export default function CompanyPostJobPage() {
             placeholder="e.g. 12"
             value={ctc}
             onChange={e => setCtc(e.target.value)}
-            className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
             required
           />
         </div>
@@ -103,7 +103,7 @@ export default function CompanyPostJobPage() {
             max="10.00"
             value={minCgpa}
             onChange={e => setMinCgpa(e.target.value)}
-            className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
             required
           />
         </div>
@@ -114,7 +114,7 @@ export default function CompanyPostJobPage() {
             min="0"
             value={maxBacklogs}
             onChange={e => setMaxBacklogs(e.target.value)}
-            className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
             required
           />
         </div>
@@ -139,7 +139,7 @@ export default function CompanyPostJobPage() {
               max="100"
               value={mockPassScore}
               onChange={e => setMockPassScore(e.target.value)}
-              className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900"
+              className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
               required
             />
           </div>

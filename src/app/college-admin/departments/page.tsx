@@ -39,7 +39,7 @@ export default function CollegeAdminDepartmentsPage() {
   return (
     <div className="grid gap-6 md:grid-cols-3 items-start">
       {/* Create department form */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 flex flex-col gap-4">
+      <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background flex flex-col gap-4">
         <h3 className="text-md font-bold flex items-center gap-2">
           <IconPlus className="h-4.5 w-4.5 text-zinc-400" /> New Department
         </h3>
@@ -53,7 +53,7 @@ export default function CollegeAdminDepartmentsPage() {
               placeholder="e.g. Computer Science"
               value={deptName}
               onChange={(e) => setDeptName(e.target.value)}
-              className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+              className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
               required
             />
           </div>
@@ -68,7 +68,7 @@ export default function CollegeAdminDepartmentsPage() {
       </div>
 
       {/* Departments List */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 md:col-span-2 flex flex-col gap-4">
+      <div className="rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background md:col-span-2 flex flex-col gap-4">
         <h3 className="text-lg font-bold flex items-center gap-2">
           <IconSchool className="h-5 w-5 text-zinc-400" /> Department Directory
         </h3>

@@ -11,7 +11,7 @@ export default function StudentApplicationsPage() {
   } = useStudent()
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 flex flex-col gap-4">
+    <div className="rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background flex flex-col gap-4">
       <h3 className="text-lg font-bold flex items-center gap-2">
         <IconFileCertificate className="h-5 w-5 text-zinc-400" /> Campus Drives Application History
       </h3>
@@ -27,7 +27,7 @@ export default function StudentApplicationsPage() {
             const offerAccepted = app.offers?.find(o => o.status === "ACCEPTED")
 
             return (
-              <div key={app.id} className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800 flex flex-col gap-4 bg-zinc-50/10">
+              <div key={app.id} className="rounded-xl border border-secondary p-5 dark:border-secondary flex flex-col gap-4 bg-zinc-50/10">
                 {/* App header */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3 border-zinc-100 dark:border-zinc-900">
                   <div>
@@ -49,7 +49,7 @@ export default function StudentApplicationsPage() {
                   <div className="flex flex-wrap gap-2">
                     {app.rounds && app.rounds.length > 0 ? (
                       app.rounds.map(round => (
-                        <div key={round.id} className="px-3 py-2 rounded-lg border border-zinc-150 bg-white dark:border-zinc-850 dark:bg-zinc-900 text-xs flex flex-col gap-0.5">
+                        <div key={round.id} className="px-3 py-2 rounded-lg border border-zinc-150 bg-background dark:border-zinc-850 dark:bg-zinc-900 text-xs flex flex-col gap-0.5">
                           <p className="font-bold text-zinc-800 dark:text-zinc-200">{round.round_name}</p>
                           <p className="text-[10px] font-extrabold text-primary uppercase">{round.status}</p>
                           {round.company_feedback && (

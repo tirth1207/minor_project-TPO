@@ -68,7 +68,7 @@ export default async function Home() {
 
       {/* Hero Section */}
       <main className="relative z-10 mx-auto my-auto flex max-w-5xl flex-col items-center px-6 py-20 text-center">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-3.5 py-1 text-xs font-medium shadow-sm dark:border-zinc-800 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-secondary bg-background px-3.5 py-1 text-xs font-medium shadow-sm dark:border-secondary dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400">
           <IconShieldLock className="h-3.5 w-3.5 text-zinc-400" />
           End-to-End Secure RBAC Enabled
         </div>
@@ -82,7 +82,7 @@ export default async function Home() {
         {/* Portal Entry Cards */}
         <div className="mt-14 grid w-full grid-cols-1 gap-6 sm:grid-cols-2 max-w-3xl">
           {/* Card 1 */}
-          <div className="group relative rounded-2xl border border-zinc-200 bg-white p-6 text-left shadow-sm transition-all hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/30 dark:hover:border-zinc-700">
+          <div className="group relative rounded-2xl border border-secondary bg-background p-6 text-left shadow-sm transition-all hover:border-zinc-300 dark:border-secondary dark:bg-zinc-900/30 dark:hover:border-zinc-700">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-100 text-zinc-800 transition-all group-hover:bg-zinc-900 group-hover:text-zinc-50 dark:bg-zinc-800 dark:text-zinc-200 dark:group-hover:bg-zinc-50 dark:group-hover:text-zinc-950">
               <IconUser className="h-5 w-5" />
             </div>
@@ -99,7 +99,7 @@ export default async function Home() {
           </div>
 
           {/* Card 2 */}
-          <div className="group relative rounded-2xl border border-zinc-200 bg-white p-6 text-left shadow-sm transition-all hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/30 dark:hover:border-zinc-700">
+          <div className="group relative rounded-2xl border border-secondary bg-background p-6 text-left shadow-sm transition-all hover:border-zinc-300 dark:border-secondary dark:bg-zinc-900/30 dark:hover:border-zinc-700">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-100 text-zinc-800 transition-all group-hover:bg-zinc-900 group-hover:text-zinc-50 dark:bg-zinc-800 dark:text-zinc-200 dark:group-hover:bg-zinc-50 dark:group-hover:text-zinc-950">
               <IconBuilding className="h-5 w-5" />
             </div>
@@ -118,7 +118,7 @@ export default async function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-zinc-200/50 py-6 text-center text-xs text-zinc-400 dark:border-zinc-800/50">
+      <footer className="relative z-10 border-t border-secondary/50 py-6 text-center text-xs text-zinc-400 dark:border-secondary/50">
         <p>© 2026 TPO Placement Portal. Built with Next.js & Supabase.</p>
       </footer>
     </div>

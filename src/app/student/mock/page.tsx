@@ -22,7 +22,7 @@ export default function StudentMockPage() {
     <div className="grid gap-6 md:grid-cols-3 items-start">
 
       {/* Left: start mock form & metrics */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 flex flex-col gap-4">
+      <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background flex flex-col gap-4">
         <h3 className="text-md font-bold flex items-center gap-2 border-b pb-3 border-zinc-100 dark:border-zinc-900">
           <IconRobot className="h-4.5 w-4.5 text-zinc-400" /> Spawn Mock Prep
         </h3>
@@ -36,7 +36,7 @@ export default function StudentMockPage() {
                 placeholder="e.g. Frontend Engineer"
                 value={targetRole}
                 onChange={e => setTargetRole(e.target.value)}
-                className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900"
+                className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
                 required
               />
             </div>
@@ -62,7 +62,7 @@ export default function StudentMockPage() {
             <p className="text-[10px] text-zinc-400 italic">No mock records yet.</p>
           ) : (
             mocks.map(m => (
-              <div key={m.id} className="p-2.5 border rounded-lg flex items-center justify-between text-xs dark:border-zinc-800 bg-zinc-50/30">
+              <div key={m.id} className="p-2.5 border rounded-lg flex items-center justify-between text-xs dark:border-secondary bg-zinc-50/30">
                 <div className="truncate max-w-[140px]">
                   <p className="font-bold truncate text-zinc-800 dark:text-zinc-200">{m.job_role_context}</p>
                   <p className="text-[9px] text-zinc-400 capitalize">{m.status.toLowerCase()}</p>
@@ -77,7 +77,7 @@ export default function StudentMockPage() {
       </div>
 
       {/* Right: active mock workspace */}
-      <div className="md:col-span-2 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 min-h-[400px]">
+      <div className="md:col-span-2 rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background min-h-[400px]">
         {!activeMock ? (
           <div className="flex flex-col items-center justify-center py-16 gap-2 text-zinc-400">
             <IconRobot className="h-12 w-12 stroke-[1.2]" />
@@ -113,7 +113,7 @@ export default function StudentMockPage() {
                     }}
                     rows={3}
                     placeholder="Write your comprehensive technical explanation here..."
-                    className="w-full rounded-lg border border-zinc-200 p-2.5 text-xs focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900"
+                    className="w-full rounded-lg border border-secondary p-2.5 text-xs focus:outline-primary dark:border-secondary dark:bg-zinc-900"
                   />
                 </div>
               ))}

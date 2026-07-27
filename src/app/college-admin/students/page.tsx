@@ -8,7 +8,7 @@ export default function CollegeAdminStudentsPage() {
   const { students } = useCollegeAdmin()
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 flex flex-col gap-4">
+    <div className="rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background flex flex-col gap-4">
       <h3 className="text-lg font-bold flex items-center gap-2">
         <IconUsers className="h-5 w-5 text-zinc-400" /> Complete Student Directory
       </h3>

@@ -28,12 +28,20 @@ import {
   IconBuilding,
   IconBriefcase,
   IconUsers,
+  IconDashboard,
+  IconSend,
+  IconLifebuoy,
 } from "@tabler/icons-react"
 
 function SuperAdminDashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
+  const [user, setUser] = React.useState({
+    name: "Loading...",
+    email: "",
+    avatar: "/avatars/default.jpg",
+  })
   const {
     loading,
     refreshing,
@@ -41,18 +49,95 @@ function SuperAdminDashboardShell({ children }: { children: React.ReactNode }) {
     stats,
     fetchData,
   } = useSuperAdmin()
+  React.useEffect(() => {
+      async function fetchUser() {
+        try {
+          const res = await fetch("/api/users/me")
+  
+          if (!res.ok) {
+            console.error(
+              "Failed to fetch user:",
+              res.status,
+              res.statusText
+            )
+            return
+          }
+  
+          const data = await res.json()
+  
+          const email = data.user?.email ?? ""
+  
+          const name =
+            data.companyProfile?.company_name ||
+            email.split("@")[0] ||
+            "Corporate Partner"
+  
+          setUser({
+            name,
+            email,
+            avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+              name
+            )}`,
+          })
+        } catch (error) {
+          console.error(
+            "Error fetching company user:",
+            error
+          )
+        }
+      }
+  
+      fetchUser()
+    }, [])
+
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push("/login")
   }
 
+  const navMains = [
+        {
+          title: "Dashboard Overview",
+          url: "/super-admin",
+          icon: <IconDashboard className="size-4" />,
+          isActive: true,
+        },
+        {
+          title: "College Management",
+          url: "/super-admin/colleges",
+          icon: <IconSchool className="size-4" />,
+        },
+        {
+          title: "Company Approvals",
+          url: "/super-admin/companies",
+          icon: <IconBuilding className="size-4" />,
+        },
+        {
+          title: "Job Postings",
+          url: "/super-admin/jobs",
+          icon: <IconBriefcase className="size-4" />,
+        },
+      ]
+    const navSecondary = [
+      {
+        title: "Support",
+        url: "/support",
+        icon: <IconLifebuoy className="size-4" />,
+      },
+      {
+        title: "Feedback",
+        url: "/feedback",
+        icon: <IconSend className="size-4" />,
+      },
+    ]
+
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar title="Super Admin" subtitle="Dashboard" navMain={navMains} navSecondary={navSecondary} user={user} func={handleLogout}/>
       <SidebarInset>
         {/* Header navbar */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800 px-6">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-100 dark:border-secondary px-6">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1 text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50" />
             <Separator
@@ -76,7 +161,7 @@ function SuperAdminDashboardShell({ children }: { children: React.ReactNode }) {
             <button
               onClick={() => fetchData(true)}
               disabled={loading || refreshing}
-              className="p-1.5 rounded-lg border border-zinc-200 text-zinc-500 hover:text-zinc-950 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-50 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
+              className="p-1.5 rounded-lg border border-secondary text-zinc-500 hover:text-zinc-950 hover:bg-zinc-50 dark:border-secondary dark:text-zinc-400 dark:hover:text-zinc-50 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
               title="Refresh Data"
             >
               <IconRefresh className={`h-4.5 w-4.5 ${refreshing ? "animate-spin" : ""}`} />
@@ -110,7 +195,7 @@ function SuperAdminDashboardShell({ children }: { children: React.ReactNode }) {
           ) : (
             <>
               {/* Dashboard Tabs bar */}
-              <div className="flex items-center gap-1.5 border-b border-zinc-200 dark:border-zinc-800">
+              {/* <div className="flex items-center gap-1.5 border-b border-secondary dark:border-secondary">
                 <Link
                   href="/super-admin/overview"
                   className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all capitalize ${
@@ -151,13 +236,13 @@ function SuperAdminDashboardShell({ children }: { children: React.ReactNode }) {
                 >
                   Job Postings
                 </Link>
-              </div>
+              </div> */}
 
               {/* Stat Summary Cards */}
               {stats && (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {/* Stat 1 */}
-                  <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 shadow-xs flex items-center justify-between">
+                  <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background shadow-xs flex items-center justify-between">
                     <div>
                       <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Colleges</span>
                       <h3 className="text-3xl font-extrabold tracking-tight mt-1 text-zinc-900 dark:text-zinc-50">{stats.organizations.total}</h3>
@@ -169,7 +254,7 @@ function SuperAdminDashboardShell({ children }: { children: React.ReactNode }) {
                   </div>
 
                   {/* Stat 2 */}
-                  <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 shadow-xs flex items-center justify-between">
+                  <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background shadow-xs flex items-center justify-between">
                     <div>
                       <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Companies</span>
                       <h3 className="text-3xl font-extrabold tracking-tight mt-1 text-zinc-900 dark:text-zinc-50">{stats.companies.total}</h3>
@@ -181,7 +266,7 @@ function SuperAdminDashboardShell({ children }: { children: React.ReactNode }) {
                   </div>
 
                   {/* Stat 3 */}
-                  <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 shadow-xs flex items-center justify-between">
+                  <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background shadow-xs flex items-center justify-between">
                     <div>
                       <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Job Postings</span>
                       <h3 className="text-3xl font-extrabold tracking-tight mt-1 text-zinc-900 dark:text-zinc-50">{stats.jobs.total}</h3>
@@ -193,7 +278,7 @@ function SuperAdminDashboardShell({ children }: { children: React.ReactNode }) {
                   </div>
 
                   {/* Stat 4 */}
-                  <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 shadow-xs flex items-center justify-between">
+                  <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background shadow-xs flex items-center justify-between">
                     <div>
                       <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Placements</span>
                       <h3 className="text-3xl font-extrabold tracking-tight mt-1 text-zinc-900 dark:text-zinc-50">

@@ -17,6 +17,9 @@ export interface JobPosting {
   global_status: "PENDING" | "APPROVED" | "REJECTED"
   require_mock: boolean
   mock_pass_score: number
+  applicant_count: number
+  applications_count: number
+  branches: string[]
 }
 
 export interface Applicant {
@@ -154,6 +157,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
       // Fetch company posted jobs
       const jobsRes = await fetch("/api/company/jobs")
+      console.log("Jobs API response:", jobsRes)
       if (!jobsRes.ok) throw new Error("Failed to retrieve jobs")
       const jobsData = await jobsRes.json()
       setJobs(jobsData.jobs || [])

@@ -183,7 +183,7 @@ function CompanyDashboardShell({
 
       <SidebarInset>
         {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-100 px-6 dark:border-zinc-800">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-100 px-6 dark:border-secondary">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1 text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50" />
 
@@ -217,7 +217,7 @@ function CompanyDashboardShell({
               onClick={() => fetchData(true)}
               disabled={loading || refreshing}
               title="Refresh Data"
-              className="cursor-pointer rounded-lg border border-zinc-200 p-1.5 text-zinc-500 transition-all hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
+              className="cursor-pointer rounded-lg border border-secondary p-1.5 text-zinc-500 transition-all hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
             >
               <IconRefresh
                 className={`h-4.5 w-4.5 ${

@@ -19,7 +19,7 @@ export default function CollegeAdminInvitesPage() {
   return (
     <div className="grid gap-6 md:grid-cols-3 items-start">
       {/* Generate magic invite token */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 flex flex-col gap-4">
+      <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background flex flex-col gap-4">
         <h3 className="text-md font-bold flex items-center gap-2">
           <IconPlus className="h-4.5 w-4.5 text-zinc-400" /> New Magic Link
         </h3>
@@ -31,7 +31,7 @@ export default function CollegeAdminInvitesPage() {
             <select
               value={selectedDeptId}
               onChange={(e) => setSelectedDeptId(e.target.value)}
-              className="w-full h-9 rounded-lg border border-zinc-200 px-2 text-sm focus:outline-primary dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"
+              className="w-full h-9 rounded-lg border border-secondary px-2 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
               required
             >
               <option value="">-- Choose Department --</option>
@@ -63,12 +63,12 @@ export default function CollegeAdminInvitesPage() {
               type="text"
               readOnly
               value={latestInviteUrl}
-              className="w-full p-2 border rounded bg-white text-zinc-700 text-[11px] font-mono dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-300"
+              className="w-full p-2 border rounded bg-background text-zinc-700 text-[11px] font-mono dark:bg-zinc-900 dark:border-secondary dark:text-zinc-300"
               onClick={(e) => (e.target as HTMLInputElement).select()}
             />
             <button
               onClick={() => handleCopyLink(latestInviteUrl)}
-              className="w-full h-7 mt-1 border rounded bg-white text-[11px] font-semibold flex items-center justify-center gap-1 hover:bg-zinc-50 cursor-pointer dark:bg-zinc-900 dark:border-zinc-800"
+              className="w-full h-7 mt-1 border rounded bg-background text-[11px] font-semibold flex items-center justify-center gap-1 hover:bg-zinc-50 cursor-pointer dark:bg-zinc-900 dark:border-secondary"
             >
               <IconCopy className="h-3 w-3" /> Copy Link
             </button>
@@ -77,7 +77,7 @@ export default function CollegeAdminInvitesPage() {
       </div>
 
       {/* Generated Invites Table */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 md:col-span-2 flex flex-col gap-4">
+      <div className="rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background md:col-span-2 flex flex-col gap-4">
         <h3 className="text-lg font-bold flex items-center gap-2">
           <IconListCheck className="h-5 w-5 text-zinc-400" /> Active Invite Tokens
         </h3>
@@ -112,7 +112,7 @@ export default function CollegeAdminInvitesPage() {
                           </span>
                           <button
                             onClick={() => handleCopyLink(absoluteLink)}
-                            className="p-1 rounded border hover:bg-zinc-50 text-zinc-550 dark:border-zinc-800"
+                            className="p-1 rounded border hover:bg-zinc-50 text-zinc-550 dark:border-secondary"
                             title="Copy Link URL"
                           >
                             <IconCopy className="h-3.5 w-3.5" />

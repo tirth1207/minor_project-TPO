@@ -13,7 +13,7 @@ export default function MentorOverviewPage() {
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {/* Stat 1 */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 shadow-xs flex items-center justify-between">
+      <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background shadow-xs flex items-center justify-between">
         <div>
           <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Total Recruits</span>
           <h3 className="text-3xl font-extrabold tracking-tight mt-1 text-zinc-900 dark:text-zinc-50">{students.length}</h3>
@@ -25,7 +25,7 @@ export default function MentorOverviewPage() {
       </div>
 
       {/* Stat 2 */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 shadow-xs flex items-center justify-between">
+      <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background shadow-xs flex items-center justify-between">
         <div>
           <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Pending Verification</span>
           <h3 className="text-3xl font-extrabold tracking-tight mt-1 text-amber-600 dark:text-amber-400">{pendingCount}</h3>
@@ -37,7 +37,7 @@ export default function MentorOverviewPage() {
       </div>
 
       {/* Stat 3 */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 shadow-xs flex items-center justify-between">
+      <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background shadow-xs flex items-center justify-between">
         <div>
           <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Placed Candidates</span>
           <h3 className="text-3xl font-extrabold tracking-tight mt-1 text-emerald-600 dark:text-emerald-400">{placedCount} of {approvedCount || 1}</h3>

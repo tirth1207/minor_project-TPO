@@ -22,7 +22,7 @@ export default function SuperAdminCompaniesPage() {
   }
 
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950 p-6 flex flex-col gap-4">
+    <div className="rounded-2xl border border-secondary bg-background dark:border-secondary dark:bg-background p-6 flex flex-col gap-4">
       <h3 className="text-lg font-bold">Registered Companies</h3>
       <div className="border border-zinc-150 rounded-xl overflow-hidden dark:border-zinc-850">
         <table className="w-full text-left text-sm">

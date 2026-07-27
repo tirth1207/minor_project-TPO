@@ -27,7 +27,7 @@ export default function MentorStudentsPage() {
     <div className="grid gap-6 md:grid-cols-3 items-start flex-1">
 
       {/* LEFT COLUMN: Student Directory List */}
-      <div className="rounded-2xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950 flex flex-col gap-4 h-full min-h-[500px]">
+      <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background flex flex-col gap-4 h-full min-h-[500px]">
         <h3 className="text-md font-bold flex items-center gap-2 border-b pb-3 border-zinc-100 dark:border-zinc-900">
           <IconUsers className="h-4.5 w-4.5 text-zinc-400" /> Department Student Directory
         </h3>
@@ -73,7 +73,7 @@ export default function MentorStudentsPage() {
       </div>
 
       {/* RIGHT COLUMN: Detail Verification Inspection Panel */}
-      <div className="md:col-span-2 rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950 min-h-[500px]">
+      <div className="md:col-span-2 rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background min-h-[500px]">
         {!selectedStudent ? (
           <div className="flex flex-col items-center justify-center py-24 gap-2 text-zinc-400">
             <IconUserCheck className="h-12 w-12 stroke-[1.2]" />
@@ -148,7 +148,7 @@ export default function MentorStudentsPage() {
                     href={selectedStudent.resume_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full sm:w-auto h-10 px-4 rounded-lg border border-zinc-200 text-xs font-bold text-zinc-700 hover:text-zinc-950 hover:bg-zinc-50 dark:border-zinc-850 dark:text-zinc-300 dark:hover:text-zinc-50 dark:hover:bg-zinc-900 inline-flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                    className="w-full sm:w-auto h-10 px-4 rounded-lg border border-secondary text-xs font-bold text-zinc-700 hover:text-zinc-950 hover:bg-zinc-50 dark:border-zinc-850 dark:text-zinc-300 dark:hover:text-zinc-50 dark:hover:bg-zinc-900 inline-flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
                     Inspect Candidate Resume <IconExternalLink className="h-4 w-4" />
                   </a>

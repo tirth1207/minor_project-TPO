@@ -120,7 +120,7 @@ function RegisterFormContent() {
 
   if (isSuccess) {
     return (
-      <Card className="border-zinc-200 shadow-xl dark:border-zinc-800 dark:bg-zinc-900/40 text-center">
+      <Card className="border-secondary shadow-xl dark:border-secondary dark:bg-zinc-900/40 text-center">
         <CardContent className="pt-8 pb-8 flex flex-col items-center">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-500">
             <IconCheck className="h-8 w-8" />
@@ -152,7 +152,7 @@ function RegisterFormContent() {
   }
 
   return (
-    <Card className="border-zinc-200/80 shadow-xl shadow-zinc-100/50 dark:border-zinc-800/80 dark:bg-zinc-900/40 dark:shadow-none backdrop-blur-md">
+    <Card className="border-secondary/80 shadow-xl shadow-zinc-100/50 dark:border-secondary/80 dark:bg-zinc-900/40 dark:shadow-none backdrop-blur-md">
       <CardHeader className="pb-4">
         {/* Customized Tabs */}
         <div className="grid grid-cols-2 gap-1 rounded-xl bg-zinc-100 p-1 dark:bg-zinc-900">
@@ -160,7 +160,7 @@ function RegisterFormContent() {
             type="button"
             className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-semibold transition-all ${
               activeTab === "student"
-                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
+                ? "bg-background text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-300"
             }`}
             onClick={() => {
@@ -175,7 +175,7 @@ function RegisterFormContent() {
             type="button"
             className={`flex items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-semibold transition-all ${
               activeTab === "company"
-                ? "bg-white text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
+                ? "bg-background text-zinc-900 shadow-sm dark:bg-zinc-800 dark:text-zinc-50"
                 : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-300"
             }`}
             onClick={() => {
@@ -382,7 +382,7 @@ function RegisterFormContent() {
         )}
       </CardContent>
 
-      <CardFooter className="flex flex-col border-t border-zinc-100/80 px-6 py-4 dark:border-zinc-800/80">
+      <CardFooter className="flex flex-col border-t border-zinc-100/80 px-6 py-4 dark:border-secondary/80">
         <p className="text-xs text-center text-zinc-500 dark:text-zinc-400">
           Already have an account?{" "}
           <Link
@@ -399,7 +399,7 @@ function RegisterFormContent() {
 
 export default function RegisterPage() {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4 py-12 dark:bg-zinc-950 font-sans">
+    <div className="relative flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4 py-12 dark:bg-background font-sans">
       {/* Decorative Background */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
       
@@ -419,7 +419,7 @@ export default function RegisterPage() {
 
         <Suspense
           fallback={
-            <Card className="border-zinc-200/80 shadow-xl dark:border-zinc-800/80 dark:bg-zinc-900/40 p-8 flex justify-center items-center">
+            <Card className="border-secondary/80 shadow-xl dark:border-secondary/80 dark:bg-zinc-900/40 p-8 flex justify-center items-center">
               <IconLoader2 className="h-8 w-8 animate-spin text-zinc-500" />
             </Card>
           }

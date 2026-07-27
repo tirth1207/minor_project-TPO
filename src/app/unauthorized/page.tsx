@@ -3,7 +3,7 @@ import { IconAlertTriangle, IconArrowLeft } from "@tabler/icons-react"
 
 export default function UnauthorizedPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 dark:bg-zinc-950 font-sans">
+    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 dark:bg-background font-sans">
       <div className="w-full max-w-md text-center">
         <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 dark:bg-amber-950/20 dark:border-amber-900/50 dark:text-amber-500">
           <IconAlertTriangle className="h-8 w-8" />
@@ -23,7 +23,7 @@ export default function UnauthorizedPage() {
           </Link>
           <Link
             href="/"
-            className="flex h-11 items-center justify-center rounded-xl border border-zinc-200 bg-white px-5 text-sm font-semibold text-zinc-700 transition-all hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-850"
+            className="flex h-11 items-center justify-center rounded-xl border border-secondary bg-background px-5 text-sm font-semibold text-zinc-700 transition-all hover:bg-zinc-50 dark:border-secondary dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-850"
           >
             <IconArrowLeft className="mr-2 h-4 w-4" /> Go Home
           </Link>
