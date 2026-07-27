@@ -278,14 +278,14 @@ import Link from "next/link"
 type NavItem = {
   title: string
   url: string
-  icon?: React.ReactNode
+  icon: React.ReactNode
   isActive?: boolean
 }
 
 type ProjectItem = {
   name: string
   url: string
-  icon?: React.ReactNode
+  icon: React.ReactNode
 }
 
 type SidebarUser = {
@@ -364,7 +364,7 @@ export function AppSidebar({
 
       {user && (
         <SidebarFooter>
-          <NavUser user={user} func={func} />
+          <NavUser user={user} func={func || (() => {})} />
         </SidebarFooter>
       )}
     </Sidebar>

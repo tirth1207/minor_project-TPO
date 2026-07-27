@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireActiveCompany } from "@/lib/auth/require-active-company"
 import { NextResponse } from "next/server"
 
 export async function PATCH(
@@ -9,26 +9,36 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireActiveCompany()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
+    const { supabase, companyId } = auth
+
+    // Verify ownership of the offer
+    const { data: offer, error: offerError } = await supabase
+      .from("offers")
+      .select(`
+        id,
+        application:applications!inner(
+          job_college_mapping:job_college_mappings!inner(
+            job:job_postings!inner(
+              company_id
+            )
+          )
+        )
+      `)
+      .eq("id", id)
       .maybeSingle()
 
-    const role = dbUser?.role || user.app_metadata?.role
-    if (role !== "COMPANY") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (offerError || !offer) {
+      return NextResponse.json({ error: "Offer not found" }, { status: 404 })
+    }
+
+    const offerCompanyId = (offer.application as any)?.job_college_mapping?.job?.company_id
+    if (offerCompanyId !== companyId) {
+      return NextResponse.json({ error: "Forbidden: You do not own this offer" }, { status: 403 })
     }
 
     // Revoke the offer by updating status to REVOKED

@@ -1,35 +1,49 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireActiveCompany } from "@/lib/auth/require-active-company"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireActiveCompany()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    const role = dbUser?.role || user.app_metadata?.role
-    if (role !== "COMPANY") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    const { supabase, companyId } = auth
 
     const { applicationIds } = await request.json()
     if (!applicationIds || !Array.isArray(applicationIds) || applicationIds.length === 0) {
       return NextResponse.json({ error: "applicationIds array is required" }, { status: 400 })
+    }
+
+    // Fetch applications and verify company ownership
+    const { data: apps, error: appsError } = await supabase
+      .from("applications")
+      .select(`
+        id,
+        job_college_mapping:job_college_mappings!inner(
+          job:job_postings!inner(
+            company_id
+          )
+        )
+      `)
+      .in("id", applicationIds)
+
+    if (appsError || !apps) {
+      return NextResponse.json({ error: appsError?.message || "Applications not found" }, { status: 404 })
+    }
+
+    if (apps.length !== applicationIds.length) {
+      return NextResponse.json({ error: "Some applications could not be resolved" }, { status: 404 })
+    }
+
+    // Verify ownership
+    for (const app of apps) {
+      const appCompanyId = (app.job_college_mapping as any)?.job?.company_id
+      if (appCompanyId !== companyId) {
+        return NextResponse.json({ error: "Forbidden: You do not own all selected applications" }, { status: 403 })
+      }
     }
 
     // Bulk update applications

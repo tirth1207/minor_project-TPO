@@ -1,26 +1,16 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireUser } from "@/lib/auth/require-user"
 import { NextResponse } from "next/server"
 
 export async function GET() {
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireUser()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role, org_id")
-      .eq("id", user.id)
-      .maybeSingle()
+    const { supabase, user, dbUser } = auth
 
     const role = dbUser?.role || user.app_metadata?.role
     const org_id = dbUser?.org_id || user.app_metadata?.org_id
@@ -29,20 +19,18 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Retrieve all mappings matching the admin's college (org_id)
+    // Retrieve organization status
     const { data: org, error: fetchError } = await supabase
       .from("organizations")
-      .select(`
-        name,
-        status
-      `)
+      .select("status")
       .eq("id", org_id)
+      .maybeSingle()
 
-    if (fetchError) {
-      return NextResponse.json({ error: fetchError.message }, { status: 400 })
+    if (fetchError || !org) {
+      return NextResponse.json({ error: fetchError?.message || "Organization not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ org })
+    return NextResponse.json({ org: { status: org.status } })
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || "An unexpected error occurred" },

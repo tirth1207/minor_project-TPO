@@ -1,34 +1,16 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireActiveMentor } from "@/lib/auth/require-active-mentor"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
   try {
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireActiveMentor()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role, org_id, dept_id")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    const role = dbUser?.role || user.app_metadata?.role
-    const org_id = dbUser?.org_id || user.app_metadata?.org_id
-    const dept_id = dbUser?.dept_id || user.app_metadata?.dept_id
-
-    if (role !== "MENTOR" || !dept_id || !org_id) {
-      return NextResponse.json({ error: "Forbidden: Mentor access only" }, { status: 403 })
-    }
+    const { supabase, deptId } = auth
 
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
@@ -46,7 +28,7 @@ export async function GET(request: Request) {
           )
         )
       `)
-      .eq("user.dept_id", dept_id)
+      .eq("user.dept_id", deptId)
 
     if (status) {
       query = query.eq("profile_status", status)

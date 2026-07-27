@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireActiveCollegeAdmin } from "@/lib/auth/require-active-college-admin"
 import { NextResponse } from "next/server"
 
 export async function PATCH(
@@ -9,29 +9,12 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireActiveCollegeAdmin()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role, org_id")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    const role = dbUser?.role || user.app_metadata?.role
-    const org_id = dbUser?.org_id || user.app_metadata?.org_id
-
-    if (role !== "COLLEGE_ADMIN" || !org_id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    const { supabase, orgId } = auth
 
     const { localStatus } = await request.json()
     if (!localStatus || !["APPROVED", "REJECTED", "PENDING"].includes(localStatus)) {
@@ -49,7 +32,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Mapping not found" }, { status: 404 })
     }
 
-    if (mapping.org_id !== org_id) {
+    if (mapping.org_id !== orgId) {
       return NextResponse.json({ error: "Forbidden: You do not own this mapping" }, { status: 403 })
     }
 

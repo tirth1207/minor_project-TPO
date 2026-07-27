@@ -70,7 +70,7 @@ function CollegeAdminDashboardShell({ children }: { children: React.ReactNode })
             const name =
               data.companyProfile?.company_name ||
               email.split("@")[0] ||
-              "Corporate Partner"
+              "College Administrator"
     
             setUser({
               name,
@@ -98,24 +98,9 @@ function CollegeAdminDashboardShell({ children }: { children: React.ReactNode })
   const navMains = [
         {
           title: "Dashboard Overview",
-          url: "/super-admin",
+          url: "/college-admin/departments",
           icon: <IconDashboard className="size-4" />,
           isActive: true,
-        },
-        {
-          title: "College Management",
-          url: "/super-admin/colleges",
-          icon: <IconSchool className="size-4" />,
-        },
-        {
-          title: "Company Approvals",
-          url: "/super-admin/companies",
-          icon: <IconBuilding className="size-4" />,
-        },
-        {
-          title: "Job Postings",
-          url: "/super-admin/jobs",
-          icon: <IconBriefcase className="size-4" />,
         },
       ]
     const navSecondary = [
@@ -186,14 +171,12 @@ function CollegeAdminDashboardShell({ children }: { children: React.ReactNode })
 
               <div>
                 <p className="font-bold">
-                  Your corporate account is pending approval
+                  Your college administration account is pending approval
                 </p>
 
                 <p className="mt-0.5 text-xs">
                   Your dashboard features are restricted.
-                  You can browse, but cannot publish new job
-                  postings until the Super Admin verifies your
-                  corporate credentials.
+                  You can browse, but cannot create departments, generate onboarding invite tokens, or approve job mappings until the Super Admin verifies your institute registration.
                 </p>
               </div>
             </div>

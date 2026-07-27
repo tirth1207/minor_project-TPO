@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
 
 export async function POST(
@@ -9,48 +9,25 @@ export async function POST(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireApprovedStudent()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
+    const { supabase, studentId, orgId } = auth
 
-    const role = dbUser?.role || user.app_metadata?.role
-    if (role !== "STUDENT") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    // 1. Fetch student details
+    // Fetch student's is_placed status
     const { data: student, error: studentError } = await supabase
       .from("student_profiles")
-      .select("id, profile_status, is_placed")
-      .eq("user_id", user.id)
+      .select("is_placed")
+      .eq("id", studentId)
       .maybeSingle()
 
     if (studentError || !student) {
       return NextResponse.json({ error: "Student profile not found" }, { status: 404 })
     }
 
-    // 2. Validate Student Approval State
-    if (student.profile_status !== "APPROVED") {
-      return NextResponse.json(
-        { error: "Your profile is pending/rejected. Only APPROVED student profiles can apply for jobs." },
-        { status: 400 }
-      )
-    }
-
-    // 3. Validate Student Placement State
+    // Validate Student Placement State
     if (student.is_placed) {
       return NextResponse.json(
         { error: "You are already placed and cannot apply for additional jobs." },
@@ -58,12 +35,13 @@ export async function POST(
       )
     }
 
-    // 4. Retrieve job mapping and posting details
+    // Retrieve job mapping and posting details, verifying it belongs to student's org
     const { data: mapping, error: mappingError } = await supabase
       .from("job_college_mappings")
       .select(`
         id,
         job_id,
+        org_id,
         local_status,
         job:job_postings!inner(
           id,
@@ -74,10 +52,11 @@ export async function POST(
         )
       `)
       .eq("id", id)
+      .eq("org_id", orgId) // Secure boundary: student can only apply to mappings belonging to their org!
       .maybeSingle()
 
     if (mappingError || !mapping) {
-      return NextResponse.json({ error: "Job mapping not found" }, { status: 404 })
+      return NextResponse.json({ error: "Job mapping not found or unauthorized access" }, { status: 404 })
     }
 
     const job = mapping.job as any
@@ -87,12 +66,12 @@ export async function POST(
 
     let highestMockScore = null
 
-    // 5. Check AI Mock Interview Gate if required
+    // Check AI Mock Interview Gate if required
     if (job.require_mock) {
       const { data: mockInterviews, error: mockError } = await supabase
         .from("mock_interviews")
         .select("ai_score")
-        .eq("student_id", student.id)
+        .eq("student_id", studentId)
         .eq("status", "COMPLETED")
         .gte("ai_score", job.mock_pass_score || 50)
         .order("ai_score", { ascending: false })
@@ -107,11 +86,11 @@ export async function POST(
       highestMockScore = mockInterviews[0].ai_score
     }
 
-    // 6. Create Job Application
+    // Create Job Application
     const { data: application, error: appError } = await supabase
       .from("applications")
       .insert({
-        student_id: student.id,
+        student_id: studentId,
         job_college_map_id: id,
         mock_score: highestMockScore,
         status: "APPLIED",
@@ -127,7 +106,7 @@ export async function POST(
       return NextResponse.json({ error: appError.message }, { status: 400 })
     }
 
-    // 7. Seed initial application rounds if specified in the job drive
+    // Seed initial application rounds if specified in the job drive
     let jobRounds = []
     try {
       jobRounds = typeof job.rounds === "string" ? JSON.parse(job.rounds) : job.rounds

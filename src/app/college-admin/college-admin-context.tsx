@@ -208,10 +208,8 @@ export function CollegeAdminProvider({
   // Invite form
   // ---------------------------------------------------------
 
-  const [
-    selectedDeptId,
-    setSelectedDeptId,
-  ] = React.useState("")
+  const [selectedDeptId, setSelectedDeptId] =
+    React.useState("")
 
   const [
     generatingInvite,
@@ -292,7 +290,7 @@ export function CollegeAdminProvider({
   }
 
   // ---------------------------------------------------------
-  // Fetch dashboard
+  // Fetch dashboard (purely server-API based flow)
   // ---------------------------------------------------------
 
   const fetchData = React.useCallback(
@@ -307,70 +305,28 @@ export function CollegeAdminProvider({
 
       try {
         // -------------------------------------------------
-        // Authenticate
+        // Authenticate via Server API /api/users/me
         // -------------------------------------------------
-
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser()
-
-        if (authError || !user) {
+        const meRes = await fetch("/api/users/me", { cache: "no-store" })
+        if (meRes.status === 401) {
           clearProtectedData()
-
           router.replace("/login")
           return
         }
 
-        // -------------------------------------------------
-        // Authorize role
-        // -------------------------------------------------
+        const meData = await readResponse(meRes)
+        const role = meData.user?.role
+        const orgId = meData.user?.org_id
 
-        const {
-          data: dbUser,
-          error: userError,
-        } = await supabase
-          .from("users")
-          .select("role, org_id")
-          .eq("id", user.id)
-          .maybeSingle()
-
-        if (userError) {
-          throw new Error(userError.message)
-        }
-
-        if (!dbUser) {
+        if (role !== "COLLEGE_ADMIN" || !orgId) {
           clearProtectedData()
-
-          router.replace("/unauthorized")
-          return
-        }
-
-        const role =
-          dbUser.role ??
-          user.app_metadata?.role
-
-        const orgId =
-          dbUser.org_id ??
-          user.app_metadata?.org_id
-
-        if (
-          role !== "COLLEGE_ADMIN" ||
-          !orgId
-        ) {
-          clearProtectedData()
-
           router.replace("/unauthorized")
           return
         }
 
         // -------------------------------------------------
-        // Organization status
-        //
-        // This is intentionally loaded BEFORE anything
-        // else.
+        // Organization status via lightweight Server API
         // -------------------------------------------------
-
         const statusResponse = await fetch(
           "/api/college-admin/status",
           {
@@ -499,11 +455,7 @@ export function CollegeAdminProvider({
         setRefreshing(false)
       }
     },
-    [
-      router,
-      supabase,
-      clearProtectedData,
-    ]
+    [router, clearProtectedData]
   )
 
   React.useEffect(() => {
@@ -591,11 +543,6 @@ export function CollegeAdminProvider({
 
       return
     }
-
-    /*
-     * Optional client-side protection.
-     * Backend MUST verify this too.
-     */
 
     const department =
       departments.find(
