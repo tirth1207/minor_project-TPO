@@ -100,6 +100,12 @@ function RegisterFormContent() {
 
       const data = await response.json()
 
+      console.log("Company register response:", {
+        status: response.status,
+        ok: response.ok,
+        data,
+      })
+
       if (!response.ok) {
         throw new Error(data.error || "Failed to register company profile.")
       }

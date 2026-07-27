@@ -21,6 +21,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { IconSelector, IconSparkles, IconRosetteDiscountCheck, IconCreditCard, IconBell, IconLogout } from "@tabler/icons-react"
+import ThemeToggle from "@/components/theme-toggle"
 
 export function NavUser({
   user,
@@ -98,6 +99,9 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <ThemeToggle />
+            </DropdownMenuItem>
             <DropdownMenuItem>
               <IconLogout
               />

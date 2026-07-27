@@ -79,23 +79,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return [
         {
           title: "Dashboard Overview",
-          url: "/super-admin?tab=overview",
+          url: "/super-admin",
           icon: <IconDashboard className="size-4" />,
           isActive: true,
         },
         {
           title: "College Management",
-          url: "/super-admin?tab=colleges",
+          url: "/super-admin/colleges",
           icon: <IconSchool className="size-4" />,
         },
         {
           title: "Company Approvals",
-          url: "/super-admin?tab=companies",
+          url: "/super-admin/companies",
           icon: <IconBuilding className="size-4" />,
         },
         {
           title: "Job Postings",
-          url: "/super-admin?tab=jobs",
+          url: "/super-admin/jobs",
           icon: <IconBriefcase className="size-4" />,
         },
       ]
