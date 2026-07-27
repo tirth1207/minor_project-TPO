@@ -24,6 +24,12 @@ import {
   IconLoader,
   IconAlertCircle,
   IconRefresh,
+  IconDashboard,
+  IconSchool,
+  IconBuilding,
+  IconBriefcase,
+  IconLifebuoy,
+  IconSend,
 } from "@tabler/icons-react"
 
 function CollegeAdminDashboardShell({ children }: { children: React.ReactNode }) {
@@ -35,16 +41,103 @@ function CollegeAdminDashboardShell({ children }: { children: React.ReactNode })
     refreshing,
     error,
     fetchData,
+    orgStatus,
   } = useCollegeAdmin()
+  const [user, setUser] = React.useState({
+      name: "Loading...",
+      email: "",
+      avatar: "/avatars/default.jpg",
+    })
+
+  React.useEffect(() => {
+        async function fetchUser() {
+          try {
+            const res = await fetch("/api/users/me")
+    
+            if (!res.ok) {
+              console.error(
+                "Failed to fetch user:",
+                res.status,
+                res.statusText
+              )
+              return
+            }
+    
+            const data = await res.json()
+    
+            const email = data.user?.email ?? ""
+    
+            const name =
+              data.companyProfile?.company_name ||
+              email.split("@")[0] ||
+              "Corporate Partner"
+    
+            setUser({
+              name,
+              email,
+              avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+                name
+              )}`,
+            })
+          } catch (error) {
+            console.error(
+              "Error fetching company user:",
+              error
+            )
+          }
+        }
+    
+        fetchUser()
+      }, [])
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push("/login")
   }
 
+  const navMains = [
+        {
+          title: "Dashboard Overview",
+          url: "/super-admin",
+          icon: <IconDashboard className="size-4" />,
+          isActive: true,
+        },
+        {
+          title: "College Management",
+          url: "/super-admin/colleges",
+          icon: <IconSchool className="size-4" />,
+        },
+        {
+          title: "Company Approvals",
+          url: "/super-admin/companies",
+          icon: <IconBuilding className="size-4" />,
+        },
+        {
+          title: "Job Postings",
+          url: "/super-admin/jobs",
+          icon: <IconBriefcase className="size-4" />,
+        },
+      ]
+    const navSecondary = [
+      {
+        title: "Support",
+        url: "/support",
+        icon: <IconLifebuoy className="size-4" />,
+      },
+      {
+        title: "Feedback",
+        url: "/feedback",
+        icon: <IconSend className="size-4" />,
+      },
+    ]
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar 
+        title="College Admin"
+        navMain={navMains}
+        navSecondary={navSecondary}
+        user={user}
+        func={handleLogout} />
       <SidebarInset>
         {/* Header navbar */}
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-100 dark:border-secondary px-6">
@@ -86,6 +179,25 @@ function CollegeAdminDashboardShell({ children }: { children: React.ReactNode })
         </header>
 
         <div className="flex flex-1 flex-col gap-6 p-6">
+
+          {orgStatus !== "ACTIVE" && (
+            <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/40 p-4 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-400">
+              <IconAlertCircle className="h-5 w-5 shrink-0" />
+
+              <div>
+                <p className="font-bold">
+                  Your corporate account is pending approval
+                </p>
+
+                <p className="mt-0.5 text-xs">
+                  Your dashboard features are restricted.
+                  You can browse, but cannot publish new job
+                  postings until the Super Admin verifies your
+                  corporate credentials.
+                </p>
+              </div>
+            </div>
+          )}
           {/* Error Box */}
           {error && (
             <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/50 p-4 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400">
