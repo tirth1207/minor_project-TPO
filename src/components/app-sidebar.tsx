@@ -15,15 +15,10 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import {
-  IconTerminal2,
   IconRobot,
   IconBook,
-  IconSettings,
   IconLifebuoy,
   IconSend,
-  IconFrame,
-  IconChartPie,
-  IconMap,
   IconCommand,
   IconSchool,
   IconBuilding,
