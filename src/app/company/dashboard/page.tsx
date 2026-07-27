@@ -26,7 +26,6 @@ import {
     IconBriefcase,
     IconUsers,
     IconCheck,
-    IconX,
     IconSend,
     IconBan,
     IconExternalLink,
