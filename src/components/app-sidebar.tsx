@@ -79,7 +79,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return [
         {
           title: "Dashboard Overview",
-          url: "/super-admin",
+          url: "/super-admin/overview",
           icon: <IconDashboard className="size-4" />,
           isActive: true,
         },
@@ -105,23 +105,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return [
         {
           title: "Departments",
-          url: "/college-admin",
+          url: "/college-admin/departments",
           icon: <IconSchool className="size-4" />,
           isActive: true,
         },
         {
           title: "Onboarding Invites",
-          url: "/college-admin",
+          url: "/college-admin/invites",
           icon: <IconListCheck className="size-4" />,
         },
         {
           title: "Job Approvals",
-          url: "/college-admin",
+          url: "/college-admin/jobs",
           icon: <IconBriefcase className="size-4" />,
         },
         {
           title: "Student Roster",
-          url: "/college-admin",
+          url: "/college-admin/students",
           icon: <IconUsers className="size-4" />,
         },
       ]
@@ -131,13 +131,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return [
         {
           title: "Dashboard Overview",
-          url: "/mentor",
+          url: "/mentor/overview",
           icon: <IconDashboard className="size-4" />,
           isActive: true,
         },
         {
           title: "Assigned Students",
-          url: "/mentor",
+          url: "/mentor/students",
           icon: <IconUsers className="size-4" />,
         },
       ]
@@ -147,23 +147,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return [
         {
           title: "Candidate Profile",
-          url: "/student/dashboard",
+          url: "/student/profile",
           icon: <IconUser className="size-4" />,
           isActive: true,
         },
         {
           title: "Eligible Jobs",
-          url: "/student/dashboard",
+          url: "/student/jobs",
           icon: <IconBriefcase className="size-4" />,
         },
         {
           title: "My Applications",
-          url: "/student/dashboard",
+          url: "/student/applications",
           icon: <IconFileCertificate className="size-4" />,
         },
         {
           title: "AI Mock Prep",
-          url: "/student/dashboard",
+          url: "/student/mock",
           icon: <IconRobot className="size-4" />,
         },
       ]
@@ -173,18 +173,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       return [
         {
           title: "Posted Jobs",
-          url: "/company/dashboard",
+          url: "/company/jobs",
           icon: <IconBriefcase className="size-4" />,
           isActive: true,
         },
         {
           title: "Post New Opening",
-          url: "/company/dashboard",
+          url: "/company/post-job",
           icon: <IconPlus className="size-4" />,
         },
         {
           title: "Review Applicants",
-          url: "/company/dashboard",
+          url: "/company/applicants",
           icon: <IconUsers className="size-4" />,
         },
       ]

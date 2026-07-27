@@ -59,15 +59,15 @@ export async function updateSession(request: NextRequest) {
   if (path === "/login" || path === "/register") {
     const url = request.nextUrl.clone()
     if (role === "STUDENT") {
-      url.pathname = "/student/dashboard"
+      url.pathname = "/student/profile"
     } else if (role === "COMPANY") {
-      url.pathname = "/company/dashboard"
+      url.pathname = "/company/jobs"
     } else if (role === "COLLEGE_ADMIN") {
-      url.pathname = "/college-admin"
+      url.pathname = "/college-admin/departments"
     } else if (role === "MENTOR") {
-      url.pathname = "/mentor"
+      url.pathname = "/mentor/overview"
     } else if (role === "SA") {
-      url.pathname = "/super-admin"
+      url.pathname = "/super-admin/overview"
     } else {
       url.pathname = "/unauthorized"
     }
