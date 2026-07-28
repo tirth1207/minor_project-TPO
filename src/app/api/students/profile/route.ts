@@ -6,47 +6,105 @@ import { NextResponse } from "next/server"
 export async function GET() {
   try {
     const auth = await requireUser()
+
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.status }
+      )
     }
 
     const { supabase, user, dbUser } = auth
 
-    const role = dbUser?.role || user.app_metadata?.role
+    const role =
+      dbUser?.role ||
+      user.app_metadata?.role
+
     if (role !== "STUDENT") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      return NextResponse.json(
+        { error: "Forbidden: Student access only" },
+        { status: 403 }
+      )
     }
 
-    // Retrieve the student's profile, joining organization and department
-    const { data: profile, error: profileError } = await supabase
-      .from("student_profiles")
-      .select(`
-        *,
-        user:users!inner(
-          id,
-          org_id,
-          dept_id,
-          department:departments(
+    const { data: profile, error: profileError } =
+      await supabase
+        .from("student_profiles")
+        .select(`
+          *,
+          user:users!student_profiles_user_id_fkey(
             id,
-            name
+            org_id,
+            dept_id,
+
+            department:departments!users_dept_id_fkey(
+              id,
+              name
+            ),
+
+            organization:organizations!users_org_id_fkey(
+              id,
+              name
+            )
           ),
-          organization:organizations(
+
+          mentor:users!student_profiles_mentor_id_fkey(
             id,
-            name
+            mentor_profile:mentor_profiles!mentor_profiles_user_id_fkey(
+              id,
+              name,
+              employee_id,
+              designation,
+              qualification,
+              specialization,
+              phone,
+              profile_status
+            )
           )
-        )
-      `)
-      .eq("user_id", user.id)
-      .maybeSingle()
+        `)
+        .eq("user_id", user.id)
+        .maybeSingle()
 
     if (profileError) {
-      return NextResponse.json({ error: profileError.message }, { status: 400 })
+      console.error(
+        "Student profile fetch error:",
+        profileError
+      )
+
+      return NextResponse.json(
+        {
+          error: profileError.message,
+          code: profileError.code,
+          details: profileError.details,
+          hint: profileError.hint,
+        },
+        { status: 400 }
+      )
     }
 
-    return NextResponse.json({ profile })
-  } catch (error: any) {
+    if (!profile) {
+      return NextResponse.json(
+        { error: "Student profile not found" },
+        { status: 404 }
+      )
+    }
+
+    return NextResponse.json({
+      profile,
+    })
+  } catch (error: unknown) {
+    console.error(
+      "GET /api/students/profile failed:",
+      error
+    )
+
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
+      },
       { status: 500 }
     )
   }
@@ -67,7 +125,23 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json()
-    const { name, cgpa, phone, bio, resume_url, branch, semester } = body
+    const {
+      name,
+      enrollment_no,
+      dob,
+      address,
+      phone,
+      bio,
+      cgpa,
+      active_backlogs,
+      semester,
+      branch,
+      skills,
+      hobbies,
+      resume_url,
+      marksheet_url,
+      social_links,
+    } = body
 
     // Simple validations
     if (!name || !branch || !semester) {
@@ -75,16 +149,30 @@ export async function PUT(request: Request) {
     }
 
     // Overwrite fields in student_profiles
-    const { data: updated, error: updateError } = await supabase
+    const { data: updated, error: updateError } =
+    await supabase
       .from("student_profiles")
       .update({
-        name,
-        cgpa: cgpa ? parseFloat(cgpa) : 0.0,
-        phone,
-        bio,
-        resume_url,
-        branch,
-        semester: parseInt(semester),
+        name: name.trim(),
+        enrollment_no: enrollment_no.trim(),
+
+        dob,
+        address: address.trim(),
+        phone: phone.trim(),
+        bio: bio.trim(),
+
+        cgpa: Number(cgpa),
+        active_backlogs: Number(active_backlogs),
+        semester: Number(semester),
+        branch: branch.trim(),
+
+        skills,
+        hobbies,
+
+        resume_url: resume_url.trim(),
+        marksheet_url: marksheet_url.trim(),
+
+        social_links,
       })
       .eq("user_id", user.id)
       .select()

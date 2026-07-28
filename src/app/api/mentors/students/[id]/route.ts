@@ -3,67 +3,255 @@ export const dynamic = "force-dynamic"
 import { requireActiveMentor } from "@/lib/auth/require-active-mentor"
 import { NextResponse } from "next/server"
 
+type ProfileStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params
+    const { id: studentProfileId } = await params
+
     const auth = await requireActiveMentor()
+
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.status }
+      )
     }
 
-    const { supabase, deptId, user } = auth
+    const {
+      supabase,
+      deptId,
+      orgId,
+      user,
+    } = auth
 
-    const { profile_status } = await request.json()
-    if (!profile_status || !["APPROVED", "REJECTED", "PENDING"].includes(profile_status)) {
-      return NextResponse.json({ error: "Invalid profile_status value" }, { status: 400 })
+    /* -----------------------------------------------------
+       Parse body
+    ----------------------------------------------------- */
+
+    const body = await request.json()
+
+    const profileStatus =
+      body.profile_status as ProfileStatus
+
+    if (
+      !profileStatus ||
+      ![
+        "APPROVED",
+        "REJECTED",
+        "PENDING",
+      ].includes(profileStatus)
+    ) {
+      return NextResponse.json(
+        {
+          error: "Invalid profile_status value",
+        },
+        { status: 400 }
+      )
     }
 
-    // Verify student department boundaries
-    const { data: student, error: studentError } = await supabase
+    /* -----------------------------------------------------
+       Find student
+
+       IMPORTANT:
+       id = student_profiles.id
+
+       Explicit FK is required because student_profiles has:
+       - user_id   -> users.id
+       - mentor_id -> users.id
+    ----------------------------------------------------- */
+
+    const {
+      data: student,
+      error: studentError,
+    } = await supabase
       .from("student_profiles")
       .select(`
         id,
         user_id,
-        user:users!inner(
+        mentor_id,
+        profile_status,
+
+        student_user:users!student_profiles_user_id_fkey(
           id,
+          role,
+          org_id,
           dept_id
         )
       `)
-      .eq("id", id)
+      .eq("id", studentProfileId)
       .maybeSingle()
 
-    if (studentError || !student) {
-      return NextResponse.json({ error: "Student not found" }, { status: 404 })
+    if (studentError) {
+      console.error(
+        "Student lookup failed:",
+        studentError
+      )
+
+      return NextResponse.json(
+        {
+          error: studentError.message,
+        },
+        { status: 400 }
+      )
     }
 
-    // Check if student belongs to the same department as the mentor
-    const student_dept_id = (student.user as any)?.dept_id
-    if (student_dept_id !== deptId) {
-      return NextResponse.json({ error: "Forbidden: Student department boundary violation" }, { status: 403 })
+    if (!student) {
+      return NextResponse.json(
+        {
+          error: "Student not found",
+        },
+        { status: 404 }
+      )
     }
 
-    // Update profile status and stamp mentor_id
-    const { data: updated, error: updateError } = await supabase
+    const studentUser = Array.isArray(
+      student.student_user
+    )
+      ? student.student_user[0]
+      : student.student_user
+
+    if (!studentUser) {
+      return NextResponse.json(
+        {
+          error:
+            "Student user account could not be resolved",
+        },
+        { status: 400 }
+      )
+    }
+
+    /* -----------------------------------------------------
+       Validate role
+    ----------------------------------------------------- */
+
+    if (studentUser.role !== "STUDENT") {
+      return NextResponse.json(
+        {
+          error:
+            "The selected profile does not belong to a student",
+        },
+        { status: 400 }
+      )
+    }
+
+    /* -----------------------------------------------------
+       Validate organization boundary
+    ----------------------------------------------------- */
+
+    if (studentUser.org_id !== orgId) {
+      return NextResponse.json(
+        {
+          error:
+            "Forbidden: Student belongs to another college",
+        },
+        { status: 403 }
+      )
+    }
+
+    /* -----------------------------------------------------
+       Validate department boundary
+    ----------------------------------------------------- */
+
+    if (studentUser.dept_id !== deptId) {
+      return NextResponse.json(
+        {
+          error:
+            "Forbidden: Student belongs to another department",
+        },
+        { status: 403 }
+      )
+    }
+
+    /* -----------------------------------------------------
+       Validate mentor assignment
+
+       Student selected a mentor during registration,
+       so only that mentor should approve/reject them.
+    ----------------------------------------------------- */
+
+    if (!student.mentor_id) {
+      return NextResponse.json(
+        {
+          error:
+            "This student does not have an assigned mentor",
+        },
+        { status: 400 }
+      )
+    }
+
+    if (student.mentor_id !== user.id) {
+      return NextResponse.json(
+        {
+          error:
+            "Forbidden: This student is assigned to another mentor",
+        },
+        { status: 403 }
+      )
+    }
+
+    /* -----------------------------------------------------
+       Update approval status
+    ----------------------------------------------------- */
+
+    const {
+      data: updated,
+      error: updateError,
+    } = await supabase
       .from("student_profiles")
       .update({
-        profile_status,
-        mentor_id: user.id, // mentor's user ID
+        profile_status: profileStatus,
       })
-      .eq("id", id)
-      .select()
+      .eq("id", studentProfileId)
+      .eq("mentor_id", user.id)
+      .select(`
+        *
+      `)
       .single()
 
     if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 400 })
+      console.error(
+        "Student approval update failed:",
+        updateError
+      )
+
+      return NextResponse.json(
+        {
+          error: updateError.message,
+        },
+        { status: 400 }
+      )
     }
 
-    return NextResponse.json({ student: updated })
-  } catch (error: any) {
+    return NextResponse.json({
+      student: updated,
+
+      message:
+        profileStatus === "APPROVED"
+          ? "Student profile approved successfully."
+          : profileStatus === "REJECTED"
+            ? "Student profile rejected successfully."
+            : "Student profile moved back to pending review.",
+    })
+  } catch (error: unknown) {
+    console.error(
+      "PATCH mentor student failed:",
+      error
+    )
+
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
+      },
       { status: 500 }
     )
   }

@@ -8,15 +8,66 @@ export interface StudentProfile {
   id: string
   name: string
   enrollment_no: string
+
+  dob: string | null
+  address: string | null
+  phone: string | null
+  bio: string | null
+
   branch: string
   semester: number
   cgpa: number
   active_backlogs: number
-  phone: string | null
-  bio: string | null
+
+  skills: string[] | null
+  hobbies: string[] | null
+
   resume_url: string
-  profile_status: "PENDING" | "APPROVED" | "REJECTED"
+  marksheet_url: string | null
+
+  social_links: Record<string, string> | null
+
+  profile_status:
+    | "PENDING"
+    | "APPROVED"
+    | "REJECTED"
+
   is_placed: boolean
+  mentor_id: string | null
+
+  user?: {
+    id: string
+    org_id: string | null
+    dept_id: string | null
+
+    organization?: {
+      id: string
+      name: string
+    } | null
+
+    department?: {
+      id: string
+      name: string
+    } | null
+  } | null
+
+  mentor?: {
+    id: string
+
+    mentor_profile?: {
+      id: string
+      name: string
+      employee_id: string
+      designation: string | null
+      qualification: string | null
+      specialization: string | null
+      phone: string | null
+      profile_status:
+        | "PENDING"
+        | "APPROVED"
+        | "REJECTED"
+    } | null
+  } | null
 }
 
 export interface EligibleJob {
@@ -113,7 +164,22 @@ interface StudentContextType {
   editSemester: string
   setEditSemester: (v: string) => void
   updatingProfile: boolean
-
+  editEnrollmentNo: string
+  setEditEnrollmentNo: (v: string) => void
+  editDob: string
+  setEditDob: (v: string) => void
+  editAddress: string
+  setEditAddress: (v: string) => void
+  editBacklogs: string
+  setEditBacklogs: (v: string) => void
+  editSkills: string
+  setEditSkills: (v: string) => void
+  editHobbies: string
+  setEditHobbies: (v: string) => void
+  editMarksheetUrl: string
+  setEditMarksheetUrl: (v: string) => void
+  editSocialLinks: Record<string, string>
+  setEditSocialLinks: (v: Record<string, string>) => void
   // Mock prep
   targetRole: string
   setTargetRole: (v: string) => void
@@ -122,7 +188,7 @@ interface StudentContextType {
   mockAnswers: string[]
   setMockAnswers: (ans: string[]) => void
   scoringMock: boolean
-
+  
   fetchData: (isRefresh?: boolean) => Promise<void>
   handleUpdateProfile: (e: React.FormEvent) => Promise<void>
   handleApplyJob: (mappingId: string) => Promise<void>
@@ -140,7 +206,14 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-
+  const [editDob, setEditDob] = React.useState("")
+  const [editEnrollmentNo, setEditEnrollmentNo] = React.useState("")
+  const [editAddress, setEditAddress] = React.useState("")
+  const [editBacklogs, setEditBacklogs] = React.useState("0")
+  const [editSkills, setEditSkills] = React.useState("")
+  const [editHobbies, setEditHobbies] = React.useState("")
+  const [editMarksheetUrl, setEditMarksheetUrl] = React.useState("")
+  const [editSocialLinks, setEditSocialLinks] = React.useState<Record<string, string>>({})
   // Data states
   const [profile, setProfile] = React.useState<StudentProfile | null>(null)
   const [eligibleJobs, setEligibleJobs] = React.useState<EligibleJob[]>([])
@@ -192,17 +265,55 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       const profileRes = await fetch("/api/students/profile")
       if (!profileRes.ok) throw new Error("Failed to fetch student profile")
       const profileData = await profileRes.json()
+      console.log("Fetched student profile:", profileData)
       const studentProf = profileData.profile
+      console.log("Student profile:", studentProf)
       setProfile(studentProf)
 
       if (studentProf) {
-        setEditName(studentProf.name || "")
-        setEditCgpa(studentProf.cgpa?.toString() || "")
-        setEditPhone(studentProf.phone || "")
-        setEditBio(studentProf.bio || "")
-        setEditResumeUrl(studentProf.resume_url || "")
-        setEditBranch(studentProf.branch || "")
-        setEditSemester(studentProf.semester?.toString() || "1")
+        setEditName(studentProf.name ?? "")
+        setEditDob(studentProf.dob ?? "")
+        setEditAddress(studentProf.address ?? "")
+        setEditPhone(studentProf.phone ?? "")
+        setEditBio(studentProf.bio ?? "") 
+        setEditEnrollmentNo(studentProf.enrollment_no ?? "")
+        setEditCgpa(
+          studentProf.cgpa?.toString() ?? ""
+        )
+
+        setEditBacklogs(
+          studentProf.active_backlogs?.toString() ?? "0"
+        )
+
+        setEditBranch(studentProf.branch ?? "")
+
+        setEditSemester(
+          studentProf.semester?.toString() ?? "1"
+        )
+
+        setEditSkills(
+          Array.isArray(studentProf.skills)
+            ? studentProf.skills.join(", ")
+            : ""
+        )
+
+        setEditHobbies(
+          Array.isArray(studentProf.hobbies)
+            ? studentProf.hobbies.join(", ")
+            : ""
+        )
+
+        setEditResumeUrl(
+          studentProf.resume_url ?? ""
+        )
+
+        setEditMarksheetUrl(
+          studentProf.marksheet_url ?? ""
+        )
+
+        setEditSocialLinks(
+          studentProf.social_links ?? {}
+        )
       }
 
       // 2. Fetch Eligible Jobs
@@ -239,31 +350,85 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   }, [fetchData])
 
   // Profile update handler
-  const handleUpdateProfile = async (e: React.FormEvent) => {
+  const handleUpdateProfile = async (
+    e: React.FormEvent
+  ) => {
     e.preventDefault()
     setUpdatingProfile(true)
+
     try {
-      const res = await fetch("/api/students/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: editName,
-          cgpa: editCgpa,
-          phone: editPhone,
-          bio: editBio,
-          resume_url: editResumeUrl,
-          branch: editBranch,
-          semester: editSemester,
-        })
-      })
+      const res = await fetch(
+        "/api/students/profile",
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            name: editName.trim(),
+
+            dob: editDob,
+
+            address: editAddress.trim(),
+
+            phone: editPhone.trim(),
+            enrollment_no: editEnrollmentNo.trim(),
+            bio: editBio.trim(),
+
+            cgpa: Number(editCgpa),
+
+            active_backlogs:
+              Number(editBacklogs),
+
+            semester:
+              Number(editSemester),
+
+            branch:
+              editBranch.trim(),
+
+            skills: editSkills
+              .split(",")
+              .map((value) => value.trim())
+              .filter(Boolean),
+
+            hobbies: editHobbies
+              .split(",")
+              .map((value) => value.trim())
+              .filter(Boolean),
+
+            resume_url:
+              editResumeUrl.trim(),
+
+            marksheet_url:
+              editMarksheetUrl.trim(),
+
+            social_links:
+              editSocialLinks,
+          }),
+        }
+      )
 
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to update profile")
 
-      alert("Profile updated successfully! Note that modifying name, CGPA, or resume url automatically reverts your status to PENDING verification.")
-      fetchData(true)
+      if (!res.ok) {
+        throw new Error(
+          data.error ||
+            "Failed to update profile"
+        )
+      }
+
+      alert(
+        "Profile updated successfully. Your profile is now pending mentor verification."
+      )
+
+      await fetchData(true)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "An unexpected error occurred")
+      alert(
+        err instanceof Error
+          ? err.message
+          : "An unexpected error occurred"
+      )
     } finally {
       setUpdatingProfile(false)
     }
@@ -380,6 +545,8 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         eligibleJobs,
         applications,
         mocks,
+        editEnrollmentNo,
+        setEditEnrollmentNo,
         editName,
         setEditName,
         editCgpa,
@@ -389,6 +556,20 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         editBio,
         setEditBio,
         editResumeUrl,
+        editDob,
+        setEditDob,
+        editAddress,
+        setEditAddress,
+        editBacklogs,
+        setEditBacklogs,
+        editSkills,
+        setEditSkills,
+        editHobbies,
+        setEditHobbies,
+        editMarksheetUrl,
+        setEditMarksheetUrl,
+        editSocialLinks,
+        setEditSocialLinks,
         setEditResumeUrl,
         editBranch,
         setEditBranch,

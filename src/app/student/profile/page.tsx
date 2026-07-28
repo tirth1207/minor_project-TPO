@@ -2,132 +2,585 @@
 
 import * as React from "react"
 import { useStudent } from "../student-context"
-import { IconUser, IconExclamationCircle } from "@tabler/icons-react"
+
+import {
+  IconAlertTriangle,
+  IconCheck,
+  IconFileText,
+  IconSchool,
+  IconUser,
+} from "@tabler/icons-react"
+
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function StudentProfilePage() {
   const {
+    profile,
+
     editName,
     setEditName,
-    editCgpa,
-    setEditCgpa,
-    editBranch,
-    setEditBranch,
-    editSemester,
-    setEditSemester,
+
+    editEnrollmentNo,
+    setEditEnrollmentNo,
+
+    editDob,
+    setEditDob,
+
+    editAddress,
+    setEditAddress,
+
     editPhone,
     setEditPhone,
-    editResumeUrl,
-    setEditResumeUrl,
+
     editBio,
     setEditBio,
+
+    editCgpa,
+    setEditCgpa,
+
+    editBacklogs,
+    setEditBacklogs,
+
+    editSemester,
+    setEditSemester,
+
+    editBranch,
+    setEditBranch,
+
+    editSkills,
+    setEditSkills,
+
+    editHobbies,
+    setEditHobbies,
+
+    editResumeUrl,
+    setEditResumeUrl,
+
+    editMarksheetUrl,
+    setEditMarksheetUrl,
+
+    editSocialLinks,
+    setEditSocialLinks,
+
     updatingProfile,
     handleUpdateProfile,
   } = useStudent()
 
-  return (
-    <div className="rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background max-w-3xl">
-      <h3 className="text-lg font-bold mb-1 flex items-center gap-2">
-        <IconUser className="h-5 w-5 text-zinc-400" /> Manage Candidate Profile
-      </h3>
-      <p className="text-xs text-zinc-400 mb-4">Overwrite your candidate records. Be accurate and professional.</p>
+  if (!profile) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <p className="text-sm text-muted-foreground">
+          Student profile not found.
+        </p>
+      </div>
+    )
+  }
 
-      <div className="rounded-xl border border-amber-250 bg-amber-50/20 p-4 text-xs text-amber-800 dark:border-amber-900/30 dark:bg-amber-950/10 dark:text-amber-400 mb-5 flex gap-2.5">
-        <IconExclamationCircle className="h-4.5 w-4.5 shrink-0 mt-0.5" />
+  return (
+    <div className="mx-auto w-full max-w-5xl space-y-6">
+      {/* Header */}
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="font-bold">CRITICAL WARNING REGARDING FIELD MODIFICATION:</p>
-          <p className="mt-0.5">Modifying your **Name**, **Cumulative CGPA**, or **Resume Link URL** represents an academic alteration. Upon saving, database triggers will automatically revert your profile status back to **PENDING** verification and temporarily lock job application submissions.</p>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Student Profile
+          </h1>
+
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your personal, academic and placement information.
+          </p>
         </div>
+
+        <Badge
+          variant={
+            profile.profile_status === "APPROVED"
+              ? "default"
+              : profile.profile_status === "REJECTED"
+                ? "destructive"
+                : "secondary"
+          }
+        >
+          {profile.profile_status}
+        </Badge>
       </div>
 
-      <form onSubmit={handleUpdateProfile} className="grid gap-4 sm:grid-cols-2">
-        <div>
-          <label className="text-xs font-semibold text-zinc-400 block mb-1">Full Name *</label>
-          <input
-            type="text"
-            value={editName}
-            onChange={e => setEditName(e.target.value)}
-            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-zinc-400 block mb-1">Cumulative CGPA *</label>
-          <input
-            type="number"
-            step="0.01"
-            min="0"
-            max="10"
-            value={editCgpa}
-            onChange={e => setEditCgpa(e.target.value)}
-            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-zinc-400 block mb-1">Target Branch *</label>
-          <input
-            type="text"
-            value={editBranch}
-            onChange={e => setEditBranch(e.target.value)}
-            placeholder="e.g. Computer Science"
-            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
-            required
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-zinc-400 block mb-1">Current Semester *</label>
-          <select
-            value={editSemester}
-            onChange={e => setEditSemester(e.target.value)}
-            className="w-full h-9 rounded-lg border border-secondary px-2.5 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
-            required
-          >
-            {[...Array(10)].map((_, i) => (
-              <option key={i + 1} value={i + 1}>Semester {i + 1}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-zinc-400 block mb-1">Contact Phone</label>
-          <input
-            type="text"
-            value={editPhone}
-            onChange={e => setEditPhone(e.target.value)}
-            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
-          />
-        </div>
-        <div>
-          <label className="text-xs font-semibold text-zinc-400 block mb-1">Academic Resume Link URL *</label>
-          <input
-            type="url"
-            value={editResumeUrl}
-            onChange={e => setEditResumeUrl(e.target.value)}
-            placeholder="e.g. https://drive.google.com/..."
-            className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
-            required
-          />
-        </div>
-        <div className="sm:col-span-2">
-          <label className="text-xs font-semibold text-zinc-400 block mb-1">Professional Bio</label>
-          <textarea
-            value={editBio}
-            onChange={e => setEditBio(e.target.value)}
-            rows={3}
-            placeholder="Write a brief professional summary about yourself..."
-            className="w-full rounded-lg border border-secondary p-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
-          />
-        </div>
+      {/* Warning */}
 
-        <div className="sm:col-span-2 pt-2 text-right">
-          <button
+      <Alert>
+        <IconAlertTriangle className="size-4" />
+
+        <AlertTitle>
+          Changes require verification
+        </AlertTitle>
+
+        <AlertDescription>
+          Saving changes to your profile will return the profile
+          to PENDING status. Your mentor must review and approve
+          the updated information before you can continue using
+          approval-dependent placement features.
+        </AlertDescription>
+      </Alert>
+
+      <form
+        onSubmit={handleUpdateProfile}
+        className="space-y-6"
+      >
+        {/* Personal information */}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <IconUser className="size-5" />
+              Personal Information
+            </CardTitle>
+
+            <CardDescription>
+              Your basic candidate information.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="grid gap-5 sm:grid-cols-2">
+            <Field
+              label="Full Name"
+              required
+            >
+              <Input
+                value={editName}
+                onChange={(e) =>
+                  setEditName(e.target.value)
+                }
+                required
+              />
+            </Field>
+
+            <Field
+              label="Enrollment Number"
+              required
+            >
+              <Input
+                value={editEnrollmentNo}
+                onChange={(e) =>
+                  setEditEnrollmentNo(e.target.value)
+                }
+                required
+              />
+            </Field>
+
+            <Field
+              label="Date of Birth"
+              required
+            >
+              <Input
+                type="date"
+                value={editDob}
+                onChange={(e) =>
+                  setEditDob(e.target.value)
+                }
+                required
+              />
+            </Field>
+
+            <Field
+              label="Phone Number"
+              required
+            >
+              <Input
+                type="tel"
+                value={editPhone}
+                onChange={(e) =>
+                  setEditPhone(e.target.value)
+                }
+                placeholder="+91 98765 43210"
+                required
+              />
+            </Field>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label>
+                Address
+                <span className="text-destructive"> *</span>
+              </Label>
+
+              <Textarea
+                value={editAddress}
+                onChange={(e) =>
+                  setEditAddress(e.target.value)
+                }
+                rows={3}
+                placeholder="Enter your address"
+                required
+              />
+            </div>
+
+            <div className="space-y-2 sm:col-span-2">
+              <Label>
+                Professional Bio
+                <span className="text-destructive"> *</span>
+              </Label>
+
+              <Textarea
+                value={editBio}
+                onChange={(e) =>
+                  setEditBio(e.target.value)
+                }
+                rows={4}
+                placeholder="Write a brief professional summary..."
+                required
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Academic information */}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <IconSchool className="size-5" />
+              Academic Information
+            </CardTitle>
+
+            <CardDescription>
+              Your current academic records and placement eligibility
+              information.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="grid gap-5 sm:grid-cols-2">
+            <Field
+              label="Branch"
+              required
+            >
+              <Input
+                value={editBranch}
+                onChange={(e) =>
+                  setEditBranch(e.target.value)
+                }
+                placeholder="Computer Engineering"
+                required
+              />
+            </Field>
+
+            <Field
+              label="Current Semester"
+              required
+            >
+              <Select
+                value={editSemester}
+                onValueChange={(value) =>
+                  setEditSemester(value ?? "")
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select semester" />
+                </SelectTrigger>
+
+                <SelectContent>
+                  {Array.from(
+                    { length: 10 },
+                    (_, index) => index + 1
+                  ).map((semester) => (
+                    <SelectItem
+                      key={semester}
+                      value={String(semester)}
+                    >
+                      Semester {semester}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field
+              label="CGPA"
+              required
+            >
+              <Input
+                type="number"
+                min="0"
+                max="10"
+                step="0.01"
+                value={editCgpa}
+                onChange={(e) =>
+                  setEditCgpa(e.target.value)
+                }
+                required
+              />
+            </Field>
+
+            <Field
+              label="Active Backlogs"
+              required
+            >
+              <Input
+                type="number"
+                min="0"
+                step="1"
+                value={editBacklogs}
+                onChange={(e) =>
+                  setEditBacklogs(e.target.value)
+                }
+                required
+              />
+            </Field>
+          </CardContent>
+        </Card>
+
+        {/* Skills */}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Skills & Interests
+            </CardTitle>
+
+            <CardDescription>
+              Separate multiple values using commas.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="grid gap-5 sm:grid-cols-2">
+            <Field
+              label="Skills"
+              required
+            >
+              <>
+                <Input
+                  value={editSkills}
+                  onChange={(e) =>
+                    setEditSkills(e.target.value)
+                  }
+                  placeholder="React, TypeScript, Python"
+                  required
+                />
+
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {editSkills
+                    .split(",")
+                    .map((value) => value.trim())
+                    .filter(Boolean)
+                    .map((skill) => (
+                      <Badge
+                        key={skill}
+                        variant="secondary"
+                      >
+                        {skill}
+                      </Badge>
+                    ))}
+                </div>
+              </>
+            </Field>
+
+            <Field
+              label="Hobbies"
+              required
+            >
+              <>
+                <Input
+                  value={editHobbies}
+                  onChange={(e) =>
+                    setEditHobbies(e.target.value)
+                  }
+                  placeholder="Coding, Robotics, Reading"
+                  required
+                />
+
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {editHobbies
+                    .split(",")
+                    .map((value) => value.trim())
+                    .filter(Boolean)
+                    .map((hobby) => (
+                      <Badge
+                        key={hobby}
+                        variant="outline"
+                      >
+                        {hobby}
+                      </Badge>
+                    ))}
+                </div>
+              </>
+            </Field>
+          </CardContent>
+        </Card>
+
+        {/* Documents */}
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <IconFileText className="size-5" />
+              Documents
+            </CardTitle>
+
+            <CardDescription>
+              Provide accessible links to your latest documents.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="grid gap-5 sm:grid-cols-2">
+            <Field
+              label="Resume URL"
+              required
+            >
+              <Input
+                type="url"
+                value={editResumeUrl}
+                onChange={(e) =>
+                  setEditResumeUrl(e.target.value)
+                }
+                placeholder="https://..."
+                required
+              />
+            </Field>
+
+            <Field
+              label="Marksheet URL"
+              required
+            >
+              <Input
+                type="url"
+                value={editMarksheetUrl}
+                onChange={(e) =>
+                  setEditMarksheetUrl(e.target.value)
+                }
+                placeholder="https://..."
+                required
+              />
+            </Field>
+          </CardContent>
+        </Card>
+
+        {/* Social */}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>
+              Social & Professional Links
+            </CardTitle>
+
+            <CardDescription>
+              Add links that recruiters can use to learn more about
+              your work.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="grid gap-5 sm:grid-cols-2">
+            <Field label="LinkedIn" required>
+              <Input
+                type="url"
+                value={editSocialLinks.linkedin ?? ""}
+                onChange={(e) =>
+                  setEditSocialLinks({
+                    ...editSocialLinks,
+                    linkedin: e.target.value,
+                  })
+                }
+                placeholder="https://linkedin.com/in/..."
+                required
+              />
+            </Field>
+
+            <Field label="GitHub" required>
+              <Input
+                type="url"
+                value={editSocialLinks.github ?? ""}
+                onChange={(e) =>
+                  setEditSocialLinks({
+                    ...editSocialLinks,
+                    github: e.target.value,
+                  })
+                }
+                placeholder="https://github.com/..."
+                required
+              />
+            </Field>
+
+            <Field label="Portfolio" required>
+              <Input
+                type="url"
+                value={editSocialLinks.portfolio ?? ""}
+                onChange={(e) =>
+                  setEditSocialLinks({
+                    ...editSocialLinks,
+                    portfolio: e.target.value,
+                  })
+                }
+                placeholder="https://yourportfolio.com"
+                required
+              />
+            </Field>
+          </CardContent>
+        </Card>
+
+        {/* Save */}
+
+        <div className="flex justify-end">
+          <Button
             type="submit"
             disabled={updatingProfile}
-            className="h-9 px-6 rounded-lg bg-zinc-950 text-zinc-55 text-xs font-semibold hover:bg-zinc-800 transition-all dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 cursor-pointer disabled:opacity-50"
+            className="min-w-36"
           >
-            {updatingProfile ? "Saving Profile..." : "Save Changes"}
-          </button>
+            {updatingProfile ? (
+              "Saving..."
+            ) : (
+              <>
+                <IconCheck className="size-4" />
+                Save Profile
+              </>
+            )}
+          </Button>
         </div>
       </form>
+    </div>
+  )
+}
+
+function Field({
+  label,
+  required = false,
+  children,
+}: {
+  label: string
+  required?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-2">
+      <Label>
+        {label}
+
+        {required && (
+          <span className="text-destructive">
+            {" "}*
+          </span>
+        )}
+      </Label>
+
+      {children}
     </div>
   )
 }

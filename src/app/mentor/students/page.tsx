@@ -2,15 +2,35 @@
 
 import * as React from "react"
 import { useMentor } from "../mentor-context"
+
 import {
-  IconUsers,
-  IconUserCheck,
-  IconSchool,
+  IconAddressBook,
   IconBriefcase,
-  IconExternalLink,
+  IconCalendar,
   IconCheck,
-  IconX
+  IconExternalLink,
+  IconFileDescription,
+  IconFileText,
+  IconLink,
+  IconMapPin,
+  IconPhone,
+  IconSchool,
+  IconSparkles,
+  IconUserCheck,
+  IconUsers,
+  IconX,
 } from "@tabler/icons-react"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 
 export default function MentorStudentsPage() {
   const {
@@ -20,176 +40,775 @@ export default function MentorStudentsPage() {
     handleUpdateStudentStatus,
   } = useMentor()
 
-  // Get currently selected student details
-  const selectedStudent = students.find(s => s.id === selectedStudentId)
+  const selectedStudent = students.find(
+    (student) => student.id === selectedStudentId
+  )
 
   return (
-    <div className="grid gap-6 md:grid-cols-3 items-start flex-1">
+    <div className="grid flex-1 items-start gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+      {/* Student directory */}
 
-      {/* LEFT COLUMN: Student Directory List */}
-      <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background flex flex-col gap-4 h-full min-h-[500px]">
-        <h3 className="text-md font-bold flex items-center gap-2 border-b pb-3 border-zinc-100 dark:border-zinc-900">
-          <IconUsers className="h-4.5 w-4.5 text-zinc-400" /> Department Student Directory
-        </h3>
+      <Card className="xl:sticky xl:top-6">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <IconUsers className="size-5" />
+            Students
+          </CardTitle>
 
-        {students.length === 0 ? (
-          <p className="text-sm text-zinc-400 py-12 text-center">No students found matching filters.</p>
-        ) : (
-          <div className="flex flex-col gap-2 overflow-y-auto max-h-[600px] pr-1">
-            {students.map(student => {
-              const isSelected = selectedStudentId === student.id
-              return (
-                <button
-                  key={student.id}
-                  onClick={() => setSelectedStudentId(student.id)}
-                  className={`w-full text-left p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col gap-1.5 ${
-                    isSelected
-                      ? 'bg-zinc-950 border-zinc-950 text-zinc-55 dark:bg-zinc-50 dark:border-zinc-50 dark:text-zinc-950'
-                      : 'border-zinc-150 hover:bg-zinc-50/70 text-zinc-650 dark:border-zinc-850 dark:hover:bg-zinc-900/45'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-1 w-full">
-                    <span className="font-extrabold text-sm truncate">{student.name}</span>
-                    <span className="font-mono text-[10px] opacity-75">{student.enrollment_no}</span>
-                  </div>
+          <CardDescription>
+            {students.length}{" "}
+            {students.length === 1 ? "student" : "students"} in your
+            department
+          </CardDescription>
+        </CardHeader>
 
-                  <div className="flex items-center justify-between text-xs w-full opacity-90 font-medium">
-                    <span>Sem {student.semester} • {student.branch}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
-                      student.profile_status === "APPROVED"
-                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                        : student.profile_status === "PENDING"
-                        ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                        : "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                    }`}>
-                      {student.profile_status}
-                    </span>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        )}
-      </div>
+        <CardContent>
+          {students.length === 0 ? (
+            <div className="py-12 text-center">
+              <IconUsers className="mx-auto mb-3 size-8 text-muted-foreground" />
 
-      {/* RIGHT COLUMN: Detail Verification Inspection Panel */}
-      <div className="md:col-span-2 rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background min-h-[500px]">
-        {!selectedStudent ? (
-          <div className="flex flex-col items-center justify-center py-24 gap-2 text-zinc-400">
-            <IconUserCheck className="h-12 w-12 stroke-[1.2]" />
-            <p className="text-sm font-semibold">Select a candidate from the directory to inspect</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-6">
-            {/* Candidate header card */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b pb-5 border-zinc-100 dark:border-zinc-900">
-              <div>
-                <h2 className="text-2xl font-black text-zinc-900 dark:text-zinc-100">{selectedStudent.name}</h2>
-                <p className="text-xs text-zinc-400 font-semibold mt-0.5">
-                  Enrollment No: <span className="font-mono text-zinc-600 dark:text-zinc-300">{selectedStudent.enrollment_no}</span>
-                  {selectedStudent.phone && ` • Phone: ${selectedStudent.phone}`}
-                </p>
-              </div>
+              <p className="text-sm font-medium">
+                No students found
+              </p>
 
-              {/* Top status state indicator */}
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-zinc-400 font-semibold">Verification State:</span>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-extrabold uppercase ${
-                  selectedStudent.profile_status === "APPROVED"
-                    ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                    : selectedStudent.profile_status === "PENDING"
-                    ? "bg-amber-50 text-amber-700 border border-amber-200"
-                    : "bg-rose-50 text-rose-700 border border-rose-200"
-                }`}>
-                  {selectedStudent.profile_status}
-                </span>
-              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                There are no students matching the current filters.
+              </p>
             </div>
+          ) : (
+            <div className="max-h-[calc(100vh-220px)] space-y-2 overflow-y-auto pr-1">
+              {students.map((student) => {
+                const selected =
+                  student.id === selectedStudentId
 
-            {/* Profile Fields Sections */}
-            <div className="grid gap-6 sm:grid-cols-2">
-              <div className="flex items-start gap-3">
-                <IconSchool className="h-5 w-5 text-zinc-400 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Academic Track</h4>
-                  <p className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 mt-0.5">
-                    Branch: <span className="font-semibold">{selectedStudent.branch}</span>
-                  </p>
-                  <p className="text-xs text-zinc-500 mt-0.5">
-                    Semester {selectedStudent.semester}
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <IconBriefcase className="h-5 w-5 text-zinc-400 shrink-0 mt-0.5" />
-                <div>
-                  <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Academic Metrics</h4>
-                  <p className="text-sm font-extrabold text-zinc-800 dark:text-zinc-200 mt-0.5">
-                    Cumulative CGPA: <span className="font-black text-primary text-base">{selectedStudent.cgpa}</span>
-                  </p>
-                  <p className="text-xs text-rose-500 font-semibold mt-0.5">
-                    Active Backlogs: {selectedStudent.active_backlogs}
-                  </p>
-                </div>
-              </div>
-
-              <div className="sm:col-span-2 flex flex-col gap-1.5">
-                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Candidate Bio</h4>
-                <div className="p-3.5 rounded-xl border border-zinc-150 bg-zinc-50/40 text-sm leading-relaxed text-zinc-700 dark:border-zinc-850 dark:bg-zinc-900/10 dark:text-zinc-300">
-                  {selectedStudent.bio || <span className="text-zinc-400 italic">No candidate bio provided yet.</span>}
-                </div>
-              </div>
-
-              <div className="sm:col-span-2 flex flex-col gap-2">
-                <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Academic Documentation</h4>
-                <div className="flex flex-col sm:flex-row items-center gap-3">
-                  <a
-                    href={selectedStudent.resume_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="w-full sm:w-auto h-10 px-4 rounded-lg border border-secondary text-xs font-bold text-zinc-700 hover:text-zinc-950 hover:bg-zinc-50 dark:border-zinc-850 dark:text-zinc-300 dark:hover:text-zinc-50 dark:hover:bg-zinc-900 inline-flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                return (
+                  <button
+                    key={student.id}
+                    type="button"
+                    onClick={() =>
+                      setSelectedStudentId(student.id)
+                    }
+                    className={`w-full rounded-lg border p-3 text-left transition-colors ${
+                      selected
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "bg-background hover:bg-muted/50"
+                    }`}
                   >
-                    Inspect Candidate Resume <IconExternalLink className="h-4 w-4" />
-                  </a>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">
+                          {student.name}
+                        </p>
+
+                        <p
+                          className={`mt-0.5 truncate text-xs ${
+                            selected
+                              ? "text-primary-foreground/70"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {student.enrollment_no}
+                        </p>
+                      </div>
+
+                      <StatusBadge
+                        status={student.profile_status}
+                      />
+                    </div>
+
+                    <div
+                      className={`mt-3 flex items-center justify-between text-xs ${
+                        selected
+                          ? "text-primary-foreground/80"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      <span>
+                        Semester {student.semester}
+                      </span>
+
+                      <span>
+                        CGPA {student.cgpa}
+                      </span>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Student profile */}
+
+      {!selectedStudent ? (
+        <Card>
+          <CardContent className="flex min-h-[500px] flex-col items-center justify-center">
+            <IconUserCheck className="mb-4 size-12 text-muted-foreground" />
+
+            <p className="font-medium">
+              Select a student
+            </p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              Choose a student from the directory to review their profile.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="min-w-0 space-y-6">
+          {/* Header */}
+
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between pt-6">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-2xl font-semibold tracking-tight">
+                      {selectedStudent.name}
+                    </h1>
+
+                    <StatusBadge
+                      status={selectedStudent.profile_status}
+                    />
+
+                    {selectedStudent.is_placed && (
+                      <Badge variant="secondary">
+                        <IconBriefcase className="size-3.5" />
+                        Placed
+                      </Badge>
+                    )}
+                  </div>
+
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {selectedStudent.enrollment_no}
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1.5">
+                      <IconSchool className="size-4" />
+                      {selectedStudent.branch}
+                    </span>
+
+                    <span>
+                      Semester {selectedStudent.semester}
+                    </span>
+
+                    {selectedStudent.phone && (
+                      <span className="flex items-center gap-1.5">
+                        <IconPhone className="size-4" />
+                        {selectedStudent.phone}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <Button
+                    onClick={() =>
+                      handleUpdateStudentStatus(
+                        selectedStudent.id,
+                        "APPROVED"
+                      )
+                    }
+                    disabled={
+                      selectedStudent.profile_status ===
+                      "APPROVED"
+                    }
+                  >
+                    <IconCheck className="size-4" />
+                    Approve
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                    onClick={() =>
+                      handleUpdateStudentStatus(
+                        selectedStudent.id,
+                        "REJECTED"
+                      )
+                    }
+                    disabled={
+                      selectedStudent.profile_status ===
+                      "REJECTED"
+                    }
+                  >
+                    <IconX className="size-4" />
+                    Reject
+                  </Button>
                 </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
 
-            {/* Action Panel Buttons */}
-            <div className="border-t pt-5 border-zinc-100 dark:border-zinc-900 mt-4 flex items-center justify-between gap-4">
-              <div>
-                {selectedStudent.is_placed ? (
-                  <span className="text-xs font-bold px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full">
-                    Placed Candidate 🎉
-                  </span>
-                ) : (
-                  <span className="text-xs text-zinc-400 font-semibold">Unplaced Candidate</span>
-                )}
-              </div>
+          {/* Academic overview */}
 
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleUpdateStudentStatus(selectedStudent.id, "APPROVED")}
-                  disabled={selectedStudent.profile_status === "APPROVED"}
-                  className="h-9 px-4.5 rounded-lg bg-emerald-600 text-zinc-50 text-xs font-semibold hover:bg-emerald-500 transition-all cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <IconCheck className="h-4 w-4" /> Approve Profile
-                </button>
-                <button
-                  onClick={() => handleUpdateStudentStatus(selectedStudent.id, "REJECTED")}
-                  disabled={selectedStudent.profile_status === "REJECTED"}
-                  className="h-9 px-4.5 rounded-lg bg-rose-50 text-rose-600 border border-rose-150 hover:bg-rose-100 text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <IconX className="h-4 w-4" /> Reject Profile
-                </button>
-              </div>
-            </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <MetricCard
+              label="CGPA"
+              value={String(selectedStudent.cgpa)}
+              description="Cumulative CGPA"
+            />
 
+            <MetricCard
+              label="Semester"
+              value={String(selectedStudent.semester)}
+              description="Current semester"
+            />
+
+            <MetricCard
+              label="Backlogs"
+              value={String(selectedStudent.active_backlogs)}
+              description="Active backlogs"
+            />
+
+            <MetricCard
+              label="Placement"
+              value={
+                selectedStudent.is_placed
+                  ? "Placed"
+                  : "Unplaced"
+              }
+              description="Current placement status"
+            />
           </div>
-        )}
-      </div>
 
+          {/* Personal + academic */}
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <IconAddressBook className="size-5" />
+                  Personal Information
+                </CardTitle>
+
+                <CardDescription>
+                  Candidate contact and personal details.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="space-y-5">
+                <InfoRow
+                  icon={<IconCalendar />}
+                  label="Date of Birth"
+                  value={formatDate(selectedStudent.dob)}
+                />
+
+                <Separator />
+
+                <InfoRow
+                  icon={<IconPhone />}
+                  label="Phone"
+                  value={
+                    selectedStudent.phone ||
+                    "Not provided"
+                  }
+                />
+
+                <Separator />
+
+                <InfoRow
+                  icon={<IconMapPin />}
+                  label="Address"
+                  value={
+                    selectedStudent.address ||
+                    "Not provided"
+                  }
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <IconSchool className="size-5" />
+                  Academic Information
+                </CardTitle>
+
+                <CardDescription>
+                  Academic records submitted by the student.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="space-y-5">
+                <InfoRow
+                  icon={<IconSchool />}
+                  label="Branch"
+                  value={selectedStudent.branch}
+                />
+
+                <Separator />
+
+                <InfoRow
+                  label="Enrollment Number"
+                  value={selectedStudent.enrollment_no}
+                />
+
+                <Separator />
+
+                <div className="grid grid-cols-3 gap-3">
+                  <SmallMetric
+                    label="CGPA"
+                    value={String(selectedStudent.cgpa)}
+                  />
+
+                  <SmallMetric
+                    label="Semester"
+                    value={String(selectedStudent.semester)}
+                  />
+
+                  <SmallMetric
+                    label="Backlogs"
+                    value={String(
+                      selectedStudent.active_backlogs
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Bio */}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Professional Bio
+              </CardTitle>
+            </CardHeader>
+
+            <CardContent>
+              {selectedStudent.bio ? (
+                <p className="whitespace-pre-wrap text-sm leading-7 text-muted-foreground">
+                  {selectedStudent.bio}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No professional bio provided.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Skills + hobbies */}
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <IconSparkles className="size-5" />
+                  Skills
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent>
+                {selectedStudent.skills?.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedStudent.skills.map(
+                      (skill) => (
+                        <Badge
+                          key={skill}
+                          variant="secondary"
+                        >
+                          {skill}
+                        </Badge>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No skills provided.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Hobbies & Interests
+                </CardTitle>
+              </CardHeader>
+
+              <CardContent>
+                {selectedStudent.hobbies?.length ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedStudent.hobbies.map(
+                      (hobby) => (
+                        <Badge
+                          key={hobby}
+                          variant="outline"
+                        >
+                          {hobby}
+                        </Badge>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No hobbies provided.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Documents */}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <IconFileText className="size-5" />
+                Documents
+              </CardTitle>
+
+              <CardDescription>
+                Review candidate documents before approving the profile.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              <DocumentLink
+                icon={<IconFileDescription />}
+                title="Resume"
+                description="Candidate resume"
+                url={selectedStudent.resume_url}
+              />
+
+              <DocumentLink
+                icon={<IconFileText />}
+                title="Marksheet"
+                description="Academic marksheet"
+                url={selectedStudent.marksheet_url}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Social links */}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <IconLink className="size-5" />
+                Professional Links
+              </CardTitle>
+
+              <CardDescription>
+                External profiles submitted by the student.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent>
+              {selectedStudent.social_links &&
+              Object.keys(selectedStudent.social_links)
+                .length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {Object.entries(
+                    selectedStudent.social_links
+                  ).map(([platform, url]) => (
+                    <a
+                      key={platform}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
+                    >
+                      <div className="min-w-0">
+                        <p className="capitalize text-sm font-medium">
+                          {platform}
+                        </p>
+
+                        <p className="mt-1 truncate text-xs text-muted-foreground">
+                          {getHostname(url)}
+                        </p>
+                      </div>
+
+                      <IconExternalLink className="size-4 shrink-0 text-muted-foreground" />
+                    </a>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No professional links provided.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Approval */}
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Profile Verification
+              </CardTitle>
+
+              <CardDescription>
+                Verify the submitted information and documents before
+                approving this candidate.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent>
+              <div className="flex flex-col gap-4 rounded-lg border bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">
+                      Current status
+                    </p>
+
+                    <StatusBadge
+                      status={selectedStudent.profile_status}
+                    />
+                  </div>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Profile changes return the candidate to pending
+                    verification.
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() =>
+                      handleUpdateStudentStatus(
+                        selectedStudent.id,
+                        "APPROVED"
+                      )
+                    }
+                    disabled={
+                      selectedStudent.profile_status ===
+                      "APPROVED"
+                    }
+                  >
+                    <IconCheck className="size-4" />
+                    Approve Profile
+                  </Button>
+
+                  <Button
+                    variant="destructive"
+                    onClick={() =>
+                      handleUpdateStudentStatus(
+                        selectedStudent.id,
+                        "REJECTED"
+                      )
+                    }
+                    disabled={
+                      selectedStudent.profile_status ===
+                      "REJECTED"
+                    }
+                  >
+                    <IconX className="size-4" />
+                    Reject
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   )
+}
+
+function StatusBadge({
+  status,
+}: {
+  status: "PENDING" | "APPROVED" | "REJECTED"
+}) {
+  if (status === "APPROVED") {
+    return (
+      <Badge variant="default">
+        Approved
+      </Badge>
+    )
+  }
+
+  if (status === "REJECTED") {
+    return (
+      <Badge variant="destructive">
+        Rejected
+      </Badge>
+    )
+  }
+
+  return (
+    <Badge variant="secondary">
+      Pending
+    </Badge>
+  )
+}
+
+function MetricCard({
+  label,
+  value,
+  description,
+}: {
+  label: string
+  value: string
+  description: string
+}) {
+  return (
+    <Card>
+      <CardContent className="mt-6">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+
+        <p className="mt-2 text-2xl font-semibold tracking-tight">
+          {value}
+        </p>
+
+        <p className="mt-1 text-xs text-muted-foreground">
+          {description}
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
+
+function SmallMetric({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
+  return (
+    <div className="rounded-lg border bg-muted/20 p-3">
+      <p className="text-xs text-muted-foreground">
+        {label}
+      </p>
+
+      <p className="mt-1 text-lg font-semibold">
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function InfoRow({
+  icon,
+  label,
+  value,
+}: {
+  icon?: React.ReactElement
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex gap-3">
+      {icon && (
+        <div className="mt-0.5 text-muted-foreground">
+          {React.cloneElement(
+            icon as React.ReactElement<{
+              className?: string
+            }>,
+            {
+              className: "size-4",
+            }
+          )}
+        </div>
+      )}
+
+      <div className="min-w-0">
+        <p className="text-xs text-muted-foreground">
+          {label}
+        </p>
+
+        <p className="mt-1 break-words text-sm font-medium">
+          {value}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function DocumentLink({
+  icon,
+  title,
+  description,
+  url,
+}: {
+  icon: React.ReactNode
+  title: string
+  description: string
+  url: string | null | undefined
+}) {
+  if (!url) {
+    return (
+      <div className="flex items-center gap-3 rounded-lg border border-dashed p-4">
+        <div className="text-muted-foreground">
+          {icon}
+        </div>
+
+        <div>
+          <p className="text-sm font-medium">
+            {title}
+          </p>
+
+          <p className="text-xs text-muted-foreground">
+            Not provided
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <a
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <div className="text-muted-foreground">
+          {icon}
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-sm font-medium">
+            {title}
+          </p>
+
+          <p className="text-xs text-muted-foreground">
+            {description}
+          </p>
+        </div>
+      </div>
+
+      <IconExternalLink className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
+    </a>
+  )
+}
+
+function formatDate(
+  value: string | null | undefined
+) {
+  if (!value) return "Not provided"
+
+  const date = new Date(`${value}T00:00:00`)
+
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+
+  return new Intl.DateTimeFormat("en-IN", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(date)
+}
+
+function getHostname(url: string) {
+  try {
+    return new URL(url).hostname.replace(
+      /^www\./,
+      ""
+    )
+  } catch {
+    return url
+  }
 }

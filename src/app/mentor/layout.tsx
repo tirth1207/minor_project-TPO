@@ -31,6 +31,7 @@ import {
   IconBriefcase,
   IconLifebuoy,
   IconSend,
+  IconDatabaseSearch,
 } from "@tabler/icons-react"
 
 const navMains = [
@@ -41,9 +42,9 @@ const navMains = [
       isActive: true,
     },
     {
-      title: "Departments",
-      url: "/mentor/overview",
-      icon: <IconSchool className="size-4" />,
+      title: "Insights",
+      url: "/mentor/insights",
+      icon: <IconDatabaseSearch className="size-4" />,
     },
     {
       title: "Student Approvals",
@@ -211,7 +212,7 @@ function MentorDashboardShell({ children }: { children: React.ReactNode }) {
           ) : (
             <>
               {/* Tabs bar */}
-              <div className="flex items-center gap-1.5 border-b border-secondary dark:border-secondary">
+              {/* <div className="flex items-center gap-1.5 border-b border-secondary dark:border-secondary">
                 <Link
                   href="/mentor/overview"
                   className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all capitalize ${
@@ -232,7 +233,7 @@ function MentorDashboardShell({ children }: { children: React.ReactNode }) {
                 >
                   Assigned Students
                 </Link>
-              </div>
+              </div> */}
 
               {children}
             </>

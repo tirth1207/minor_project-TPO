@@ -22,14 +22,19 @@ import {
 } from "@/components/ui/sidebar"
 import {
   IconLoader,
-  IconAlertCircle,
-  IconRefresh,
-  IconUser,
-  IconBriefcase,
   IconFileCertificate,
   IconRobot,
   IconExclamationCircle,
   IconCircleCheck,
+  IconAlertCircle,
+  IconRefresh,
+  IconDashboard,
+  IconSchool,
+  IconBuilding,
+  IconBriefcase,
+  IconLifebuoy,
+  IconSend,
+  IconUser,
 } from "@tabler/icons-react"
 
 function StudentDashboardShell({ children }: { children: React.ReactNode }) {
@@ -49,6 +54,97 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
     router.push("/login")
   }
 
+  const [user, setUser] = React.useState({
+    name: "Loading...",
+    email: "",
+    avatar: "/avatars/default.jpg",
+  })
+  
+  React.useEffect(() => {
+    async function fetchUser() {
+      try {
+        const res = await fetch("/api/users/me")
+
+        if (!res.ok) {
+          console.error(
+            "Failed to fetch user:",
+            res.status,
+            res.statusText
+          )
+          return
+        }
+
+        const data = await res.json()
+
+        const email = data.user?.email ?? ""
+
+        const name =
+          data.companyProfile?.company_name ||
+          email.split("@")[0] ||
+          "College Administrator"
+
+        setUser({
+          name,
+          email,
+          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+            name
+          )}`,
+        })
+      } catch (error) {
+        console.error(
+          "Error fetching company user:",
+          error
+        )
+      }
+    }
+
+    fetchUser()
+  }, [])
+  const navMains = [
+    {
+      title: "Dashboard Overview",
+      url: "/college-admin",
+      icon: <IconDashboard className="size-4" />,
+      isActive: true,
+    },
+    {
+      title: "Departments",
+      url: "/college-admin/departments",
+      icon: <IconSchool className="size-4" />,
+    },
+    {
+      title: "Onboarding Invites",
+      url: "/college-admin/invites",
+      icon: <IconBuilding className="size-4" />,
+    },
+    {
+      title: "Mentor Approvals",
+      url: "/college-admin/mentors",
+      icon: <IconUser className="size-4" />,
+    },
+    {
+      title: "Job Approvals",
+      url: "/college-admin/jobs",
+      icon: <IconBriefcase className="size-4" />,
+    },
+    {
+      title: "Student Roster",
+      url: "/college-admin/students",
+      icon: <IconUser className="size-4" />,
+    }
+  ]
+  const navSecondary = [
+    {
+      title: "Support",
+      url: "/support",
+      icon: <IconLifebuoy className="size-4" />,
+    },
+    {
+      title: "Feedback",
+      url: "/feedback",
+      icon: <IconSend className="size-4" />,
+    },
+  ]
   return (
     <SidebarProvider>
       <AppSidebar />

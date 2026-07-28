@@ -8,21 +8,66 @@ export interface Student {
   id: string
   name: string
   enrollment_no: string
-  branch: string
-  cgpa: number
-  active_backlogs: number
-  semester: number
-  profile_status: "PENDING" | "APPROVED" | "REJECTED"
-  is_placed: boolean
-  resume_url: string
+
+  dob: string | null
+  address: string | null
   phone: string | null
   bio: string | null
 
+  branch: string
+  semester: number
+  cgpa: number
+  active_backlogs: number
+
+  skills: string[] | null
+  hobbies: string[] | null
+
+  resume_url: string
+  marksheet_url: string | null
+
+  social_links: Record<string, string> | null
+
+  profile_status:
+    | "PENDING"
+    | "APPROVED"
+    | "REJECTED"
+
+  is_placed: boolean
+  mentor_id: string | null
+
   user?: {
-    department?: {
+    id: string
+    org_id: string | null
+    dept_id: string | null
+
+    organization?: {
+      id: string
       name: string
-    }
-  }
+    } | null
+
+    department?: {
+      id: string
+      name: string
+    } | null
+  } | null
+
+  mentor?: {
+    id: string
+
+    mentor_profile?: {
+      id: string
+      name: string
+      employee_id: string
+      designation: string | null
+      qualification: string | null
+      specialization: string | null
+      phone: string | null
+      profile_status:
+        | "PENDING"
+        | "APPROVED"
+        | "REJECTED"
+    } | null
+  } | null
 }
 
 interface MentorContextType {
