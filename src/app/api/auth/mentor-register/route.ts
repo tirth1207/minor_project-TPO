@@ -11,33 +11,72 @@ export async function POST(request: Request) {
   let createdOrgId: string | null = null
   let createdDepartmentId: string | null = null
 
+  async function cleanup() {
+    try {
+      if (authUserId) {
+        await supabaseAdmin.auth.admin.deleteUser(authUserId)
+        authUserId = null
+      }
+
+      if (createdDepartmentId) {
+        await supabaseAdmin
+          .from("departments")
+          .delete()
+          .eq("id", createdDepartmentId)
+
+        createdDepartmentId = null
+      }
+
+      if (createdOrgId) {
+        await supabaseAdmin
+          .from("organizations")
+          .delete()
+          .eq("id", createdOrgId)
+
+        createdOrgId = null
+      }
+    } catch (error) {
+      console.error("Registration cleanup failed:", error)
+    }
+  }
+
   try {
     const body = await request.json()
 
-    const email = String(body.email || "")
-      .trim()
-      .toLowerCase()
-
-    const password = String(body.password || "")
+    const email = String(body.email ?? "").trim().toLowerCase()
+    const password = String(body.password ?? "")
 
     const instituteName = String(
-      body.instituteName || ""
+      body.instituteName ?? ""
     ).trim()
 
     const departmentName = String(
-      body.departmentName || ""
+      body.departmentName ?? ""
     ).trim()
+
+    const name = String(body.name ?? "").trim()
+    const employeeId = String(body.employeeId ?? "").trim()
+    const designation = String(body.designation ?? "").trim()
+    const qualification = String(body.qualification ?? "").trim()
+    const specialization = String(body.specialization ?? "").trim()
+    const phone = String(body.phone ?? "").trim()
+
+    // -----------------------------------------------------
+    // Validation
+    // -----------------------------------------------------
 
     if (
       !email ||
       !password ||
       !instituteName ||
-      !departmentName
+      !departmentName ||
+      !name ||
+      !employeeId
     ) {
       return NextResponse.json(
         {
           error:
-            "Institute, department, email and password are required",
+            "Name, employee ID, institute, department, email and password are required",
         },
         { status: 400 }
       )
@@ -46,16 +85,44 @@ export async function POST(request: Request) {
     if (password.length < 6) {
       return NextResponse.json(
         {
-          error:
-            "Password must contain at least 6 characters",
+          error: "Password must contain at least 6 characters",
         },
         { status: 400 }
       )
     }
 
-    /* -----------------------------------------------------
-       Find organization
-    ----------------------------------------------------- */
+    // -----------------------------------------------------
+    // Check employee ID
+    // -----------------------------------------------------
+
+    const {
+      data: existingMentor,
+      error: mentorLookupError,
+    } = await supabaseAdmin
+      .from("mentor_profiles")
+      .select("id")
+      .eq("employee_id", employeeId)
+      .maybeSingle()
+
+    if (mentorLookupError) {
+      return NextResponse.json(
+        { error: mentorLookupError.message },
+        { status: 400 }
+      )
+    }
+
+    if (existingMentor) {
+      return NextResponse.json(
+        {
+          error: "A mentor with this employee ID already exists",
+        },
+        { status: 409 }
+      )
+    }
+
+    // -----------------------------------------------------
+    // Find organization
+    // -----------------------------------------------------
 
     const {
       data: existingOrg,
@@ -75,9 +142,9 @@ export async function POST(request: Request) {
 
     let organization = existingOrg
 
-    /* -----------------------------------------------------
-       Create organization if missing
-    ----------------------------------------------------- */
+    // -----------------------------------------------------
+    // Create organization
+    // -----------------------------------------------------
 
     if (!organization) {
       const {
@@ -96,7 +163,7 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error:
-              orgCreateError?.message ||
+              orgCreateError?.message ??
               "Failed to create institute",
           },
           { status: 400 }
@@ -107,9 +174,9 @@ export async function POST(request: Request) {
       createdOrgId = newOrg.id
     }
 
-    /* -----------------------------------------------------
-       Find department inside organization
-    ----------------------------------------------------- */
+    // -----------------------------------------------------
+    // Find department
+    // -----------------------------------------------------
 
     const {
       data: existingDepartment,
@@ -122,6 +189,8 @@ export async function POST(request: Request) {
       .maybeSingle()
 
     if (departmentLookupError) {
+      await cleanup()
+
       return NextResponse.json(
         { error: departmentLookupError.message },
         { status: 400 }
@@ -130,9 +199,9 @@ export async function POST(request: Request) {
 
     let department = existingDepartment
 
-    /* -----------------------------------------------------
-       Create department
-    ----------------------------------------------------- */
+    // -----------------------------------------------------
+    // Create department
+    // -----------------------------------------------------
 
     if (!department) {
       const {
@@ -145,26 +214,16 @@ export async function POST(request: Request) {
           name: departmentName,
           status: "PENDING",
         })
-        .select(
-          "id, org_id, name, status"
-        )
+        .select("id, org_id, name, status")
         .single()
 
-      if (
-        departmentCreateError ||
-        !newDepartment
-      ) {
-        if (createdOrgId) {
-          await supabaseAdmin
-            .from("organizations")
-            .delete()
-            .eq("id", createdOrgId)
-        }
+      if (departmentCreateError || !newDepartment) {
+        await cleanup()
 
         return NextResponse.json(
           {
             error:
-              departmentCreateError?.message ||
+              departmentCreateError?.message ??
               "Failed to create department",
           },
           { status: 400 }
@@ -175,13 +234,13 @@ export async function POST(request: Request) {
       createdDepartmentId = newDepartment.id
     }
 
-    /* -----------------------------------------------------
-       Create auth account
-    ----------------------------------------------------- */
+    // -----------------------------------------------------
+    // Create auth user
+    // -----------------------------------------------------
 
     const {
       data: userData,
-      error: createError,
+      error: createUserError,
     } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
@@ -189,28 +248,22 @@ export async function POST(request: Request) {
 
       app_metadata: {
         role: "MENTOR",
+        org_id: organization.id,
+        dept_id: department.id,
+      },
+
+      user_metadata: {
+        name,
       },
     })
 
-    if (createError || !userData.user) {
-      if (createdDepartmentId) {
-        await supabaseAdmin
-          .from("departments")
-          .delete()
-          .eq("id", createdDepartmentId)
-      }
-
-      if (createdOrgId) {
-        await supabaseAdmin
-          .from("organizations")
-          .delete()
-          .eq("id", createdOrgId)
-      }
+    if (createUserError || !userData.user) {
+      await cleanup()
 
       return NextResponse.json(
         {
           error:
-            createError?.message ||
+            createUserError?.message ??
             "Failed to create mentor account",
         },
         { status: 400 }
@@ -219,52 +272,82 @@ export async function POST(request: Request) {
 
     authUserId = userData.user.id
 
-    /* -----------------------------------------------------
-       Map public user
-    ----------------------------------------------------- */
+    // -----------------------------------------------------
+    // Create public.users
+    // -----------------------------------------------------
 
-    const { error: userInsertError } =
-      await supabaseAdmin
-        .from("users")
-        .insert({
-          id: authUserId,
-          role: "MENTOR",
-          org_id: organization.id,
-          dept_id: department.id,
-        })
+    const { error: publicUserError } = await supabaseAdmin
+      .from("users")
+      .insert({
+        id: authUserId,
+        role: "MENTOR",
+        org_id: organization.id,
+        dept_id: department.id,
+      })
 
-    if (userInsertError) {
-      await supabaseAdmin.auth.admin.deleteUser(
-        authUserId
-      )
-
-      if (createdDepartmentId) {
-        await supabaseAdmin
-          .from("departments")
-          .delete()
-          .eq("id", createdDepartmentId)
-      }
-
-      if (createdOrgId) {
-        await supabaseAdmin
-          .from("organizations")
-          .delete()
-          .eq("id", createdOrgId)
-      }
+    if (publicUserError) {
+      await cleanup()
 
       return NextResponse.json(
         {
           error:
-            "Failed to create mentor profile: " +
-            userInsertError.message,
+            "Failed to create mentor user: " +
+            publicUserError.message,
         },
         { status: 400 }
       )
     }
 
-    /* -----------------------------------------------------
-       Login
-    ----------------------------------------------------- */
+    // -----------------------------------------------------
+    // Create mentor profile
+    // -----------------------------------------------------
+
+    const {
+      data: mentorProfile,
+      error: mentorProfileError,
+    } = await supabaseAdmin
+      .from("mentor_profiles")
+      .insert({
+        user_id: authUserId,
+        name,
+        employee_id: employeeId,
+        designation: designation || null,
+        qualification: qualification || null,
+        specialization: specialization || null,
+        phone: phone || null,
+        profile_status: "PENDING",
+      })
+      .select(`
+        id,
+        user_id,
+        name,
+        employee_id,
+        designation,
+        qualification,
+        specialization,
+        phone,
+        profile_status,
+        created_at
+      `)
+      .single()
+
+    if (mentorProfileError || !mentorProfile) {
+      await cleanup()
+
+      return NextResponse.json(
+        {
+          error:
+            "Failed to create mentor profile: " +
+            (mentorProfileError?.message ??
+              "Unknown database error"),
+        },
+        { status: 400 }
+      )
+    }
+
+    // -----------------------------------------------------
+    // Sign in
+    // -----------------------------------------------------
 
     const supabase = await createClient()
 
@@ -276,42 +359,29 @@ export async function POST(request: Request) {
       password,
     })
 
+    if (signInError) {
+      console.error(
+        "Mentor created but automatic login failed:",
+        signInError
+      )
+    }
+
     return NextResponse.json(
       {
         user: userData.user,
+        mentor: mentorProfile,
         organization,
         department,
-
-        session:
-          signInError
-            ? null
-            : signInData.session,
-
+        session: signInData?.session ?? null,
         message:
-          "Mentor account created successfully.",
+          "Mentor account created successfully and is awaiting approval.",
       },
       { status: 201 }
     )
   } catch (error: unknown) {
-    if (authUserId) {
-      await supabaseAdmin.auth.admin.deleteUser(
-        authUserId
-      )
-    }
+    console.error("Mentor registration error:", error)
 
-    if (createdDepartmentId) {
-      await supabaseAdmin
-        .from("departments")
-        .delete()
-        .eq("id", createdDepartmentId)
-    }
-
-    if (createdOrgId) {
-      await supabaseAdmin
-        .from("organizations")
-        .delete()
-        .eq("id", createdOrgId)
-    }
+    await cleanup()
 
     return NextResponse.json(
       {

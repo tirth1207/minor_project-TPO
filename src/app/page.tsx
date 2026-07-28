@@ -42,7 +42,7 @@ export default async function Home() {
             {user ? (
               <Link
                 href={dashboardPath}
-                className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary/50 shadow transition-all hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
+                className="inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-foreground hover:text-primary shadow transition-all hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
               >
                 <IconDashboard className="mr-2 h-4 w-4" /> Dashboard
               </Link>

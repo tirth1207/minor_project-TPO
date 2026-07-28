@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useCollegeAdmin } from "../college-admin-context"
 import { IconPlus, IconCircleCheck, IconCopy, IconListCheck } from "@tabler/icons-react"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export default function CollegeAdminInvitesPage() {
   const {
@@ -28,10 +29,29 @@ export default function CollegeAdminInvitesPage() {
             <label className="text-xs font-semibold text-zinc-400 block mb-1">
               Target Department *
             </label>
-            <select
+            <Select 
+              items={departments.filter((d) => d.status === "ACTIVE").map((d) => ({ value: d.id, label: d.name }))} 
+              value={selectedDeptId} >
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Theme" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  {departments
+                    .filter((d) => d.status === "ACTIVE")
+                    .map((d) => (
+                      <SelectItem key={d.id} value={d.id}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            {/* <Select
               value={selectedDeptId}
+              // onValueChange={setSelectedDeptId}
               onChange={(e) => setSelectedDeptId(e.target.value)}
-              className="w-full h-9 rounded-lg border border-secondary px-2 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
+              className="w-full"
               required
             >
               <option value="">-- Choose Department --</option>
@@ -42,12 +62,12 @@ export default function CollegeAdminInvitesPage() {
                     {d.name}
                   </option>
                 ))}
-            </select>
+            </Select> */}
           </div>
           <button
             type="submit"
             disabled={generatingInvite || !selectedDeptId}
-            className="h-9 px-4 rounded-lg bg-zinc-950 text-zinc-55 text-xs font-semibold hover:bg-zinc-800 transition-all dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 cursor-pointer disabled:opacity-50"
+            className="h-9 px-4 rounded-lg bg-primary text-foreground text-xs font-semibold hover:bg-zinc-800 transition-all dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 cursor-pointer disabled:opacity-50"
           >
             {generatingInvite ? "Generating..." : "Generate Magic Invite"}
           </button>

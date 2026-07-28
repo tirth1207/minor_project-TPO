@@ -24,9 +24,96 @@ import {
   IconLoader,
   IconAlertCircle,
   IconRefresh,
+  IconDashboard,
+  IconSchool,
+  IconBuilding,
+  IconUser,
+  IconBriefcase,
+  IconLifebuoy,
+  IconSend,
 } from "@tabler/icons-react"
 
+const navMains = [
+    {
+      title: "Dashboard",
+      url: "/mentor",
+      icon: <IconDashboard className="size-4" />,
+      isActive: true,
+    },
+    {
+      title: "Departments",
+      url: "/mentor/overview",
+      icon: <IconSchool className="size-4" />,
+    },
+    {
+      title: "Student Approvals",
+      url: "/mentor/students",
+      icon: <IconBuilding className="size-4" />,
+    }
+  ]
+const navSecondary = [
+  {
+    title: "Support",
+    url: "/support",
+    icon: <IconLifebuoy className="size-4" />,
+  },
+  {
+    title: "Feedback",
+    url: "/feedback",
+    icon: <IconSend className="size-4" />,
+  },
+]
+
 function MentorDashboardShell({ children }: { children: React.ReactNode }) {
+
+  const [user, setUser] = React.useState({
+        name: "Loading...",
+        email: "",
+        avatar: "/avatars/default.jpg",
+      })
+  
+    React.useEffect(() => {
+      async function fetchUser() {
+        try {
+          const res = await fetch("/api/users/me")
+  
+          if (!res.ok) {
+            console.error(
+              "Failed to fetch user:",
+              res.status,
+              res.statusText
+            )
+            return
+          }
+  
+          const data = await res.json()
+  
+          const email = data.user?.email ?? ""
+  
+          const name =
+            data.companyProfile?.company_name ||
+            email.split("@")[0] ||
+            "College Administrator"
+  
+          setUser({
+            name,
+            email,
+            avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
+              name
+            )}`,
+          })
+        } catch (error) {
+          console.error(
+            "Error fetching company user:",
+            error
+          )
+        }
+      }
+  
+      fetchUser()
+    }, [])
+
+
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
@@ -46,7 +133,14 @@ function MentorDashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar 
+        title="Faculty Mentor"
+        subtitle="Verification Dashboard"
+        user={user}
+        navMain={navMains}
+        navSecondary={navSecondary}
+        func={handleLogout}
+        />
       <SidebarInset>
         {/* Header navbar */}
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-100 dark:border-secondary px-6">

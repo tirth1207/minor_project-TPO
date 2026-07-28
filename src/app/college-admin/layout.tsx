@@ -30,6 +30,7 @@ import {
   IconBriefcase,
   IconLifebuoy,
   IconSend,
+  IconUser,
 } from "@tabler/icons-react"
 
 function CollegeAdminDashboardShell({ children }: { children: React.ReactNode }) {
@@ -98,10 +99,35 @@ function CollegeAdminDashboardShell({ children }: { children: React.ReactNode })
   const navMains = [
         {
           title: "Dashboard Overview",
-          url: "/college-admin/departments",
+          url: "/college-admin",
           icon: <IconDashboard className="size-4" />,
           isActive: true,
         },
+        {
+          title: "Departments",
+          url: "/college-admin/departments",
+          icon: <IconSchool className="size-4" />,
+        },
+        {
+          title: "Onboarding Invites",
+          url: "/college-admin/invites",
+          icon: <IconBuilding className="size-4" />,
+        },
+        {
+          title: "Mentor Approvals",
+          url: "/college-admin/mentors",
+          icon: <IconUser className="size-4" />,
+        },
+        {
+          title: "Job Approvals",
+          url: "/college-admin/jobs",
+          icon: <IconBriefcase className="size-4" />,
+        },
+        {
+          title: "Student Roster",
+          url: "/college-admin/students",
+          icon: <IconUser className="size-4" />,
+        }
       ]
     const navSecondary = [
       {
@@ -200,7 +226,7 @@ function CollegeAdminDashboardShell({ children }: { children: React.ReactNode })
           ) : (
             <>
               {/* Tabs bar */}
-              <div className="flex items-center gap-1.5 border-b border-secondary dark:border-secondary">
+              {/* <div className="flex items-center gap-1.5 border-b border-secondary dark:border-secondary">
                 <Link
                   href="/college-admin/departments"
                   className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all capitalize ${
@@ -241,7 +267,7 @@ function CollegeAdminDashboardShell({ children }: { children: React.ReactNode })
                 >
                   Student Roster
                 </Link>
-              </div>
+              </div> */}
 
               {children}
             </>

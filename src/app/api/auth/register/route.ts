@@ -5,144 +5,533 @@ import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
-  try {
-    const { email, password, inviteToken } = await request.json()
+  const supabaseAdmin = createServiceClient()
 
-    if (!email || !password || !inviteToken) {
+  let authUserId: string | null = null
+  let publicUserCreated = false
+  let studentProfileCreated = false
+
+  async function cleanup() {
+    try {
+      if (studentProfileCreated && authUserId) {
+        await supabaseAdmin
+          .from("student_profiles")
+          .delete()
+          .eq("user_id", authUserId)
+
+        studentProfileCreated = false
+      }
+
+      if (publicUserCreated && authUserId) {
+        await supabaseAdmin
+          .from("users")
+          .delete()
+          .eq("id", authUserId)
+
+        publicUserCreated = false
+      }
+
+      if (authUserId) {
+        await supabaseAdmin.auth.admin.deleteUser(authUserId)
+        authUserId = null
+      }
+    } catch (error) {
+      console.error("Student registration cleanup failed:", error)
+    }
+  }
+
+  try {
+    // -----------------------------------------------------
+    // Request body
+    // -----------------------------------------------------
+
+    const body = await request.json()
+
+    const email = String(body.email ?? "")
+      .trim()
+      .toLowerCase()
+
+    const password = String(body.password ?? "")
+
+    const inviteToken = String(body.inviteToken ?? "").trim()
+
+    const mentorId = String(body.mentorId ?? "").trim()
+
+    // -----------------------------------------------------
+    // Validation
+    // -----------------------------------------------------
+
+    if (!email || !password || !inviteToken || !mentorId) {
       return NextResponse.json(
-        { error: "Email, password, and invite token are required" },
+        {
+          error:
+            "Email, password, invite token, and mentor are required",
+        },
         { status: 400 }
       )
     }
 
-    const supabaseAdmin = createServiceClient()
+    if (password.length < 6) {
+      return NextResponse.json(
+        {
+          error: "Password must contain at least 6 characters",
+        },
+        { status: 400 }
+      )
+    }
 
-    // 1. Look up invite token
-    const { data: invite, error: inviteError } = await supabaseAdmin
+    // -----------------------------------------------------
+    // Resolve invite
+    // -----------------------------------------------------
+
+    const {
+      data: invite,
+      error: inviteError,
+    } = await supabaseAdmin
       .from("invite_links")
-      .select("dept_id, expires_at, used_count")
+      .select(`
+        dept_id,
+        expires_at,
+        used_count
+      `)
       .eq("token", inviteToken)
       .maybeSingle()
 
-    if (inviteError || !invite) {
+    if (inviteError) {
+      console.error("Invite lookup failed:", inviteError)
+
       return NextResponse.json(
-        { error: "Invalid invitation token. Please request a valid token from your College Admin." },
+        {
+          error: "Failed to validate invitation token",
+        },
         { status: 400 }
       )
     }
 
-    // 2. Check expiry
-    if (new Date(invite.expires_at) < new Date()) {
+    if (!invite) {
       return NextResponse.json(
-        { error: "This invitation token has expired. Please contact your College Admin." },
+        {
+          error:
+            "Invalid invitation token. Please request a valid token from your College Admin.",
+        },
         { status: 400 }
       )
     }
 
-    // 3. Get org_id from department
-    const { data: department, error: deptError } = await supabaseAdmin
+    // -----------------------------------------------------
+    // Validate invite expiry
+    // -----------------------------------------------------
+
+    if (
+      invite.expires_at &&
+      new Date(invite.expires_at).getTime() < Date.now()
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "This invitation token has expired. Please contact your College Admin.",
+        },
+        { status: 400 }
+      )
+    }
+
+    // -----------------------------------------------------
+    // Resolve department + organization
+    // -----------------------------------------------------
+
+    const {
+      data: department,
+      error: departmentError,
+    } = await supabaseAdmin
       .from("departments")
-      .select("org_id")
+      .select(`
+        id,
+        org_id,
+        name,
+        status
+      `)
       .eq("id", invite.dept_id)
       .maybeSingle()
 
-    if (deptError || !department) {
+    if (departmentError) {
+      console.error(
+        "Department lookup failed:",
+        departmentError
+      )
+
       return NextResponse.json(
-        { error: "Department or organization associated with this invite could not be resolved." },
+        {
+          error:
+            "Failed to resolve the department associated with this invitation.",
+        },
         { status: 400 }
       )
     }
 
-    // 4. Create user in auth via admin client (to bypass standard confirmation gates)
-    const { data: userData, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    if (!department) {
+      return NextResponse.json(
+        {
+          error:
+            "Department associated with this invitation was not found.",
+        },
+        { status: 400 }
+      )
+    }
+
+    if (department.status !== "ACTIVE") {
+      return NextResponse.json(
+        {
+          error:
+            "The department associated with this invitation is not active.",
+        },
+        { status: 403 }
+      )
+    }
+
+    const {
+      data: organization,
+      error: organizationError,
+    } = await supabaseAdmin
+      .from("organizations")
+      .select(`
+        id,
+        name,
+        status
+      `)
+      .eq("id", department.org_id)
+      .maybeSingle()
+
+    if (organizationError) {
+      console.error(
+        "Organization lookup failed:",
+        organizationError
+      )
+
+      return NextResponse.json(
+        {
+          error:
+            "Failed to resolve the organization associated with this invitation.",
+        },
+        { status: 400 }
+      )
+    }
+
+    if (!organization) {
+      return NextResponse.json(
+        {
+          error:
+            "Organization associated with this invitation was not found.",
+        },
+        { status: 400 }
+      )
+    }
+
+    if (organization.status !== "ACTIVE") {
+      return NextResponse.json(
+        {
+          error:
+            "The organization associated with this invitation is not active.",
+        },
+        { status: 403 }
+      )
+    }
+
+    // -----------------------------------------------------
+    // Validate selected mentor
+    // -----------------------------------------------------
+    //
+    // mentorId is users.id, NOT mentor_profiles.id.
+    //
+    // student_profiles.mentor_id -> users.id
+    // -----------------------------------------------------
+
+    const {
+      data: mentor,
+      error: mentorError,
+    } = await supabaseAdmin
+      .from("mentor_profiles")
+      .select(`
+        id,
+        user_id,
+        name,
+        employee_id,
+        designation,
+        profile_status,
+
+        user:users!mentor_profiles_user_id_fkey!inner(
+          id,
+          role,
+          org_id,
+          dept_id
+        )
+      `)
+      .eq("user_id", mentorId)
+      .eq("profile_status", "APPROVED")
+      .eq("user.role", "MENTOR")
+      .eq("user.org_id", organization.id)
+      .eq("user.dept_id", department.id)
+      .maybeSingle()
+
+    if (mentorError) {
+      console.error(
+        "Selected mentor validation failed:",
+        mentorError
+      )
+
+      return NextResponse.json(
+        {
+          error: "Failed to validate selected mentor",
+        },
+        { status: 400 }
+      )
+    }
+
+    if (!mentor) {
+      return NextResponse.json(
+        {
+          error:
+            "Selected mentor is not an approved mentor for your college and department.",
+        },
+        { status: 400 }
+      )
+    }
+
+    // -----------------------------------------------------
+    // Create Auth user
+    // -----------------------------------------------------
+
+    const {
+      data: userData,
+      error: createUserError,
+    } = await supabaseAdmin.auth.admin.createUser({
       email,
       password,
-      email_confirm: true, // Mark email as confirmed for easy local/preview testing
+      email_confirm: true,
+
+      app_metadata: {
+        role: "STUDENT",
+        org_id: organization.id,
+        dept_id: department.id,
+      },
     })
 
-    if (createError || !userData.user) {
+    if (createUserError || !userData.user) {
       return NextResponse.json(
-        { error: createError?.message || "Failed to create user account." },
+        {
+          error:
+            createUserError?.message ??
+            "Failed to create user account.",
+        },
         { status: 400 }
       )
     }
 
     const authUser = userData.user
+    authUserId = authUser.id
 
-    // 5. Insert user row
-    const { error: userInsertError } = await supabaseAdmin
+    // -----------------------------------------------------
+    // Create public.users
+    // -----------------------------------------------------
+
+    const {
+      error: publicUserError,
+    } = await supabaseAdmin
       .from("users")
       .insert({
         id: authUser.id,
         role: "STUDENT",
-        org_id: department.org_id,
-        dept_id: invite.dept_id,
+        org_id: organization.id,
+        dept_id: department.id,
       })
 
-    if (userInsertError) {
-      // Cleanup created auth user if db insert fails
-      await supabaseAdmin.auth.admin.deleteUser(authUser.id)
+    if (publicUserError) {
+      await cleanup()
+
       return NextResponse.json(
-        { error: "Failed to map user profile. " + userInsertError.message },
+        {
+          error:
+            "Failed to map user profile. " +
+            publicUserError.message,
+        },
         { status: 400 }
       )
     }
 
-    // 6. Insert student profile row
-    const studentName = email.split("@")[0]
-    const { error: profileInsertError } = await supabaseAdmin
+    publicUserCreated = true
+
+    // -----------------------------------------------------
+    // Create student profile
+    // -----------------------------------------------------
+
+    const username =
+      email.split("@")[0] || "Student"
+
+    const studentName =
+      username.charAt(0).toUpperCase() +
+      username.slice(1)
+
+    const enrollmentNo =
+      `ENR-${Date.now()}-${Math.floor(
+        100 + Math.random() * 900
+      )}`
+
+    const {
+      data: studentProfile,
+      error: studentProfileError,
+    } = await supabaseAdmin
       .from("student_profiles")
       .insert({
         user_id: authUser.id,
-        enrollment_no: `ENR-${Date.now()}-${Math.floor(100 + Math.random() * 900)}`,
-        name: studentName.charAt(0).toUpperCase() + studentName.slice(1),
-        cgpa: 8.00, // Seed a default CGPA (8.00) so they are eligible for most jobs initially
+
+        enrollment_no: enrollmentNo,
+
+        name: studentName,
+
+        cgpa: 8.0,
         active_backlogs: 0,
         semester: 6,
-        branch: "Computer Science",
-        resume_url: "https://placeholder.resume.pdf",
-        profile_status: "PENDING",
-        is_placed: false,
-      })
 
-    if (profileInsertError) {
-      // Cleanup
-      await supabaseAdmin.from("users").delete().eq("id", authUser.id)
-      await supabaseAdmin.auth.admin.deleteUser(authUser.id)
+        branch: department.name,
+
+        resume_url:
+          "https://placeholder.resume.pdf",
+
+        profile_status: "PENDING",
+
+        is_placed: false,
+
+        // Selected mentor's users.id
+        mentor_id: mentor.user_id,
+      })
+      .select(`
+        id,
+        user_id,
+        enrollment_no,
+        name,
+        branch,
+        profile_status,
+        mentor_id
+      `)
+      .single()
+
+    if (
+      studentProfileError ||
+      !studentProfile
+    ) {
+      console.error(
+        "Student profile creation failed:",
+        studentProfileError
+      )
+
+      await cleanup()
+
       return NextResponse.json(
-        { error: "Failed to create student profile. " + profileInsertError.message },
+        {
+          error:
+            "Failed to create student profile. " +
+            (
+              studentProfileError?.message ??
+              "Unknown database error"
+            ),
+        },
         { status: 400 }
       )
     }
 
-    // 7. Increment invite token usage
-    await supabaseAdmin
-      .from("invite_links")
-      .update({ used_count: invite.used_count + 1 })
-      .eq("token", inviteToken)
+    studentProfileCreated = true
 
-    // 8. Automatically sign user in to generate session cookies
+    // -----------------------------------------------------
+    // Increment invitation usage
+    // -----------------------------------------------------
+
+    const { error: inviteUpdateError } =
+      await supabaseAdmin
+        .from("invite_links")
+        .update({
+          used_count:
+            (invite.used_count ?? 0) + 1,
+        })
+        .eq("token", inviteToken)
+
+    if (inviteUpdateError) {
+      console.error(
+        "Failed to increment invite usage:",
+        inviteUpdateError
+      )
+
+      // Registration already succeeded.
+      // Don't destroy the account just because analytics/
+      // usage tracking failed.
+    }
+
+    // -----------------------------------------------------
+    // Sign student in
+    // -----------------------------------------------------
+
     const supabase = await createClient()
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+
+    const {
+      data: signInData,
+      error: signInError,
+    } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
 
-    if (signInError) {
-      return NextResponse.json({
-        user: authUser,
-        session: null,
-        message: "Account created successfully, but auto-login failed. Please sign in manually.",
-      })
-    }
+    // -----------------------------------------------------
+    // Response
+    // -----------------------------------------------------
 
-    return NextResponse.json({
-      user: authUser,
-      session: signInData.session,
-    })
-  } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred during registration" },
+      {
+        user: authUser,
+
+        student: studentProfile,
+
+        organization: {
+          id: organization.id,
+          name: organization.name,
+        },
+
+        department: {
+          id: department.id,
+          name: department.name,
+        },
+
+        mentor: {
+          id: mentor.user_id,
+          profileId: mentor.id,
+          name: mentor.name,
+          employeeId: mentor.employee_id,
+          designation: mentor.designation,
+        },
+
+        session:
+          signInError
+            ? null
+            : signInData.session,
+
+        message: signInError
+          ? "Student account created successfully, but automatic login failed. Please sign in manually."
+          : "Student account created successfully.",
+      },
+      { status: 201 }
+    )
+  } catch (error: unknown) {
+    console.error(
+      "Student registration failed:",
+      error
+    )
+
+    await cleanup()
+
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred during registration",
+      },
       { status: 500 }
     )
   }

@@ -3,11 +3,17 @@ export const dynamic = "force-dynamic"
 import { requireActiveMentor } from "@/lib/auth/require-active-mentor"
 import { NextResponse } from "next/server"
 
+const VALID_STATUSES = ["APPROVED", "REJECTED", "PENDING"] as const
+
 export async function GET(request: Request) {
   try {
     const auth = await requireActiveMentor()
+
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.status }
+      )
     }
 
     const { supabase, deptId } = auth
@@ -15,14 +21,27 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
 
-    let query = supabase
+    if (
+      status &&
+      !VALID_STATUSES.includes(
+        status as (typeof VALID_STATUSES)[number]
+      )
+    ) {
+      return NextResponse.json(
+        { error: "Invalid profile status" },
+        { status: 400 }
+      )
+    }
+
+    const query = supabase
       .from("student_profiles")
       .select(`
         *,
-        user:users!inner(
+        user:users!student_profiles_user_id_fkey!inner(
+          id,
           org_id,
           dept_id,
-          department:departments(
+          department:departments!users_dept_id_fkey(
             id,
             name
           )
@@ -31,19 +50,33 @@ export async function GET(request: Request) {
       .eq("user.dept_id", deptId)
 
     if (status) {
-      query = query.eq("profile_status", status)
+      query.eq("profile_status", status)
     }
 
-    const { data: students, error: fetchError } = await query
+    const { data: students, error } = await query
 
-    if (fetchError) {
-      return NextResponse.json({ error: fetchError.message }, { status: 400 })
+    if (error) {
+      console.error("Mentor students query failed:", error)
+
+      return NextResponse.json(
+        { error: error.message },
+        { status: 400 }
+      )
     }
 
-    return NextResponse.json({ students })
-  } catch (error: any) {
+    return NextResponse.json({
+      students: students ?? [],
+    })
+  } catch (error: unknown) {
+    console.error("GET /api/mentors/students failed:", error)
+
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
+      },
       { status: 500 }
     )
   }

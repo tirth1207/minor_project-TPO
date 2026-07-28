@@ -16,10 +16,33 @@ export async function GET() {
     const { data: students, error: fetchError } = await supabase
       .from("student_profiles")
       .select(`
-        *,
-        user:users!inner(
+        id,
+        user_id,
+        enrollment_no,
+        name,
+        dob,
+        address,
+        phone,
+        bio,
+        cgpa,
+        active_backlogs,
+        semester,
+        branch,
+        skills,
+        hobbies,
+        resume_url,
+        marksheet_url,
+        social_links,
+        profile_status,
+        is_placed,
+        mentor_id,
+
+        user:users!student_profiles_user_id_fkey!inner(
+          id,
           org_id,
           dept_id,
+          role,
+
           department:departments(
             id,
             name
@@ -27,6 +50,8 @@ export async function GET() {
         )
       `)
       .eq("user.org_id", orgId)
+      .eq("user.role", "STUDENT")
+      .order("name", { ascending: true })
 
     if (fetchError) {
       return NextResponse.json({ error: fetchError.message }, { status: 400 })

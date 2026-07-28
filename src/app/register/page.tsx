@@ -19,6 +19,28 @@ import {
   IconCheck,
   IconSchool
 } from "@tabler/icons-react"
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+interface AvailableMentor {
+  id: string
+  profileId: string
+  name: string
+  employeeId: string
+  designation: string | null
+  specialization: string | null
+}
+
+interface StudentInviteContext {
+  organization: {
+    id: string
+    name: string
+  }
+
+  department: {
+    id: string
+    name: string
+  }
+}
 
 function RegisterFormContent() {
   const router = useRouter()
@@ -27,6 +49,7 @@ function RegisterFormContent() {
   
   // Student fields
   const [studentEmail, setStudentEmail] = useState("")
+  const [studentMentor, setStudentMentor] = useState("")
   const [studentPassword, setStudentPassword] = useState("")
   const [inviteToken, setInviteToken] = useState("")
   
@@ -47,6 +70,12 @@ function RegisterFormContent() {
   const [mentorEmail, setMentorEmail] = useState("")
   const [mentorPassword, setMentorPassword] = useState("")
   const [mentorInstituteName, setMentorInstituteName] = useState("")
+  const [mentorName, setMentorName] = useState("")
+  const [mentorEmployeeId, setMentorEmployeeId] = useState("")
+  const [mentorDesignation, setMentorDesignation] = useState("")
+  const [mentorQualification, setMentorQualification] = useState("")
+  const [mentorSpecialization, setMentorSpecialization] = useState("")
+  const [mentorPhone, setMentorPhone] = useState("")
 
   const [mentorDepartmentName, setMentorDepartmentName] = useState("")
   const [companyEmail, setCompanyEmail] = useState("")
@@ -60,6 +89,18 @@ function RegisterFormContent() {
   const [isSuccess, setIsSuccess] = useState(false)
   const [successRole, setSuccessRole] = useState<string | null>(null)
 
+  const [availableMentors, setAvailableMentors] =
+    useState<AvailableMentor[]>([])
+
+  const [studentInviteContext, setStudentInviteContext] =
+    useState<StudentInviteContext | null>(null)
+
+  const [mentorsLoading, setMentorsLoading] =
+    useState(false)
+
+  const [mentorError, setMentorError] =
+    useState<string | null>(null)
+
   // Pre-fill invite token from URL search parameters if available
   useEffect(() => {
     const token = searchParams.get("token")
@@ -68,6 +109,83 @@ function RegisterFormContent() {
       setActiveTab("student")
     }
   }, [searchParams])
+
+  useEffect(() => {
+    if (!inviteToken.trim()) {
+      setAvailableMentors([])
+      setStudentMentor("")
+      setStudentInviteContext(null)
+      setMentorError(null)
+      return
+    }
+
+    const controller = new AbortController()
+
+    const timeout = window.setTimeout(
+      async () => {
+        setMentorsLoading(true)
+        setMentorError(null)
+
+        try {
+          const response = await fetch(
+            `/api/auth/student-mentors?token=${encodeURIComponent(
+              inviteToken.trim()
+            )}`,
+            {
+              signal: controller.signal,
+              cache: "no-store",
+            }
+          )
+
+          const data = await response.json()
+
+          if (!response.ok) {
+            throw new Error(
+              data.error ||
+                "Failed to load mentors"
+            )
+          }
+
+          setAvailableMentors(
+            data.mentors ?? []
+          )
+
+          setStudentInviteContext({
+            organization: data.organization,
+            department: data.department,
+          })
+
+          // Clear previous mentor whenever token changes.
+          setStudentMentor("")
+        } catch (error) {
+          if (
+            error instanceof DOMException &&
+            error.name === "AbortError"
+          ) {
+            return
+          }
+
+          setAvailableMentors([])
+          setStudentMentor("")
+          setStudentInviteContext(null)
+
+          setMentorError(
+            error instanceof Error
+              ? error.message
+              : "Failed to load mentors"
+          )
+        } finally {
+          setMentorsLoading(false)
+        }
+      },
+      500
+    )
+
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [inviteToken])
 
   const handleStudentSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,6 +200,7 @@ function RegisterFormContent() {
           email: studentEmail,
           password: studentPassword,
           inviteToken,
+          mentorId: studentMentor,
         }),
       })
 
@@ -201,14 +320,19 @@ function RegisterFormContent() {
           },
 
           body: JSON.stringify({
+            name: mentorName,
+            employeeId: mentorEmployeeId,
+
             email: mentorEmail,
             password: mentorPassword,
 
-            instituteName:
-              mentorInstituteName,
+            instituteName: mentorInstituteName,
+            departmentName: mentorDepartmentName,
 
-            departmentName:
-              mentorDepartmentName,
+            designation: mentorDesignation,
+            qualification: mentorQualification,
+            specialization: mentorSpecialization,
+            phone: mentorPhone,
           }),
         }
       )
@@ -217,7 +341,7 @@ function RegisterFormContent() {
 
       if (!res.ok) {
         throw new Error(
-          data.error || "Registration failed"
+          data.error || "Mentor registration failed"
         )
       }
 
@@ -229,7 +353,7 @@ function RegisterFormContent() {
           ? err.message
           : "Unexpected error"
       )
-
+    } finally {
       setIsLoading(false)
     }
   }
@@ -395,6 +519,110 @@ if (successRole === "STUDENT") {
               <p className="text-xs text-muted-foreground">
                 Use the invitation token provided by your college.
               </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="studentMentor">
+                Mentor
+              </Label>
+
+              {studentInviteContext && (
+                <div className="rounded-lg border bg-muted/40 p-3">
+                  <p className="text-sm font-medium">
+                    {studentInviteContext.organization.name}
+                  </p>
+
+                  <p className="text-xs text-muted-foreground">
+                    {studentInviteContext.department.name}
+                  </p>
+                </div>
+              )}
+
+              <Select
+                value={studentMentor}
+                onValueChange={(value) => {
+                  setStudentMentor(value ?? "")
+                }}
+                disabled={
+                  isLoading ||
+                  mentorsLoading ||
+                  !inviteToken ||
+                  availableMentors.length === 0
+                }
+                required
+              >
+                <SelectTrigger
+                  id="studentMentor"
+                  className="w-full"
+                >
+                  <SelectValue>
+                    {studentMentor
+                      ? availableMentors.find(
+                          (mentor) => mentor.id === studentMentor
+                        )?.name ?? "Select your mentor"
+                      : mentorsLoading
+                        ? "Loading mentors..."
+                        : !inviteToken
+                          ? "Enter invitation token first"
+                          : availableMentors.length === 0
+                            ? "No approved mentors available"
+                            : "Select your mentor"}
+                  </SelectValue>
+                </SelectTrigger>
+
+                <SelectContent>
+                  <SelectGroup>
+                    {availableMentors.map((mentor) => (
+                      <SelectItem
+                        key={mentor.id}
+                        value={mentor.id}
+                      >
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {mentor.name}
+                          </span>
+
+                          {(mentor.designation ||
+                            mentor.specialization) && (
+                            <span className="text-xs text-muted-foreground">
+                              {[
+                                mentor.designation,
+                                mentor.specialization,
+                              ]
+                                .filter(Boolean)
+                                .join(" • ")}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+
+              {mentorError && (
+                <p className="text-xs text-destructive">
+                  {mentorError}
+                </p>
+              )}
+
+              {!mentorError &&
+                studentInviteContext &&
+                availableMentors.length === 0 &&
+                !mentorsLoading && (
+                  <p className="text-xs text-muted-foreground">
+                    No approved mentors are currently available for this
+                    department.
+                  </p>
+                )}
+
+              {studentInviteContext &&
+                availableMentors.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    Only approved mentors from your college and department
+                    are shown.
+                  </p>
+                )}
             </div>
 
             <div className="space-y-2">
@@ -644,8 +872,60 @@ if (successRole === "STUDENT") {
         )}
 
         {activeTab === "mentor" && (
-          <form onSubmit={handleMentorSubmit} className="space-y-4">
-           <div className="space-y-2">
+          <form
+            onSubmit={handleMentorSubmit}
+            className="space-y-4"
+          >
+            {/* Full Name */}
+            <div className="space-y-2">
+              <Label htmlFor="mentorName">
+                Full Name
+              </Label>
+
+              <div className="relative">
+                <IconUser className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+                <Input
+                  id="mentorName"
+                  type="text"
+                  placeholder="Dr. John Smith"
+                  className="pl-10"
+                  value={mentorName}
+                  onChange={(e) =>
+                    setMentorName(e.target.value)
+                  }
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Employee ID */}
+            <div className="space-y-2">
+              <Label htmlFor="mentorEmployeeId">
+                Employee ID
+              </Label>
+
+              <div className="relative">
+                <IconUser className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+
+                <Input
+                  id="mentorEmployeeId"
+                  type="text"
+                  placeholder="EMP-001"
+                  className="pl-10"
+                  value={mentorEmployeeId}
+                  onChange={(e) =>
+                    setMentorEmployeeId(e.target.value)
+                  }
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Institute */}
+            <div className="space-y-2">
               <Label htmlFor="mentorInstituteName">
                 Institute Name
               </Label>
@@ -668,6 +948,7 @@ if (successRole === "STUDENT") {
               </div>
             </div>
 
+            {/* Department */}
             <div className="space-y-2">
               <Label htmlFor="mentorDepartmentName">
                 Department
@@ -691,8 +972,83 @@ if (successRole === "STUDENT") {
               </div>
             </div>
 
+            {/* Designation */}
             <div className="space-y-2">
-              <Label htmlFor="mentorEmail">Mentor Email</Label>
+              <Label htmlFor="mentorDesignation">
+                Designation
+              </Label>
+
+              <Input
+                id="mentorDesignation"
+                type="text"
+                placeholder="Assistant Professor"
+                value={mentorDesignation}
+                onChange={(e) =>
+                  setMentorDesignation(e.target.value)
+                }
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Qualification */}
+            <div className="space-y-2">
+              <Label htmlFor="mentorQualification">
+                Qualification
+              </Label>
+
+              <Input
+                id="mentorQualification"
+                type="text"
+                placeholder="M.Tech Computer Engineering"
+                value={mentorQualification}
+                onChange={(e) =>
+                  setMentorQualification(e.target.value)
+                }
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Specialization */}
+            <div className="space-y-2">
+              <Label htmlFor="mentorSpecialization">
+                Specialization
+              </Label>
+
+              <Input
+                id="mentorSpecialization"
+                type="text"
+                placeholder="Artificial Intelligence"
+                value={mentorSpecialization}
+                onChange={(e) =>
+                  setMentorSpecialization(e.target.value)
+                }
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Phone */}
+            <div className="space-y-2">
+              <Label htmlFor="mentorPhone">
+                Phone
+              </Label>
+
+              <Input
+                id="mentorPhone"
+                type="tel"
+                placeholder="+91 98765 43210"
+                value={mentorPhone}
+                onChange={(e) =>
+                  setMentorPhone(e.target.value)
+                }
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Email */}
+            <div className="space-y-2">
+              <Label htmlFor="mentorEmail">
+                Mentor Email
+              </Label>
 
               <div className="relative">
                 <IconMail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -703,15 +1059,20 @@ if (successRole === "STUDENT") {
                   placeholder="mentor@college.edu"
                   className="pl-10"
                   value={mentorEmail}
-                  onChange={(e) => setMentorEmail(e.target.value)}
+                  onChange={(e) =>
+                    setMentorEmail(e.target.value)
+                  }
                   required
                   disabled={isLoading}
                 />
               </div>
             </div>
 
+            {/* Password */}
             <div className="space-y-2">
-              <Label htmlFor="mentorPassword">Password</Label>
+              <Label htmlFor="mentorPassword">
+                Password
+              </Label>
 
               <div className="relative">
                 <IconLock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -722,7 +1083,9 @@ if (successRole === "STUDENT") {
                   placeholder="Minimum 6 characters"
                   className="pl-10"
                   value={mentorPassword}
-                  onChange={(e) => setMentorPassword(e.target.value)}
+                  onChange={(e) =>
+                    setMentorPassword(e.target.value)
+                  }
                   minLength={6}
                   required
                   disabled={isLoading}

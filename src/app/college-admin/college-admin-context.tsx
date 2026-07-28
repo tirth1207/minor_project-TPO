@@ -90,6 +90,41 @@ export interface Student {
   }
 }
 
+interface Mentor {
+  // mentor_profiles
+  id: string
+  user_id: string
+  name: string
+  employee_id: string
+  designation: string | null
+  qualification: string | null
+  specialization: string | null
+  phone: string | null
+  bio: string | null
+  skills: string[] | null
+  social_links: Record<string, string>
+  profile_status: "PENDING" | "APPROVED" | "REJECTED"
+  created_at: string
+  updated_at: string
+
+  // users / auth
+  role: "MENTOR"
+  email?: string
+  org_id: string
+  dept_id: string
+
+  // Optional joined data
+  organization?: {
+    id: string
+    name: string
+  } | null
+
+  department?: {
+    id: string
+    name: string
+  } | null
+}
+
 interface CollegeAdminContextType {
   loading: boolean
   refreshing: boolean
@@ -99,7 +134,7 @@ interface CollegeAdminContextType {
   invites: InviteLink[]
   jobMappings: JobMapping[]
   students: Student[]
-
+  mentors: Mentor[]
   orgStatus: ApprovalStatus
   isOrgActive: boolean
 
@@ -135,6 +170,11 @@ interface CollegeAdminContextType {
       | "APPROVED"
       | "REJECTED"
       | "PENDING"
+  ) => Promise<void>
+
+  handleUpdateMentorStatus: (
+    mentorId: string,
+    status: "APPROVED" | "REJECTED"
   ) => Promise<void>
 
   handleCopyLink: (url: string) => void
@@ -186,6 +226,9 @@ export function CollegeAdminProvider({
   const [students, setStudents] =
     React.useState<Student[]>([])
 
+  const [mentors, setMentors] =
+    React.useState<Mentor[]>([])
+
   const [orgStatus, setOrgStatus] =
     React.useState<ApprovalStatus>("PENDING")
 
@@ -231,6 +274,7 @@ export function CollegeAdminProvider({
       setInvites([])
       setJobMappings([])
       setStudents([])
+      setMentors([])
 
       setSelectedDeptId("")
       setLatestInviteUrl(null)
@@ -257,6 +301,54 @@ export function CollegeAdminProvider({
     return data
   }
 
+  // ---------------------------------------------------------
+  // Update mentor status
+  // ---------------------------------------------------------
+  const handleUpdateMentorStatus = async (
+    mentorId: string,
+    status: "APPROVED" | "REJECTED"
+  ) => {
+    if (!requireActiveOrganization()) {
+      return
+    }
+
+    if (!mentorId) {
+      alert("Invalid mentor.")
+      return
+    }
+
+    try {
+      const response = await fetch(
+        `/api/college-admin/mentors/${mentorId}`,
+        {
+          method: "PATCH",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            status,
+          }),
+        }
+      )
+
+      const data = await readResponse(response)
+
+      alert(
+        data.message ||
+          `Mentor ${status.toLowerCase()} successfully.`
+      )
+
+      await fetchData(true)
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to update mentor status"
+      )
+    }
+  }
   // ---------------------------------------------------------
   // Approval guard for client actions
   // ---------------------------------------------------------
@@ -380,6 +472,7 @@ export function CollegeAdminProvider({
           invitesResponse,
           jobsResponse,
           studentsResponse,
+          mentorsResponse,
         ] = await Promise.all([
           fetch(
             "/api/college-admin/departments",
@@ -408,6 +501,12 @@ export function CollegeAdminProvider({
               cache: "no-store",
             }
           ),
+          fetch(
+            "/api/college-admin/mentors",
+            {
+              cache: "no-store",
+            }
+          ),
         ])
 
         const [
@@ -415,11 +514,13 @@ export function CollegeAdminProvider({
           invitesData,
           jobsData,
           studentsData,
+          mentorsData,
         ] = await Promise.all([
           readResponse(departmentsResponse),
           readResponse(invitesResponse),
           readResponse(jobsResponse),
           readResponse(studentsResponse),
+          readResponse(mentorsResponse),
         ])
 
         setDepartments(
@@ -436,6 +537,10 @@ export function CollegeAdminProvider({
 
         setStudents(
           studentsData.students ?? []
+        )
+
+        setMentors(
+          mentorsData.mentors ?? []
         )
       } catch (err) {
         console.error(
@@ -713,6 +818,8 @@ export function CollegeAdminProvider({
         invites,
         jobMappings,
         students,
+        mentors,
+        handleUpdateMentorStatus,
 
         orgStatus,
         isOrgActive,
