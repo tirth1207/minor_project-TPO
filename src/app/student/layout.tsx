@@ -79,9 +79,9 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
         const email = data.user?.email ?? ""
 
         const name =
-          data.companyProfile?.company_name ||
+          data.studentProfile?.name ||
           email.split("@")[0] ||
-          "College Administrator"
+          "Student Candidate"
 
         setUser({
           name,
@@ -92,7 +92,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
         })
       } catch (error) {
         console.error(
-          "Error fetching company user:",
+          "Error fetching student user:",
           error
         )
       }
@@ -100,39 +100,41 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
 
     fetchUser()
   }, [])
-  const navMains = [
+
+  // Student specific navigation links for AppSidebar
+  const studentNavMains = React.useMemo(() => [
     {
       title: "Dashboard Overview",
-      url: "/college-admin",
+      url: "/student/dashboard",
       icon: <IconDashboard className="size-4" />,
-      isActive: true,
+      isActive: pathname === "/student/dashboard",
     },
     {
-      title: "Departments",
-      url: "/college-admin/departments",
-      icon: <IconSchool className="size-4" />,
-    },
-    {
-      title: "Onboarding Invites",
-      url: "/college-admin/invites",
-      icon: <IconBuilding className="size-4" />,
-    },
-    {
-      title: "Mentor Approvals",
-      url: "/college-admin/mentors",
+      title: "Candidate Profile",
+      url: "/student/profile",
       icon: <IconUser className="size-4" />,
+      isActive: pathname === "/student/profile",
     },
     {
-      title: "Job Approvals",
-      url: "/college-admin/jobs",
+      title: "Eligible Jobs",
+      url: "/student/jobs",
       icon: <IconBriefcase className="size-4" />,
+      isActive: pathname === "/student/jobs",
     },
     {
-      title: "Student Roster",
-      url: "/college-admin/students",
-      icon: <IconUser className="size-4" />,
-    }
-  ]
+      title: "My Applications",
+      url: "/student/applications",
+      icon: <IconFileCertificate className="size-4" />,
+      isActive: pathname === "/student/applications",
+    },
+    {
+      title: "AI Mock Prep",
+      url: "/student/mock",
+      icon: <IconRobot className="size-4" />,
+      isActive: pathname === "/student/mock",
+    },
+  ], [pathname])
+
   const navSecondary = [
     {
       title: "Support",
@@ -145,9 +147,17 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
       icon: <IconSend className="size-4" />,
     },
   ]
+
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar
+        title="Student Portal"
+        subtitle="Recruitment Drive"
+        navMain={studentNavMains}
+        navSecondary={navSecondary}
+        user={user}
+        func={handleLogout}
+      />
       <SidebarInset>
         {/* Header navbar */}
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-100 dark:border-secondary px-6">
@@ -164,7 +174,13 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
-                  <BreadcrumbPage>Recruitment Dashboard</BreadcrumbPage>
+                  <BreadcrumbPage>
+                    {pathname === "/student/dashboard" ? "Dashboard Overview"
+                     : pathname === "/student/profile" ? "Candidate Profile"
+                     : pathname === "/student/jobs" ? "Eligible Jobs"
+                     : pathname === "/student/applications" ? "My Applications"
+                     : "AI Mock Prep"}
+                  </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -228,11 +244,21 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
                 </div>
               )}
 
-              {/* Tabs bar (Folder routing) */}
-              <div className="flex items-center gap-1.5 border-b border-secondary dark:border-secondary">
+              {/* Tabs bar */}
+              <div className="flex items-center gap-1.5 border-b border-secondary dark:border-secondary overflow-x-auto">
+                <Link
+                  href="/student/dashboard"
+                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all whitespace-nowrap ${
+                    pathname === "/student/dashboard"
+                      ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
+                      : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
+                  }`}
+                >
+                  <span className="flex items-center gap-1.5"><IconDashboard className="h-4 w-4" /> Dashboard</span>
+                </Link>
                 <Link
                   href="/student/profile"
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all capitalize ${
+                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all whitespace-nowrap ${
                     pathname === "/student/profile"
                       ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
                       : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
@@ -242,7 +268,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link
                   href="/student/jobs"
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all capitalize ${
+                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all whitespace-nowrap ${
                     pathname === "/student/jobs"
                       ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
                       : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
@@ -252,7 +278,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link
                   href="/student/applications"
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all capitalize ${
+                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all whitespace-nowrap ${
                     pathname === "/student/applications"
                       ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
                       : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
@@ -262,7 +288,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
                 </Link>
                 <Link
                   href="/student/mock"
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all capitalize ${
+                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all whitespace-nowrap ${
                     pathname === "/student/mock"
                       ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
                       : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
