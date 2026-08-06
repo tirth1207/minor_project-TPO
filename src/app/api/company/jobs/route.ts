@@ -264,7 +264,7 @@ export async function POST(request: Request) {
         org_id: college.id,
         local_status: "PENDING",
       }))
-
+      console.log("Creating college mappings:", mappings)
       const { error: mappingError } = await supabase
         .from("job_college_mappings")
         .insert(mappings)
