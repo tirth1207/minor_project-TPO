@@ -197,7 +197,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
             </button>
             <button
               onClick={handleLogout}
-              className="px-3 py-1.5 rounded-lg bg-zinc-900 text-zinc-55 text-xs font-semibold hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 transition-all cursor-pointer"
+              className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-zinc-200 hover:text-primary dark:bg-primary dark:text-zinc-950 dark:hover:bg-zinc-200 transition-all cursor-pointer"
             >
               Logout
             </button>
@@ -243,60 +243,6 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
                   </div>
                 </div>
               )}
-
-              {/* Tabs bar */}
-              <div className="flex items-center gap-1.5 border-b border-secondary dark:border-secondary overflow-x-auto">
-                <Link
-                  href="/student/dashboard"
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all whitespace-nowrap ${
-                    pathname === "/student/dashboard"
-                      ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
-                      : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5"><IconDashboard className="h-4 w-4" /> Dashboard</span>
-                </Link>
-                <Link
-                  href="/student/profile"
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all whitespace-nowrap ${
-                    pathname === "/student/profile"
-                      ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
-                      : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5"><IconUser className="h-4 w-4" /> Profile</span>
-                </Link>
-                <Link
-                  href="/student/jobs"
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all whitespace-nowrap ${
-                    pathname === "/student/jobs"
-                      ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
-                      : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5"><IconBriefcase className="h-4 w-4" /> Eligible Jobs</span>
-                </Link>
-                <Link
-                  href="/student/applications"
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all whitespace-nowrap ${
-                    pathname === "/student/applications"
-                      ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
-                      : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5"><IconFileCertificate className="h-4 w-4" /> My Applications</span>
-                </Link>
-                <Link
-                  href="/student/mock"
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all whitespace-nowrap ${
-                    pathname === "/student/mock"
-                      ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
-                      : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
-                  }`}
-                >
-                  <span className="flex items-center gap-1.5"><IconRobot className="h-4 w-4" /> AI Mock Prep</span>
-                </Link>
-              </div>
 
               {children}
             </>
