@@ -110,7 +110,7 @@ export default function CollegeAdminRootPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {/* Placement rate */}
         <Card className="shadow-none border-secondary dark:border-secondary">
-          <CardContent className="pt-6">
+          <CardContent className="mt-6">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Placement Rate</span>
               <IconAward className="h-4 w-4 text-zinc-400" />
@@ -126,7 +126,7 @@ export default function CollegeAdminRootPage() {
 
         {/* Total Departments */}
         <Card className="shadow-none border-secondary dark:border-secondary">
-          <CardContent className="pt-6">
+          <CardContent className="mt-6">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Departments</span>
               <IconSchool className="h-4 w-4 text-zinc-400" />
@@ -142,7 +142,7 @@ export default function CollegeAdminRootPage() {
 
         {/* Student Roster */}
         <Card className="shadow-none border-secondary dark:border-secondary">
-          <CardContent className="pt-6">
+          <CardContent className="mt-6">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Student Roster</span>
               <IconUsers className="h-4 w-4 text-zinc-400" />
@@ -158,7 +158,7 @@ export default function CollegeAdminRootPage() {
 
         {/* Faculty Mentors */}
         <Card className="shadow-none border-secondary dark:border-secondary">
-          <CardContent className="pt-6">
+          <CardContent className="mt-6">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Faculty Mentors</span>
               <IconUsers className="h-4 w-4 text-zinc-400" />
@@ -174,7 +174,7 @@ export default function CollegeAdminRootPage() {
 
         {/* Job mappings */}
         <Card className="shadow-none border-secondary dark:border-secondary">
-          <CardContent className="pt-6">
+          <CardContent className="mt-6">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Drive Mappings</span>
               <IconBriefcase className="h-4 w-4 text-zinc-400" />
