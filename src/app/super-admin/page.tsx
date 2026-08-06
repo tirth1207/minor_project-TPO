@@ -165,7 +165,7 @@ export default function SuperAdminOverviewPage() {
                               onClick={() => handleUpdateJobStatus(job.id, "APPROVED")}
                               className="px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100 transition-all dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900 cursor-pointer text-xs font-semibold inline-flex items-center gap-1"
                             >
-                              <IconCheck className="h-3.5 w-3.5" /> Approved
+                              <IconCheck className="h-3.5 w-3.5" /> Approve
                             </button>
                             <button
                               onClick={() => handleUpdateJobStatus(job.id, "REJECTED")}
