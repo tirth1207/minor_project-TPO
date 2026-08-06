@@ -130,7 +130,7 @@ export default function StudentDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {/* Profile Status */}
         <Card className="shadow-none border-secondary dark:border-secondary">
-          <CardContent className="pt-6">
+          <CardContent className="mt-6">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Profile Status</span>
               <IconUser className="h-4 w-4 text-zinc-400" />
@@ -146,7 +146,7 @@ export default function StudentDashboardPage() {
 
         {/* CGPA */}
         <Card className="shadow-none border-secondary dark:border-secondary">
-          <CardContent className="pt-6">
+          <CardContent className="mt-6">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Academic CGPA</span>
               <IconTrendingUp className="h-4 w-4 text-zinc-400" />
@@ -162,7 +162,7 @@ export default function StudentDashboardPage() {
 
         {/* Backlogs */}
         <Card className="shadow-none border-secondary dark:border-secondary">
-          <CardContent className="pt-6">
+          <CardContent className="mt-6">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active Backlogs</span>
               <IconAlertTriangle className="h-4 w-4 text-zinc-400" />
@@ -178,7 +178,7 @@ export default function StudentDashboardPage() {
 
         {/* Applications Sent */}
         <Card className="shadow-none border-secondary dark:border-secondary">
-          <CardContent className="pt-6">
+          <CardContent className="mt-6">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Applied Drives</span>
               <IconFileCertificate className="h-4 w-4 text-zinc-400" />
@@ -194,7 +194,7 @@ export default function StudentDashboardPage() {
 
         {/* Eligible Job Matches */}
         <Card className="shadow-none border-secondary dark:border-secondary">
-          <CardContent className="pt-6">
+          <CardContent className="mt-6">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eligible Jobs</span>
               <IconBriefcase className="h-4 w-4 text-zinc-400" />
