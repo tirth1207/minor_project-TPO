@@ -23,7 +23,7 @@ import { Progress } from "@/components/ui/progress"
 export default function StudentDashboardPage() {
   const {
     profile,
-    eligibleJobs,
+    jobs,
     applications,
   } = useStudent()
 
@@ -192,15 +192,15 @@ export default function StudentDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Eligible Job Matches */}
+        {/* Available Job Matches */}
         <Card className="shadow-none border-secondary dark:border-secondary">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Eligible Jobs</span>
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Available Job Matches</span>
               <IconBriefcase className="h-4 w-4 text-zinc-400" />
             </div>
             <p className="mt-3 text-2xl font-black text-zinc-900 dark:text-zinc-50">
-              {eligibleJobs.length}
+              {jobs.length}
             </p>
             <p className="mt-1 text-[10px] text-muted-foreground">
               Active open roles
@@ -244,25 +244,25 @@ export default function StudentDashboardPage() {
                   <span className="flex items-center gap-2 font-medium text-zinc-700 dark:text-zinc-300">
                     <IconUser className="h-4 w-4 text-zinc-400" /> Complete Resume & Details
                   </span>
-                  <IconChevronRight className="h-4 w-4 text-zinc-400" />
+                  <IconChevronRight className="h-4 w-4" />
                 </Link>
                 <Link
                   href="/student/jobs"
-                  className="flex items-center justify-between px-5 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all text-xs"
+                  className="flex items-center justify-between px-5 py-3 hover:bg-zinc-50 dark:bg-zinc-900 transition-all text-xs"
                 >
                   <span className="flex items-center gap-2 font-medium text-zinc-700 dark:text-zinc-300">
-                    <IconBriefcase className="h-4 w-4 text-zinc-400" /> Browse Campus Job Openings
+                    <IconBriefcase className="h-4 w-4" /> Browse Campus Job Openings
                   </span>
-                  <IconChevronRight className="h-4 w-4 text-zinc-400" />
+                  <IconChevronRight className="h-4 w-4" />
                 </Link>
                 <Link
                   href="/student/mock"
-                  className="flex items-center justify-between px-5 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all text-xs"
+                  className="flex items-center justify-between px-5 py-3 hover:bg-zinc-50 dark:bg-zinc-900 transition-all text-xs"
                 >
                   <span className="flex items-center gap-2 font-medium text-zinc-700 dark:text-zinc-300">
-                    <IconRobot className="h-4 w-4 text-zinc-400" /> Practice AI Mock Interviews
+                    <IconRobot className="h-4 w-4" /> Practice AI Mock Interviews
                   </span>
-                  <IconChevronRight className="h-4 w-4 text-zinc-400" />
+                  <IconChevronRight className="h-4 w-4" />
                 </Link>
               </div>
             </CardContent>
@@ -284,7 +284,7 @@ export default function StudentDashboardPage() {
             <CardContent className="flex-1 pt-6">
               {applications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center text-zinc-400">
-                  <IconFileCertificate className="h-10 w-10 stroke-[1.2] mb-2" />
+                 <IconFileCertificate className="h-10 w-10 stroke-[1.2] mb-2" />
                   <p className="text-sm font-semibold">No applications submitted yet</p>
                   <p className="text-xs mt-1 text-muted-foreground max-w-xs">
                     Once you apply for eligible drives, their progress rounds, mock scores, and offers will appear here.
@@ -296,63 +296,47 @@ export default function StudentDashboardPage() {
                     const job = app.job_college_mapping?.job
                     if (!job) return null
 
-                    const activeOffer = app.offers?.find(o => o.status === "EXTENDED")
-                    const acceptedOffer = app.offers?.find(o => o.status === "ACCEPTED")
+                    const activeOffer = app.offers?.find(
+                      (o) => o.status === "EXTENDED"
+                    )
+
+                    const acceptedOffer = app.offers?.find(
+                      (o) => o.status === "ACCEPTED"
+                    )
 
                     return (
                       <div
                         key={app.id}
                         className="p-4 rounded-xl border border-secondary bg-zinc-50/20 dark:bg-zinc-900/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:shadow-sm transition-all"
                       >
-                        <div>
-                          <h4 className="font-extrabold text-sm text-zinc-900 dark:text-zinc-100">
-                            {job.title}
-                          </h4>
-                          <p className="text-xs text-zinc-500">
-                            {job.company?.company_name}
-                          </p>
-                          <p className="text-[10px] text-zinc-400 mt-1">
-                            Applied: {new Date(app.applied_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="flex flex-col items-end gap-1.5 shrink-0">
-                          {acceptedOffer ? (
-                            <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400 font-bold text-[10px]">
-                              OFFER ACCEPTED
-                            </Badge>
-                          ) : activeOffer ? (
-                            <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-400 font-bold text-[10px] animate-pulse">
-                              OFFER EXTENDED
-                            </Badge>
-                          ) : (
-                            <Badge variant="secondary" className="uppercase tracking-wider text-[10px] font-bold">
-                              {app.status}
-                            </Badge>
-                          )}
-                          {app.mock_score !== null && (
-                            <span className="text-[10px] font-semibold text-muted-foreground">
-                              Mock Score: {app.mock_score}%
-                            </span>
-                          )}
-                        </div>
+                        {/* your existing content */}
                       </div>
                     )
                   })}
+
                   {applications.length > 5 && (
                     <div className="text-center pt-2">
-                      <Button variant="ghost" size="sm" className="text-xs text-muted-foreground hover:text-foreground">
-                        <Link href="/student/applications" className="flex items-center gap-1">
-                          View all applications <IconChevronRight className="h-3 w-3" />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs text-muted-foreground hover:text-foreground"
+                      >
+                        <Link
+                          href="/student/applications"
+                          className="flex items-center gap-1"
+                        >
+                          View all applications
+                          <IconChevronRight className="h-3 w-3" />
                         </Link>
                       </Button>
                     </div>
                   )}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
   )
 }

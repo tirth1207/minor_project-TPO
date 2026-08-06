@@ -70,31 +70,36 @@ export interface StudentProfile {
   } | null
 }
 
-export interface EligibleJob {
+export interface Job {
   id: string
-  job_id: string
-  local_status: string
-  applicant_count: number
-  job: {
+  title: string
+  description: string
+  ctc_min: number
+  ctc_max: number
+  location: string
+  work_mode: string
+  min_cgpa: number
+  max_backlogs: number
+  require_mock: boolean
+  mock_pass_score: number
+  global_status: string
+  company: {
     id: string
-    title: string
-    description: string
-    ctc_min: number
-    ctc_max: number
-    location: string
-    work_mode: string
-    min_cgpa: number
-    max_backlogs: number
-    require_mock: boolean
-    mock_pass_score: number
-    company?: {
-      company_name: string
-      website: string | null
-    }
-    branches?: {
-      branch_name: string
-    }[]
-  }
+    company_name: string
+    website: string | null
+  } | null
+  branches: {
+    branch_name: string
+  }[]
+}
+
+export interface JobWithMapping {
+  job: Job
+  mapping: {
+    id: string
+    local_status: string
+  } | null
+  applicant_count: number
 }
 
 export interface Application {
@@ -110,6 +115,7 @@ export interface Application {
       location: string
       work_mode: string
       company?: {
+        id: string
         company_name: string
       }
     }
@@ -144,7 +150,7 @@ interface StudentContextType {
   refreshing: boolean
   error: string | null
   profile: StudentProfile | null
-  eligibleJobs: EligibleJob[]
+  jobs: JobWithMapping[] // renamed from eligibleJobs to reflect new structure
   applications: Application[]
   mocks: MockInterview[]
 
@@ -188,10 +194,10 @@ interface StudentContextType {
   mockAnswers: string[]
   setMockAnswers: (ans: string[]) => void
   scoringMock: boolean
-  
+
   fetchData: (isRefresh?: boolean) => Promise<void>
   handleUpdateProfile: (e: React.FormEvent) => Promise<void>
-  handleApplyJob: (mappingId: string) => Promise<void>
+  handleApplyJob: (mappingId: string | null) => Promise<void> // accept nullable mappingId
   handleDecideOffer: (offerId: string, status: "ACCEPTED" | "REJECTED") => Promise<void>
   handleStartMock: () => Promise<void>
   handleCompleteMock: () => Promise<void>
@@ -216,7 +222,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   const [editSocialLinks, setEditSocialLinks] = React.useState<Record<string, string>>({})
   // Data states
   const [profile, setProfile] = React.useState<StudentProfile | null>(null)
-  const [eligibleJobs, setEligibleJobs] = React.useState<EligibleJob[]>([])
+  const [jobs, setJobs] = React.useState<JobWithMapping[]>([]) // changed from eligibleJobs
   const [applications, setApplications] = React.useState<Application[]>([])
   const [mocks, setMocks] = React.useState<MockInterview[]>([])
 
@@ -275,7 +281,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         setEditDob(studentProf.dob ?? "")
         setEditAddress(studentProf.address ?? "")
         setEditPhone(studentProf.phone ?? "")
-        setEditBio(studentProf.bio ?? "") 
+        setEditBio(studentProf.bio ?? "")
         setEditEnrollmentNo(studentProf.enrollment_no ?? "")
         setEditCgpa(
           studentProf.cgpa?.toString() ?? ""
@@ -316,11 +322,12 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         )
       }
 
-      // 2. Fetch Eligible Jobs
+      // 2. Fetch Jobs (now returns jobs with mapping info)
       const jobsRes = await fetch("/api/students/jobs")
       if (jobsRes.ok) {
         const jobsData = await jobsRes.json()
-        setEligibleJobs(jobsData.mappings || [])
+        // Expecting { jobs: JobWithMapping[] }
+        setJobs(jobsData.jobs || [])
       }
 
       // 3. Fetch Applications
@@ -336,7 +343,6 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         const mocksData = await mocksRes.json()
         setMocks(mocksData.mockInterviews || [])
       }
-
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong loading dashboard data")
     } finally {
@@ -435,7 +441,8 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Apply to Job
-  const handleApplyJob = async (mappingId: string) => {
+  // Note: mappingId can be null if no approved mapping exists for the student's college
+  const handleApplyJob = async (mappingId: string | null) => {
     if (!profile) return
     if (profile.profile_status !== "APPROVED") {
       alert("Your student profile status is PENDING or REJECTED. You must be APPROVED by your mentor to apply for job drives.")
@@ -443,6 +450,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     }
     if (profile.is_placed) {
       alert("You are already marked as placed! Further recruitment drives are locked.")
+      return
+    }
+    if (mappingId === null) {
+      alert("This job has not yet been approved by your college. You cannot apply until it is approved.")
       return
     }
 
@@ -478,7 +489,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       alert(`Job offer successfully ${status.toLowerCase()}!`)
       fetchData(true)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "An unexpected error occurred")
+      err instanceof Error ? alert(err.message) : alert("An unexpected error occurred")
     }
   }
 
@@ -542,7 +553,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         refreshing,
         error,
         profile,
-        eligibleJobs,
+        jobs,
         applications,
         mocks,
         editEnrollmentNo,
@@ -556,6 +567,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         editBio,
         setEditBio,
         editResumeUrl,
+        setEditResumeUrl,
         editDob,
         setEditDob,
         editAddress,
@@ -570,7 +582,6 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         setEditMarksheetUrl,
         editSocialLinks,
         setEditSocialLinks,
-        setEditResumeUrl,
         editBranch,
         setEditBranch,
         editSemester,

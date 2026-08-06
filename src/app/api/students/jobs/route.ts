@@ -12,10 +12,10 @@ export async function GET() {
 
     const { supabase, studentId, orgId } = auth
 
-    // Fetch the student's profile details needed for eligibility matching
+    // Fetch the student's profile details needed for eligibility checks
     const { data: student, error: studentError } = await supabase
       .from("student_profiles")
-      .select("cgpa, active_backlogs, branch")
+      .select("cgpa, active_backlogs, branch, profile_status, is_placed")
       .eq("id", studentId)
       .maybeSingle()
 
@@ -23,74 +23,131 @@ export async function GET() {
       return NextResponse.json({ error: "Student profile not found" }, { status: 404 })
     }
 
-    // Fetch all mappings that are APPROVED and correspond to the student's college
-    const { data: mappings, error: mappingsError } = await supabase
-      .from("job_college_mappings")
+    // Fetch all approved job postings with company and eligible branches
+    const { data: jobs, error: jobsError } = await supabase
+      .from("job_postings")
       .select(`
         id,
-        job_id,
-        org_id,
-        local_status,
-        job:job_postings!inner(
+        title,
+        description,
+        ctc_min,
+        ctc_max,
+        location,
+        work_mode,
+        min_cgpa,
+        max_backlogs,
+        require_mock,
+        mock_pass_score,
+        global_status,
+        company_profiles (
           id,
-          title,
-          description,
-          ctc_min,
-          ctc_max,
-          location,
-          work_mode,
-          min_cgpa,
-          max_backlogs,
-          global_status,
-          require_mock,
-          mock_pass_score,
-          company:company_profiles(
-            id,
-            company_name,
-            website
-          ),
-          branches:job_eligible_branches(
-            branch_name
-          )
+          company_name,
+          website
+        ),
+        job_eligible_branches (
+          branch_name
         )
       `)
+      .eq("global_status", "APPROVED")
+
+    if (jobsError) {
+      return NextResponse.json({ error: jobsError.message }, { status: 400 })
+    }
+
+    // Fetch all approved mappings for the student's college
+    const { data: mappings, error: mappingsError } = await supabase
+      .from("job_college_mappings")
+      .select("id, job_id, local_status")
       .eq("org_id", orgId)
       .eq("local_status", "APPROVED")
-      .eq("job.global_status", "APPROVED")
 
     if (mappingsError) {
       return NextResponse.json({ error: mappingsError.message }, { status: 400 })
     }
 
-    const eligibleMappings = []
+    // Create a map from job_id to mapping for quick lookup
+    const mappingMap = new Map<string, { id: string; local_status: string }>()
+    mappings?.forEach((m) => {
+      mappingMap.set(m.job_id, { id: m.id, local_status: m.local_status })
+    })
 
-    for (const mapping of (mappings || [])) {
-      const job = mapping.job as any
-      if (!job) continue
+    // Determine if student can apply based on profile status and placement
+    const studentCanApply =
+      student.profile_status === "APPROVED" && !student.is_placed
 
-      // CGPA Check
-      if (student.cgpa < job.min_cgpa) continue
+    // Prepare job entries with mapping info
+    const jobEntries = jobs.map((job) => {
+      const {
+        job_eligible_branches,
+        company_profiles,
+        ...jobRest
+      } = job as any
 
-      // Backlogs Check
-      if (student.active_backlogs > job.max_backlogs) continue
+      const mapping = mappingMap.get(jobRest.id) ?? null
 
-      // Branch Check
-      const eligibleBranches = job.branches?.map((b: any) => b.branch_name) || []
-      if (!eligibleBranches.includes(student.branch)) continue
+      return {
+        job: {
+          id: jobRest.id,
+          title: jobRest.title,
+          description: jobRest.description,
+          ctc_min: jobRest.ctc_min,
+          ctc_max: jobRest.ctc_max,
+          location: jobRest.location,
+          work_mode: jobRest.work_mode,
+          min_cgpa: jobRest.min_cgpa,
+          max_backlogs: jobRest.max_backlogs,
+          require_mock: jobRest.require_mock,
+          mock_pass_score: jobRest.mock_pass_score,
+          global_status: jobRest.global_status,
+          company: company_profiles
+            ? {
+                id: company_profiles.id,
+                company_name: company_profiles.company_name,
+                website: company_profiles.website,
+              }
+            : null,
+          branches: job_eligible_branches.map((b: { branch_name: string }) => ({
+            branch_name: b.branch_name,
+          })),
+        },
+        mapping: mapping
+          ? {
+              id: mapping.id,
+              local_status: mapping.local_status,
+            }
+          : null,
+      }
+    })
 
-      // Call database rpc helper for applicant count
-      const { data: applicantCount } = await supabase.rpc(
-        "get_job_applicant_count",
-        { p_job_college_map_id: mapping.id }
+    // Fetch applicant counts for all mappings in parallel
+    const mappingIds = jobEntries
+      .filter((entry) => entry.mapping !== null)
+      .map((entry) => entry.mapping!.id)
+
+    let applicantCounts: Record<string, number> = {}
+    if (mappingIds.length > 0) {
+      const countsPromises = mappingIds.map((id) =>
+        supabase.rpc("get_job_applicant_count", { p_job_college_map_id: id })
       )
-
-      eligibleMappings.push({
-        ...mapping,
-        applicant_count: applicantCount || 0,
+      const results = await Promise.allSettled(countsPromises)
+      results.forEach((result, idx) => {
+        if (result.status === "fulfilled" && result.value.data !== null) {
+          applicantCounts[mappingIds[idx]] = result.value.data
+        } else {
+          applicantCounts[mappingIds[idx]] = 0
+        }
       })
     }
 
-    return NextResponse.json({ mappings: eligibleMappings })
+    // Attach applicant count to each job entry
+    const finalJobs = jobEntries.map((entry) => ({
+      ...entry,
+      applicant_count: entry.mapping
+        ? applicantCounts[entry.mapping.id] ?? 0
+        : 0,
+    }))
+
+    return NextResponse.json({ jobs: finalJobs })
   } catch (error: any) {
     return NextResponse.json(
       { error: error?.message || "An unexpected error occurred" },
