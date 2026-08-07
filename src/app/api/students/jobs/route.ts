@@ -67,7 +67,7 @@ export async function GET() {
 
     // Create a map from job_id to mapping for quick lookup
     const mappingMap = new Map<string, { id: string; local_status: string }>()
-    mappings?.forEach((m) => {
+    mappings?.forEach((m: any) => {
       mappingMap.set(m.job_id, { id: m.id, local_status: m.local_status })
     })
 
@@ -76,7 +76,7 @@ export async function GET() {
       student.profile_status === "APPROVED" && !student.is_placed
 
     // Prepare job entries with mapping info
-    const jobEntries = jobs.map((job) => {
+    const jobEntries = jobs.map((job: any) => {
       const {
         job_eligible_branches,
         company_profiles,
@@ -84,6 +84,12 @@ export async function GET() {
       } = job as any
 
       const mapping = mappingMap.get(jobRest.id) ?? null
+
+      const eligibleBranches = (job_eligible_branches || []).map((b: any) => (b.branch_name || "").toLowerCase())
+      const isEligibleBranch = eligibleBranches.length === 0 || eligibleBranches.includes((student.branch || "").toLowerCase())
+      const isEligibleCgpa = student.cgpa >= jobRest.min_cgpa
+      const isEligibleBacklogs = student.active_backlogs <= jobRest.max_backlogs
+      const isEligible = isEligibleBranch && isEligibleCgpa && isEligibleBacklogs
 
       return {
         job: {
@@ -116,17 +122,23 @@ export async function GET() {
               local_status: mapping.local_status,
             }
           : null,
+        is_eligible: isEligible,
+        eligibility_reasons: {
+          branch: isEligibleBranch,
+          cgpa: isEligibleCgpa,
+          backlogs: isEligibleBacklogs,
+        },
       }
     })
 
     // Fetch applicant counts for all mappings in parallel
     const mappingIds = jobEntries
-      .filter((entry) => entry.mapping !== null)
-      .map((entry) => entry.mapping!.id)
+      .filter((entry: any) => entry.mapping !== null)
+      .map((entry: any) => entry.mapping!.id)
 
     let applicantCounts: Record<string, number> = {}
     if (mappingIds.length > 0) {
-      const countsPromises = mappingIds.map((id) =>
+      const countsPromises = mappingIds.map((id: any) =>
         supabase.rpc("get_job_applicant_count", { p_job_college_map_id: id })
       )
       const results = await Promise.allSettled(countsPromises)
@@ -140,7 +152,7 @@ export async function GET() {
     }
 
     // Attach applicant count to each job entry
-    const finalJobs = jobEntries.map((entry) => ({
+    const finalJobs = jobEntries.map((entry: any) => ({
       ...entry,
       applicant_count: entry.mapping
         ? applicantCounts[entry.mapping.id] ?? 0

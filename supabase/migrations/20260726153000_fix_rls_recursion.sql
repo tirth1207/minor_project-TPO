@@ -538,9 +538,9 @@ begin
 
 
     if p_role = 'STUDENT' then
-        return public.check_student_eligibility(
-            public.get_student_id_by_user_id(p_user_id),
-            p_job_id
+        return public.check_job_mapped_and_approved(
+            p_job_id,
+            p_org_id
         );
     end if;
 
@@ -783,7 +783,7 @@ drop policy if exists
 on public.job_postings;
 
 drop policy if exists
-"Students can view eligible job postings"
+"Students can view college-mapped job postings"
 on public.job_postings;
 
 
@@ -1352,16 +1352,16 @@ using (
 );
 
 
-create policy "Students can view eligible job postings"
+create policy "Students can view college-mapped job postings"
 on public.job_postings
 for select
 to authenticated
 using (
     case
         when public.current_user_role() = 'STUDENT'
-        then public.check_student_eligibility(
-            public.get_student_id_by_user_id(auth.uid()),
-            id
+        then public.check_job_mapped_and_approved(
+            id,
+            public.current_org_id()
         )
         else false
     end

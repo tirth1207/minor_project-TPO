@@ -406,10 +406,7 @@ begin
         );
     end if;
     if p_role = 'STUDENT' then
-        return public.check_student_eligibility(
-            (select id from public.student_profiles where user_id = p_user_id),
-            p_job_id
-        );
+        return public.check_job_mapped_and_approved(p_job_id, p_org_id);
     end if;
     return false;
 end;
@@ -801,13 +798,10 @@ create policy "Mentors can view approved jobs mapped to their college" on public
         and public.check_job_mapped_and_approved(id, (auth.jwt() ->> 'org_id')::uuid)
     );
 
-create policy "Students can view eligible job postings" on public.job_postings
+create policy "Students can view college-mapped job postings" on public.job_postings
     for select to authenticated using (
         (auth.jwt() ->> 'role') = 'STUDENT'
-        and public.check_student_eligibility(
-            public.get_student_id_by_user_id(auth.uid()),
-            id
-        )
+        and public.check_job_mapped_and_approved(id, (auth.jwt() ->> 'org_id')::uuid)
     );
 
 -- 6.8 job_eligible_branches Policies

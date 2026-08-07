@@ -16,10 +16,10 @@ export async function POST(
 
     const { supabase, studentId, orgId } = auth
 
-    // Fetch student's is_placed status
+    // Fetch student's profile details
     const { data: student, error: studentError } = await supabase
       .from("student_profiles")
-      .select("is_placed")
+      .select("is_placed, cgpa, active_backlogs, branch, profile_status")
       .eq("id", studentId)
       .maybeSingle()
 
@@ -48,7 +48,12 @@ export async function POST(
           require_mock,
           mock_pass_score,
           global_status,
-          rounds
+          rounds,
+          min_cgpa,
+          max_backlogs,
+          job_eligible_branches (
+            branch_name
+          )
         )
       `)
       .eq("id", id)
@@ -62,6 +67,23 @@ export async function POST(
     const job = mapping.job as any
     if (mapping.local_status !== "APPROVED" || job.global_status !== "APPROVED") {
       return NextResponse.json({ error: "This job mapping is not approved yet" }, { status: 400 })
+    }
+
+    // Validate Branch, CGPA, and Backlogs eligibility explicitly on the backend
+    const eligibleBranches = (job.job_eligible_branches || []).map((b: any) => (b.branch_name || "").toLowerCase())
+    const isEligibleBranch = eligibleBranches.length === 0 || eligibleBranches.includes((student.branch || "").toLowerCase())
+    const isEligibleCgpa = student.cgpa >= job.min_cgpa
+    const isEligibleBacklogs = student.active_backlogs <= job.max_backlogs
+
+    if (!isEligibleBranch || !isEligibleCgpa || !isEligibleBacklogs) {
+      const reasons: string[] = []
+      if (!isEligibleBranch) reasons.push(`Branch not eligible (Your branch: ${student.branch})`)
+      if (!isEligibleCgpa) reasons.push(`Minimum CGPA requirement not met (Required: ${job.min_cgpa}, Yours: ${student.cgpa})`)
+      if (!isEligibleBacklogs) reasons.push(`Too many active backlogs (Maximum allowed: ${job.max_backlogs}, Yours: ${student.active_backlogs})`)
+      return NextResponse.json(
+        { error: `You are not eligible for this job posting: ${reasons.join(", ")}` },
+        { status: 400 }
+      )
     }
 
     let highestMockScore = null
