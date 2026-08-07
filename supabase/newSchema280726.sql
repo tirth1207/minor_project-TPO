@@ -491,9 +491,9 @@ begin
 
 
     if p_role = 'STUDENT' then
-        return public.check_student_eligibility(
-            public.get_student_id_by_user_id(p_user_id),
-            p_job_id
+        return public.check_job_mapped_and_approved(
+            p_job_id,
+            p_org_id
         );
     end if;
 
@@ -1658,9 +1658,9 @@ CREATE POLICY "Students can update self profile" ON "public"."student_profiles" 
 
 
 
-CREATE POLICY "Students can view eligible job postings" ON "public"."job_postings" FOR SELECT TO "authenticated" USING (
+CREATE POLICY "Students can view college-mapped job postings" ON "public"."job_postings" FOR SELECT TO "authenticated" USING (
 CASE
-    WHEN ("public"."current_user_role"() = 'STUDENT'::"text") THEN "public"."check_student_eligibility"("public"."get_student_id_by_user_id"("auth"."uid"()), "id")
+    WHEN ("public"."current_user_role"() = 'STUDENT'::"text") THEN "public"."check_job_mapped_and_approved"("id", "public"."current_org_id"())
     ELSE false
 END);
 

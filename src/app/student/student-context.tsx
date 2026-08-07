@@ -100,6 +100,12 @@ export interface JobWithMapping {
     local_status: string
   } | null
   applicant_count: number
+  is_eligible?: boolean
+  eligibility_reasons?: {
+    branch: boolean
+    cgpa: boolean
+    backlogs: boolean
+  }
 }
 
 export interface Application {
