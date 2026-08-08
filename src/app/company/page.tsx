@@ -43,6 +43,8 @@ export default function CompanyRootPage() {
   const {
     jobs,
     applicants,
+    offers,
+    allApplicants
   } = useCompany()
 
   // ---------------------------------------------------------
@@ -50,50 +52,52 @@ export default function CompanyRootPage() {
   // ---------------------------------------------------------
 
   const totalJobs = jobs.length
-
+  // const selectableApplicants = applicants.filter(
+  //   (applicant) => applicant.status === "APPLIED"
+  // )
   const activeJobs = jobs.filter(
     (job) =>
-      job.global_status === "APPROVED" 
+      job.global_status === "APPROVED"
   ).length
 
   const pendingJobs = jobs.filter(
     (job) => job.global_status === "PENDING"
   ).length
 
-  const totalApplicants = applicants.length
+  const totalApplicants = allApplicants.length
 
-  const shortlistedApplicants = applicants.filter(
+  const shortlistedApplicants = allApplicants.filter(
     (applicant) => applicant.status === "SHORTLISTED"
   ).length
 
-  const offeredApplicants = applicants.filter(
+  const offeredApplicants = allApplicants.filter(
     (applicant) =>
       applicant.status === "OFFERED" ||
       applicant.offer?.status === "EXTENDED"
   ).length
 
-  const hiredApplicants = applicants.filter(
+  const hiredApplicants = allApplicants.filter(
     (applicant) =>
       applicant.status === "OFFERED" &&
       applicant.offer?.status !== "EXTENDED"
   ).length
 
-  const appliedApplicants = applicants.filter(
+  const appliedApplicants = allApplicants.filter(
     (applicant) => applicant.status === "APPLIED"
   ).length
 
   const shortlistRate =
     totalApplicants > 0
       ? Math.round(
-          (shortlistedApplicants / totalApplicants) * 100
-        )
+        (shortlistedApplicants / totalApplicants) * 100
+      )
       : 0
 
   const offerRate =
     totalApplicants > 0
       ? Math.round(
-          (offeredApplicants / totalApplicants) * 100
-        )
+        (offeredApplicants / totalApplicants) * 100
+      )
       : 0
 
   // ---------------------------------------------------------
@@ -102,31 +106,27 @@ export default function CompanyRootPage() {
 
   const jobPerformance = jobs
     .map((job) => {
-      const jobApplicants = applicants.filter(
+      const jobApplicants = allApplicants.filter(
         (applicant) =>
-          applicant.id === job.id
+          applicant.job_college_mapping?.job?.id === job.id
       )
 
       return {
         ...job,
         applicantCount: jobApplicants.length,
         shortlistedCount: jobApplicants.filter(
-          (applicant) =>
-            applicant.status === "SHORTLISTED"
+          (applicant) => applicant.status === "SHORTLISTED"
         ).length,
       }
     })
-    .sort(
-      (a, b) =>
-        b.applicantCount - a.applicantCount
-    )
+    .sort((a, b) => b.applicantCount - a.applicantCount)
     .slice(0, 5)
 
   // ---------------------------------------------------------
   // Recent candidates
   // ---------------------------------------------------------
 
-  const recentApplicants = [...applicants]
+  const recentApplicants = [...allApplicants]
     .sort((a, b) => {
       const aDate = new Date(
         a.applied_at ?? 0
@@ -500,30 +500,30 @@ export default function CompanyRootPage() {
       <Card>
         <CardHeader>
           <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <CardTitle>
-                  Recent Applicants
-                </CardTitle>
+            <div className="space-y-1">
+              <CardTitle>
+                Recent Applicants
+              </CardTitle>
 
-                <CardDescription>
-                  Latest candidates across your campus
-                  openings.
-                </CardDescription>
-              </div>
-              <div className="flex items-center justify-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() =>
-                    router.push(
-                      "/company/applicants"
-                    )
-                  }
-                >
-                  View applicants
-                  <IconArrowRight className="size-4" />
-                </Button>
-              </div>
+              <CardDescription>
+                Latest candidates across your campus
+                openings.
+              </CardDescription>
+            </div>
+            <div className="flex items-center justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() =>
+                  router.push(
+                    "/company/applicants"
+                  )
+                }
+              >
+                View applicants
+                <IconArrowRight className="size-4" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
 
@@ -608,7 +608,7 @@ export default function CompanyRootPage() {
 
                         <TableCell>
                           {applicant.mock_score !==
-                          null
+                            null
                             ? `${applicant.mock_score}/100`
                             : "—"}
                         </TableCell>
@@ -819,7 +819,7 @@ function EmptyState({
   description: string
 }) {
   return (
-    <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
+    <div className="flex min-h-55 flex-col items-center justify-center text-center">
       <div className="mb-3 flex size-10 items-center justify-center rounded-xl bg-muted text-muted-foreground">
         {React.cloneElement(
           icon as React.ReactElement<{
