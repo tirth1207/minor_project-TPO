@@ -10,6 +10,50 @@ export default function StudentApplicationsPage() {
     handleDecideOffer,
   } = useStudent()
 
+  const badge = (status: string) => {
+    if (status.toLowerCase() == "applied") {
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-bold bg-green-500 text-white uppercase tracking-wide">
+          {status}
+        </span>
+      )
+    }
+    else if (status.toLowerCase() == "not_eligible") {
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-bold bg-red-500 text-white uppercase tracking-wide">
+          {status}
+        </span>
+      )
+    }
+    else if (status.toLowerCase() == "interview_scheduled") {
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-500 text-white uppercase tracking-wide">
+          {status}
+        </span>
+      )
+    }
+    else if (status.toLowerCase() == "interview_completed") {
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-bold bg-orange-500 text-white uppercase tracking-wide">
+          {status}
+        </span>
+      )
+    }
+    else if (status.toLowerCase() == "offer_extended") {
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-500 text-white uppercase tracking-wide">
+          {status}
+        </span>
+      )
+    }
+    else if (status.toLowerCase() == "offer_accepted") {
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-bold bg-green-500 text-white uppercase tracking-wide">
+          {status}
+        </span>
+      )
+    }
+  }
   return (
     <div className="rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background flex flex-col gap-4">
       <h3 className="text-lg font-bold flex items-center gap-2">
@@ -37,9 +81,7 @@ export default function StudentApplicationsPage() {
 
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-zinc-400">Application Status:</span>
-                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 uppercase tracking-wide">
-                      {app.status}
-                    </span>
+                    {badge(app.status)}
                   </div>
                 </div>
 
