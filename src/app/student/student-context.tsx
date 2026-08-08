@@ -28,9 +28,9 @@ export interface StudentProfile {
   social_links: Record<string, string> | null
 
   profile_status:
-    | "PENDING"
-    | "APPROVED"
-    | "REJECTED"
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
 
   is_placed: boolean
   mentor_id: string | null
@@ -63,9 +63,9 @@ export interface StudentProfile {
       specialization: string | null
       phone: string | null
       profile_status:
-        | "PENDING"
-        | "APPROVED"
-        | "REJECTED"
+      | "PENDING"
+      | "APPROVED"
+      | "REJECTED"
     } | null
   } | null
 }
@@ -334,6 +334,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         const jobsData = await jobsRes.json()
         // Expecting { jobs: JobWithMapping[] }
         setJobs(jobsData.jobs || [])
+        console.log("Fetched jobs:", jobsData.jobs)
       }
 
       // 3. Fetch Applications
@@ -426,7 +427,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         throw new Error(
           data.error ||
-            "Failed to update profile"
+          "Failed to update profile"
         )
       }
 
