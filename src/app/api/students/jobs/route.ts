@@ -107,10 +107,10 @@ export async function GET() {
           global_status: jobRest.global_status,
           company: company_profiles
             ? {
-                id: company_profiles.id,
-                company_name: company_profiles.company_name,
-                website: company_profiles.website,
-              }
+              id: company_profiles.id,
+              company_name: company_profiles.company_name,
+              website: company_profiles.website,
+            }
             : null,
           branches: job_eligible_branches.map((b: { branch_name: string }) => ({
             branch_name: b.branch_name,
@@ -118,9 +118,9 @@ export async function GET() {
         },
         mapping: mapping
           ? {
-              id: mapping.id,
-              local_status: mapping.local_status,
-            }
+            id: mapping.id,
+            local_status: mapping.local_status,
+          }
           : null,
         is_eligible: isEligible,
         eligibility_reasons: {
