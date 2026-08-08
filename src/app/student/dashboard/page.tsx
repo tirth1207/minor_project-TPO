@@ -58,7 +58,7 @@ export default function StudentDashboardPage() {
 
   if (!profile) {
     return (
-      <div className="flex min-h-[400px] items-center justify-center">
+      <div className="flex min-h-100 items-center justify-center">
         <p className="text-sm text-muted-foreground">
           Student profile not found.
         </p>
