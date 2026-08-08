@@ -42,7 +42,84 @@ export interface Applicant {
     ctc_offered: number
     status: string
   } | null
+  job_college_mapping?: {
+    job?: {
+      id: string
+      title: string
+      description: string
+      ctc_min: number | null
+      ctc_max: number | null
+      location: string
+      work_mode: string
+      min_cgpa: number
+      max_backlogs: number
+      global_status: "PENDING" | "APPROVED" | "REJECTED"
+      require_mock: boolean
+      mock_pass_score: number
+      applicant_count: number
+      applications_count: number
+      branches: string[]
+    }
+    college?: {
+      id: string
+      name: string
+      description: string
+      location: string
+      website: string
+      logo_url: string
+    }
+  }
 }
+
+
+export interface Offer {
+  id: string
+  application_id: string
+
+  ctc_offered: number
+
+  status: OfferStatus
+
+  extended_at: string
+  decided_at: string | null
+}
+
+export type OfferStatus =
+  | "EXTENDED"
+  | "ACCEPTED"
+  | "REJECTED"
+
+
+export interface OfferWithApplication extends Offer {
+  application: {
+    id: string
+    status: string
+    applied_at: string
+    mock_score: number | null
+
+    job_college_mapping: {
+      id: string
+
+      job: {
+        id: string
+        title: string
+        company_id: string
+      }
+    }
+
+    student: {
+      id: string
+      name: string
+      enrollment_no: string
+      branch: string
+      cgpa: number
+      active_backlogs: number
+      resume_url: string
+    } | null
+  }
+}
+
+
 
 interface CompanyContextType {
   loading: boolean
@@ -53,6 +130,7 @@ interface CompanyContextType {
   selectedJob: JobPosting | null
   setSelectedJob: (job: JobPosting | null) => void
   applicants: Applicant[]
+  offers: Offer[]
 
   // New Job Form fields
   jobTitle: string
@@ -92,6 +170,8 @@ interface CompanyContextType {
   handleBulkShortlist: () => Promise<void>
   handleExtendOffer: (appId: string) => Promise<void>
   handleRevokeOffer: (offerId: string) => Promise<void>
+  allApplicants: Applicant[]
+  fetchAllApplicants: () => Promise<void>
 }
 
 const CompanyContext = React.createContext<CompanyContextType | undefined>(undefined)
@@ -109,6 +189,8 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [companyStatus, setCompanyStatus] = React.useState<string>("PENDING")
   const [selectedJob, setSelectedJob] = React.useState<JobPosting | null>(null)
   const [applicants, setApplicants] = React.useState<Applicant[]>([])
+  const [allApplicants, setAllApplicants] = React.useState<Applicant[]>([])
+  const [offers, setOffers] = React.useState<Offer[]>([])
 
   // New Job Form fields
   const [jobTitle, setJobTitle] = React.useState("")
@@ -196,6 +278,74 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     }
   }, [selectedJob])
 
+  const fetchAllApplicants = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/company/applications", {
+        method: "GET",
+        cache: "no-store",
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        console.error(
+          "Company applications API failed:",
+          data?.error || "Unknown error"
+        )
+
+        setAllApplicants([])
+        return
+      }
+
+      setAllApplicants(
+        Array.isArray(data?.applicants)
+          ? data.applicants
+          : []
+      )
+    } catch (err) {
+      console.error(
+        "Error fetching company applications:",
+        err
+      )
+
+      setAllApplicants([])
+    }
+  }, [])
+
+  const fetchOffers = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/company/offers", {
+        method: "GET",
+        cache: "no-store",
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        console.error(
+          "Company offers API failed:",
+          data?.error || "Unknown error"
+        )
+
+        setOffers([])
+        return
+      }
+
+      setOffers(
+        Array.isArray(data?.offers)
+          ? data.offers
+          : []
+      )
+    } catch (err) {
+      console.error(
+        "Error fetching company offers:",
+        err
+      )
+
+      setOffers([])
+    }
+  }, [])
+
   React.useEffect(() => {
     fetchData()
   }, [fetchData])
@@ -203,6 +353,14 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     fetchApplicants()
   }, [fetchApplicants])
+
+  React.useEffect(() => {
+    fetchAllApplicants()
+  }, [fetchAllApplicants])
+
+  React.useEffect(() => {
+    fetchOffers()
+  }, [fetchOffers])
 
   const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -327,6 +485,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         error,
         jobs,
         companyStatus,
+        offers,
         selectedJob,
         setSelectedJob,
         applicants,
@@ -362,6 +521,8 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         handleBulkShortlist,
         handleExtendOffer,
         handleRevokeOffer,
+        allApplicants,
+        fetchAllApplicants
       }}
     >
       {children}
