@@ -284,7 +284,7 @@ export default function StudentDashboardPage() {
             <CardContent className="flex-1 pt-6">
               {applications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center text-zinc-400">
-                 <IconFileCertificate className="h-10 w-10 stroke-[1.2] mb-2" />
+                  <IconFileCertificate className="h-10 w-10 stroke-[1.2] mb-2" />
                   <p className="text-sm font-semibold">No applications submitted yet</p>
                   <p className="text-xs mt-1 text-muted-foreground max-w-xs">
                     Once you apply for eligible drives, their progress rounds, mock scores, and offers will appear here.
@@ -296,13 +296,13 @@ export default function StudentDashboardPage() {
                     const job = app.job_college_mapping?.job
                     if (!job) return null
 
-                    const activeOffer = app.offers?.find(
-                      (o) => o.status === "EXTENDED"
-                    )
+                    // const activeOffer = app.offers?.find(
+                    //   (o) => o.status === "EXTENDED"
+                    // )
 
-                    const acceptedOffer = app.offers?.find(
-                      (o) => o.status === "ACCEPTED"
-                    )
+                    // const acceptedOffer = app.offers?.find(
+                    //   (o) => o.status === "ACCEPTED"
+                    // )
 
                     return (
                       <div
@@ -331,12 +331,12 @@ export default function StudentDashboardPage() {
                       </Button>
                     </div>
                   )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
+    </div>
   )
 }
