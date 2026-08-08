@@ -51,7 +51,7 @@ export function LoginForm({
             if (role === "STUDENT") {
                 router.push("/student/dashboard")
             } else if (role === "COMPANY") {
-                router.push("/company/dashboard")
+                router.push("/company")
             } else if (role === "COLLEGE_ADMIN") {
                 router.push("/college-admin")
             } else if (role === "MENTOR") {
