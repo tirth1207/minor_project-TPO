@@ -25,6 +25,13 @@ export default function StudentApplicationsPage() {
         </span>
       )
     }
+    else if (status.toLowerCase() == "shortlisted") {
+      return (
+        <span className="px-2 py-0.5 rounded text-xs font-bold bg-blue-500 text-white uppercase tracking-wide">
+          {status}
+        </span>
+      )
+    }
     else if (status.toLowerCase() == "interview_scheduled") {
       return (
         <span className="px-2 py-0.5 rounded text-xs font-bold bg-yellow-500 text-white uppercase tracking-wide">
@@ -67,8 +74,19 @@ export default function StudentApplicationsPage() {
             const job = app.job_college_mapping?.job
             if (!job) return null
 
-            const activeOffer = app.offers?.find(o => o.status === "EXTENDED")
-            const offerAccepted = app.offers?.find(o => o.status === "ACCEPTED")
+            const offers = Array.isArray(app.offers)
+              ? app.offers
+              : app.offers
+                ? [app.offers]
+                : []
+
+            const activeOffer = offers.find(
+              (offer) => offer.status === "EXTENDED"
+            )
+
+            const offerAccepted = offers.find(
+              (offer) => offer.status === "ACCEPTED"
+            )
 
             return (
               <div key={app.id} className="rounded-xl border border-secondary p-5 dark:border-secondary flex flex-col gap-4 bg-zinc-50/10">
@@ -107,15 +125,15 @@ export default function StudentApplicationsPage() {
 
                 {/* Offer Section */}
                 {activeOffer && (
-                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 text-sm text-emerald-800 flex flex-col sm:flex-row items-center justify-between gap-4 dark:border-emerald-950 dark:bg-emerald-950/20 dark:text-emerald-400 animate-pulse">
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/40 p-4 text-sm text-emerald-800 flex flex-col sm:flex-row items-center justify-between gap-4 dark:border-emerald-950 dark:bg-emerald-950/20 dark:text-emerald-400">
                     <div>
                       <p className="font-bold flex items-center gap-1"><IconAward className="h-5 w-5" /> Campus Placement Offer Extended! 🎉</p>
-                      <p className="text-xs mt-0.5">Corporate partner is extending an official job offer with an package package of **₹{activeOffer.ctc_offered} LPA**.</p>
+                      <p className="text-xs mt-0.5">Corporate partner is extending an official job offer with an package package of <b>₹{activeOffer.ctc_offered} LPA</b>.</p>
                     </div>
                     <div className="flex gap-2 shrink-0">
                       <button
                         onClick={() => handleDecideOffer(activeOffer.id, "ACCEPTED")}
-                        className="h-8 px-4 rounded-lg bg-emerald-600 text-zinc-55 text-xs font-semibold hover:bg-emerald-550 transition-all cursor-pointer"
+                        className="h-8 px-4 rounded-lg bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-550 transition-all cursor-pointer"
                       >
                         Accept Offer
                       </button>
