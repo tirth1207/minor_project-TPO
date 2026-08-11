@@ -10,6 +10,7 @@ export async function GET(
   try {
     const { id } = await params
     const auth = await requireActiveCompany()
+
     if (!auth.ok) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
@@ -52,6 +53,12 @@ export async function GET(
         ),
         job_college_mapping:job_college_mappings!inner(
           job_id
+        ),
+        rounds:application_rounds(
+          id,
+          round_name,
+          status,
+          company_feedback
         )
       `)
       .eq("job_college_mapping.job_id", id)
