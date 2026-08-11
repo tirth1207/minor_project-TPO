@@ -18,7 +18,7 @@ create type public.local_status_type as enum ('PENDING', 'APPROVED', 'REJECTED')
 create type public.application_status_type as enum ('APPLIED', 'WITHDRAWN', 'SHORTLISTED', 'REJECTED', 'OFFERED');
 create type public.round_status_type as enum ('PENDING', 'CLEARED', 'FAILED', 'SCHEDULED');
 create type public.offer_status_type as enum ('EXTENDED', 'ACCEPTED', 'REJECTED', 'REVOKED', 'AUTO_WITHDRAWN');
-create type public.mock_status_type as enum ('GENERATING', 'READY', 'COMPLETED', 'FAILED');
+create type public.mock_status_type as enum ('REQUESTED', 'QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED');
 
 -- =====================================================================
 -- 2. Tables Definition
@@ -174,7 +174,8 @@ create table public.mock_interviews (
     answers jsonb not null default '[]'::jsonb,
     ai_score int check (ai_score >= 0 and ai_score <= 100),
     ai_feedback text,
-    status public.mock_status_type not null default 'GENERATING'
+    status public.mock_status_type not null default 'REQUESTED',
+    retry_count integer not null default 0
 );
 
 -- 2.14 notifications Table
@@ -218,6 +219,8 @@ create index idx_offers_application_id on public.offers(application_id);
 create index idx_offers_status on public.offers(status);
 
 create index idx_notifications_user_id_is_read on public.notifications(user_id, is_read);
+
+create index idx_mock_interviews_status on public.mock_interviews(status);
 
 -- =====================================================================
 -- 4. Helper Functions
@@ -475,6 +478,23 @@ returns boolean as $$
 $$ language sql stable security definer;
 
 -- =====================================================================
+-- 4.4 Notification Helper Functions
+-- Helper function to create notifications
+create or replace function public.create_notification(
+    p_user_id uuid,
+    p_title varchar,
+    p_message text
+)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as 
+begin
+    insert into public.notifications (user_id, title, message, is_read)
+    values (p_user_id, p_title, p_message, false);
+end;
+
 -- 5. Trigger Functions
 -- =====================================================================
 
@@ -623,6 +643,323 @@ $$ language plpgsql security definer;
 create trigger trigger_validate_student_mentor
     before insert or update of mentor_id, user_id on public.student_profiles
     for each row execute function public.validate_student_mentor();
+
+-- 5.6 Student Profile Status Change Notification Trigger
+create or replace function public.notify_student_profile_status_change()
+returns trigger as $$
+begin
+  -- Check if profile_status actually changed
+  if OLD.profile_status is distinct from NEW.profile_status then
+    -- Determine the notification title and message based on new status
+    declare
+      v_title text;
+      v_message text;
+    begin
+      if NEW.profile_status = 'APPROVED' then
+        v_title := 'Profile Approved';
+        v_message := 'Congratulations! Your profile has been approved and you are now eligible to apply for jobs.';
+      elsif NEW.profile_status = 'REJECTED' then
+        v_title := 'Profile Rejected';
+        v_message := 'Your profile has been rejected. Please check your profile for any issues and resubmit for approval.';
+      elsif NEW.profile_status = 'PENDING' then
+        v_title := 'Profile Pending';
+        v_message := 'Your profile is now pending approval. Please make sure all required fields are filled out correctly.';
+      end if;
+      
+      -- Create the notification
+      perform public.create_notification(
+        NEW.user_id,
+        v_title,
+        v_message
+      );
+    end;
+  end if;
+  
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_student_profile_status_change
+    after update on public.student_profiles
+    for each row execute function public.notify_student_profile_status_change();
+
+-- 5.7 Job Approval/Rejection Notification Trigger
+create or replace function public.notify_job_approval_status_change()
+returns trigger as $$
+begin
+  -- Check if global_status actually changed
+  if OLD.global_status is distinct from NEW.global_status then
+    -- Determine the notification title and message based on new status
+    declare
+      v_title text;
+      v_message text;
+      v_company_user_id uuid;
+    begin
+      -- Get the company user ID
+      select user_id into v_company_user_id
+      from public.company_profiles
+      where id = NEW.company_id;
+      
+      if NEW.global_status = 'APPROVED' then
+        v_title := 'Job Approved';
+        v_message := 'Your job posting "' || NEW.title || '" has been approved and is now visible to students.';
+      elsif NEW.global_status = 'REJECTED' then
+        v_title := 'Job Rejected';
+        v_message := 'Your job posting "' || NEW.title || '" has been rejected. Please review the feedback and resubmit.';
+      else -- PENDING or other status
+        v_title := 'Job Pending';
+        v_message := 'Your job posting "' || NEW.title || '" is pending approval.';
+      end if;
+      
+      -- Create the notification
+      perform public.create_notification(
+        v_company_user_id,
+        v_title,
+        v_message
+      );
+    end;
+  end if;
+  
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_job_approval_status_change
+    after update on public.job_postings
+    for each row execute function public.notify_job_approval_status_change();
+
+-- 5.8 Application Status Change Notification Trigger
+create or replace function public.notify_application_status_change()
+returns trigger as $$
+begin
+  -- Check if status actually changed
+  if OLD.status is distinct from NEW.status then
+    -- Determine the notification title and message based on new status
+    declare
+      v_title text;
+      v_message text;
+      v_student_user_id uuid;
+      v_job_title text;
+    begin
+      -- Get the student user ID and job title
+      select s.user_id, jp.title into v_student_user_id, v_job_title
+      from public.applications a
+      join public.student_profiles s on a.student_id = s.id
+      join public.job_college_mappings jcm on a.job_college_map_id = jcm.id
+      join public.job_postings jp on jcm.job_id = jp.id
+      where a.id = NEW.id;
+      
+      if NEW.status = 'SHORTLISTED' then
+        v_title := 'Application Shortlisted';
+        v_message := 'Congratulations! Your application for "' || v_job_title || '" has been shortlisted.';
+      elsif NEW.status = 'REJECTED' then
+        v_title := 'Application Rejected';
+        v_message := 'We regret to inform you that your application for "' || v_job_title || '" has been rejected.';
+      elsif NEW.status = 'OFFERED' then
+        v_title := 'Application Offered';
+        v_message := 'Great news! Your application for "' || v_job_title || '" has been offered a position.';
+      elsif NEW.status = 'WITHDRAWN' then
+        v_title := 'Application Withdrawn';
+        v_message := 'Your application for "' || v_job_title || '" has been withdrawn.';
+      else -- APPLIED or other status
+        v_title := 'Application Status Updated';
+        v_message := 'The status of your application for "' || v_job_title || '" has been updated to ' || initcap(lower(NEW.status::text)) || '.';
+      end if;
+      
+      -- Create the notification
+      perform public.create_notification(
+        v_student_user_id,
+        v_title,
+        v_message
+      );
+    end;
+  end if;
+  
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_application_status_change
+    after update on public.applications
+    for each row execute function public.notify_application_status_change();
+
+-- 5.9 Offer Status Change Notification Trigger
+create or replace function public.notify_offer_status_change()
+returns trigger as $$
+begin
+  -- Check if status actually changed
+  if OLD.status is distinct from NEW.status then
+    -- Determine the notification title and message based on new status
+    declare
+      v_title text;
+      v_message text;
+      v_student_user_id uuid;
+      v_job_title text;
+      v_ctc_offered decimal;
+    begin
+      -- Get the student user ID, job title, and CTC offered
+      select s.user_id, jp.title, NEW.ctc_offered into v_student_user_id, v_job_title, v_ctc_offered
+      from public.offers o
+      join public.applications a on o.application_id = a.id
+      join public.student_profiles s on a.student_id = s.id
+      join public.job_college_mappings jcm on a.job_college_map_id = jcm.id
+      join public.job_postings jp on jcm.job_id = jp.id
+      where o.id = NEW.id;
+      
+      if NEW.status = 'ACCEPTED' then
+        v_title := 'Offer Accepted';
+        v_message := 'Congratulations! You have accepted the job offer for "' || v_job_title || '" with a CTC of ' || v_ctc_offered || ' LPA.';
+      elsif NEW.status = 'REJECTED' then
+        v_title := 'Offer Rejected';
+        v_message := 'You have rejected the job offer for "' || v_job_title || '" with a CTC of ' || v_ctc_offered || ' LPA.';
+      elsif NEW.status = 'REVOKED' then
+        v_title := 'Offer Revoked';
+        v_message := 'The job offer for "' || v_job_title || '" with a CTC of ' || v_ctc_offered || ' LPA has been revoked by the company.';
+      elsif NEW.status = 'AUTO_WITHDRAWN' then
+        v_title := 'Offer Auto-Withdrawn';
+        v_message := 'The job offer for "' || v_job_title || '" with a CTC of ' || v_ctc_offered || ' LPA has been automatically withdrawn as you have accepted another offer.';
+      else -- EXTENDED or other status
+        v_title := 'Offer Updated';
+        v_message := 'The status of your job offer for "' || v_job_title || '" has been updated to ' || initcap(lower(NEW.status::text)) || '.';
+      end if;
+      
+      -- Create the notification
+      perform public.create_notification(
+        v_student_user_id,
+        v_title,
+        v_message
+      );
+    end;
+  end if;
+  
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_offer_status_change
+    after update on public.offers
+    for each row execute function public.notify_offer_status_change();
+
+-- 5.10 Interview Scheduling Notification Trigger
+create or replace function public.notify_interview_scheduling()
+returns trigger as $$
+begin
+  -- Check if this is an insert or if status changed to SCHEDULED
+  if (TG_OP = 'INSERT') or 
+     (TG_OP = 'UPDATE' and OLD.status is distinct from NEW.status and NEW.status = 'SCHEDULED') then
+    -- Determine the notification title and message
+    declare
+      v_title text;
+      v_message text;
+      v_student_user_id uuid;
+      v_round_name text;
+      v_job_title text;
+    begin
+      -- Get the student user ID, round name, and job title
+      select s.user_id, NEW.round_name, jp.title into v_student_user_id, v_round_name, v_job_title
+      from public.application_rounds ar
+      join public.applications a on ar.application_id = a.id
+      join public.student_profiles s on a.student_id = s.id
+      join public.job_college_mappings jcm on a.job_college_map_id = jcm.id
+      join public.job_postings jp on jcm.job_id = jp.id
+      where ar.id = NEW.id;
+      
+      if TG_OP = 'INSERT' then
+        v_title := 'Interview Round Scheduled';
+        v_message := 'You have been scheduled for a "' || v_round_name || '" interview round for the job "' || v_job_title || '". Please prepare accordingly.';
+      else -- UPDATE and status changed to SCHEDULED
+        v_title := 'Interview Round Scheduled';
+        v_message := 'Your "' || v_round_name || '" interview round for the job "' || v_job_title || '" has been scheduled. Please prepare accordingly.';
+      end if;
+      
+      -- Create the notification
+      perform public.create_notification(
+        v_student_user_id,
+        v_title,
+        v_message
+      );
+    end;
+  end if;
+  
+  -- Return appropriate value based on operation
+  if TG_OP = 'DELETE' then
+    return OLD;
+  else
+    return NEW;
+  end if;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_interview_scheduling
+    after insert or update on public.application_rounds
+    for each row execute function public.notify_interview_scheduling();
+
+-- 5.11 Mentor Assignment Notification Trigger
+create or replace function public.notify_mentor_assignment()
+returns trigger as $$
+begin
+  -- Check if mentor_id actually changed (including being set from null or changed from one mentor to another)
+  if OLD.mentor_id is distinct from NEW.mentor_id then
+    -- Notify the student
+    declare
+      v_student_title text;
+      v_student_message text;
+      v_mentor_title text;
+      v_mentor_message text;
+      v_student_name text;
+      v_mentor_name text;
+    begin
+      -- Get student and mentor names
+      select 
+        coalesce(NEW.name, 'Student') into v_student_name,
+        coalesce(u.name, 'Mentor') into v_mentor_name
+      from public.student_profiles sp
+      left join public.users u on NEW.mentor_id = u.id
+      where sp.id = NEW.id;
+      
+      if NEW.mentor_id is not null then
+        -- Mentor assigned or changed
+        v_student_title := 'Mentor Assigned';
+        v_student_message := 'You have been assigned a mentor: ' || v_mentor_name || '.';
+        
+        v_mentor_title := 'New Mentee Assigned';
+        v_mentor_message := 'You have been assigned as a mentor to ' || v_student_name || '.';
+        
+        -- Create notification for student
+        perform public.create_notification(
+          NEW.user_id,
+          v_student_title,
+          v_student_message
+        );
+        
+        -- Create notification for mentor
+        perform public.create_notification(
+          NEW.mentor_id,
+          v_mentor_title,
+          v_mentor_message
+        );
+      else
+        -- Mentor removed
+        v_student_title := 'Mentor Removed';
+        v_student_message := 'Your mentor has been removed. Please contact the college admin if you need a new mentor assigned.';
+        
+        -- Create notification for student
+        perform public.create_notification(
+          NEW.user_id,
+          v_student_title,
+          v_student_message
+        );
+      end if;
+    end;
+  end if;
+  
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+create trigger on_mentor_assignment
+    after update on public.student_profiles
+    for each row execute function public.notify_mentor_assignment();
 
 -- =====================================================================
 -- 6. Row Level Security (RLS) Enablement & Policies
