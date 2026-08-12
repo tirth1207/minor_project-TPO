@@ -144,11 +144,15 @@ export interface Application {
 export interface MockInterview {
   id: string
   job_role_context: string
-  questions: { id: number; text: string }[]
+  questions: { id: number; text: string }[] // legacy, will be replaced by full question objects when AI is used
   answers: string[]
-  ai_score: number | null
-  ai_feedback: string | null
-  status: "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED"
+  ai_score: number | null // legacy field, keep for backward compatibility
+  ai_feedback: string | null // legacy field
+  overall_score: number | null
+  ai_summary: string | null
+  ai_results: any // JSON of per‑question results (typed via MockInterviewReport when available)
+  completed_at: string | null
+  status: "REQUESTED" | "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | "ANSWERING" | "EVALUATING" | "EVALUATED"
 }
 
 interface StudentContextType {
@@ -550,11 +554,16 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
 
     setScoringMock(true)
     try {
-      const res = await fetch(`/api/students/mock-interviews/${activeMock.id}/complete`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers: mockAnswers })
-      })
+// Submit answers for evaluation
+        const answersPayload = (activeMock.questions || []).map((q: any, idx: number) => ({
+          questionId: q.id,
+          answer: mockAnswers[idx] || ''
+        }))
+        const res = await fetch(`/api/students/mock-interviews/${activeMock.id}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers: answersPayload })
+        })
 
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to score interview")

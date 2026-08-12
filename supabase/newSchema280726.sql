@@ -66,10 +66,14 @@ ALTER TYPE "public"."local_status_type" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."mock_status_type" AS ENUM (
-    'GENERATING',
-    'READY',
+    'REQUESTED',
+    'QUEUED',
+    'PROCESSING',
     'COMPLETED',
-    'FAILED'
+    'FAILED',
+    'ANSWERING',
+    'EVALUATING',
+    'EVALUATED'
 );
 
 
@@ -956,7 +960,11 @@ CREATE TABLE IF NOT EXISTS "public"."mock_interviews" (
     "answers" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
     "ai_score" integer,
     "ai_feedback" "text",
-    "status" "public"."mock_status_type" DEFAULT 'GENERATING'::"public"."mock_status_type" NOT NULL,
+    "overall_score" integer CHECK (("overall_score" >= 0 AND "overall_score" <= 100)),
+    "ai_summary" "text",
+    "ai_results" "jsonb",
+    "completed_at" timestamp with time zone,
+    "status" "public"."mock_status_type" DEFAULT 'REQUESTED'::"public"."mock_status_type" NOT NULL,
     CONSTRAINT "mock_interviews_ai_score_check" CHECK ((("ai_score" >= 0) AND ("ai_score" <= 100)))
 );
 

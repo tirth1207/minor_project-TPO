@@ -18,7 +18,7 @@ create type public.local_status_type as enum ('PENDING', 'APPROVED', 'REJECTED')
 create type public.application_status_type as enum ('APPLIED', 'WITHDRAWN', 'SHORTLISTED', 'REJECTED', 'OFFERED');
 create type public.round_status_type as enum ('PENDING', 'CLEARED', 'FAILED', 'SCHEDULED');
 create type public.offer_status_type as enum ('EXTENDED', 'ACCEPTED', 'REJECTED', 'REVOKED', 'AUTO_WITHDRAWN');
-create type public.mock_status_type as enum ('REQUESTED', 'QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED');
+create type public.mock_status_type as enum ('REQUESTED', 'QUEUED', 'PROCESSING', 'COMPLETED', 'FAILED', 'ANSWERING', 'EVALUATING', 'EVALUATED');
 
 -- =====================================================================
 -- 2. Tables Definition
@@ -174,6 +174,10 @@ create table public.mock_interviews (
     answers jsonb not null default '[]'::jsonb,
     ai_score int check (ai_score >= 0 and ai_score <= 100),
     ai_feedback text,
+    overall_score int check (overall_score >= 0 and overall_score <= 100),
+    ai_summary text,
+    ai_results jsonb,
+    completed_at timestamptz,
     status public.mock_status_type not null default 'REQUESTED',
     retry_count integer not null default 0
 );

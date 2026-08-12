@@ -43,9 +43,9 @@ export async function POST(request: Request) {
 // Simulate processing delay (NVIDIA NIM service call)
       await new Promise(resolve => setTimeout(resolve, 1000))
 
-      // Generate questions using NVIDIA NIM API
-      const { generateMockQuestions } = await import('@/lib/nim')
-      const generatedQuestions = await generateMockQuestions(interview.job_role_context)
+// Generate questions via NVIDIA NIM wrapper
+       const { generateMockInterview } = await import('@/lib/ai/mock-interview')
+       const generatedQuestions = await generateMockInterview(interview.job_role_context)
 
         // Update with generated questions and set status to COMPLETED (questions ready)
         const { data: updatedInterview, error: updateError } = await supabase
