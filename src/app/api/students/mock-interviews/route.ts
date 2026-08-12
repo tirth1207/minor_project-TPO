@@ -180,7 +180,7 @@ export async function POST(request: Request) {
         job_role_context: jobRoleContext,
         questions: [], // Questions will be generated during processing
         answers: [],
-        status: "REQUESTED", // Start with REQUESTED status
+        // status will default to REQUESTED
       })
       .select()
       .single()

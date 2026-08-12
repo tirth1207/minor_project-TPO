@@ -182,7 +182,7 @@ export default function StudentJobsPage() {
                               <div className="space-y-1 text-zinc-500">
                                 {!reasons.branch && (
                                   <p>
-                                    Branch "{profile?.branch}" is not eligible.
+                                    Branch &quot;{profile?.branch}&quot; is not eligible.
                                   </p>
                                 )}
 

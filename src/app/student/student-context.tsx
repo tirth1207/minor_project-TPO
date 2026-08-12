@@ -148,7 +148,7 @@ export interface MockInterview {
   answers: string[]
   ai_score: number | null
   ai_feedback: string | null
-  status: "GENERATING" | "READY" | "COMPLETED" | "FAILED"
+  status: "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED"
 }
 
 interface StudentContextType {
@@ -496,7 +496,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       alert(`Job offer successfully ${status.toLowerCase()}!`)
       fetchData(true)
     } catch (err) {
-      err instanceof Error ? alert(err.message) : alert("An unexpected error occurred")
+      if (err instanceof Error) { alert(err.message) } else { alert("An unexpected error occurred") }
     }
   }
 
@@ -515,8 +515,24 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) throw new Error(data.error || "Failed to start mock")
 
       const mock = data.mockInterview
-      setActiveMock(mock)
-      setMockAnswers(new Array(mock.questions.length).fill(""))
+      // Trigger processing of queued mock interviews
+      await fetch("/api/mock-interviews/process", { method: "POST" })
+
+      // Poll for completion (max 10 attempts, 1s interval)
+      const poll = async (attempt = 0): Promise<any> => {
+        if (attempt >= 10) return null
+        const freshRes = await fetch("/api/students/mock-interviews")
+        const freshData = await freshRes.json()
+        const found = (freshData.mockInterviews || []).find((m: any) => m.id === mock.id)
+        if (found && found.status === "COMPLETED") return found
+        await new Promise(r => setTimeout(r, 1000))
+        return poll(attempt + 1)
+      }
+
+      const completedMock = await poll()
+      const finalMock = completedMock || mock
+      setActiveMock(finalMock)
+      setMockAnswers(new Array(finalMock.questions?.length || 0).fill(""))
     } catch (err) {
       alert(err instanceof Error ? err.message : "An unexpected error occurred")
     } finally {

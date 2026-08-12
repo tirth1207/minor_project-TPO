@@ -40,39 +40,12 @@ export async function POST(request: Request) {
           .update({ status: "PROCESSING" })
           .eq("id", interview.id)
 
-        // Simulate processing delay (NVIDIA NIM service call)
-        await new Promise(resolve => setTimeout(resolve, 1000))
+// Simulate processing delay (NVIDIA NIM service call)
+      await new Promise(resolve => setTimeout(resolve, 1000))
 
-        // Generate questions based on job role context (simulating NVIDIA NIM service)
-        let generatedQuestions = []
-        const normalizedRole = interview.job_role_context.toLowerCase().trim()
-
-        if (normalizedRole.includes("front") || normalizedRole.includes("react")) {
-          generatedQuestions = [
-            { id: 1, text: "Explain the difference between Server and Client Components in Next.js (App Router)." },
-            { id: 2, text: "Describe how the virtual DOM works and how React uses reconciliation to optimize rendering." },
-            { id: 3, text: "How do you optimize a web application's initial loading performance (e.g., Code Splitting, Lazy Loading)?" }
-          ]
-        } else if (normalizedRole.includes("back") || normalizedRole.includes("node") || normalizedRole.includes("sql")) {
-          generatedQuestions = [
-            { id: 1, text: "How do you design a database schema for a high-concurrency application to avoid race conditions?" },
-            { id: 2, text: "Explain the differences between SQL and NoSQL databases and their respective sweet spots." },
-            { id: 3, text: "How would you implement secure token-based authentication (JWT) and handle token expiration/revocation?" }
-          ]
-        } else if (normalizedRole.includes("full")) {
-          generatedQuestions = [
-            { id: 1, text: "Describe the lifecycle of an HTTP request from typing the URL to rendering the page in the browser." },
-            { id: 2, text: "Explain how you would handle complex state management across frontend and backend systems." },
-            { id: 3, text: "What is your approach to horizontal versus vertical scaling for web servers and databases?" }
-          ]
-        } else {
-          // Default / Behavioral and general technical questions
-          generatedQuestions = [
-            { id: 1, text: "Describe a challenging technical problem you solved. What was your systematic approach to resolving it?" },
-            { id: 2, text: "How do you stay up-to-date with fast-changing technologies and apply them to real projects?" },
-            { id: 3, text: "Describe a situation where you had to make a trade-off between clean code and meeting a tight release deadline." }
-          ]
-        }
+      // Generate questions using NVIDIA NIM API
+      const { generateMockQuestions } = await import('@/lib/nim')
+      const generatedQuestions = await generateMockQuestions(interview.job_role_context)
 
         // Update with generated questions and set status to COMPLETED (questions ready)
         const { data: updatedInterview, error: updateError } = await supabase
@@ -151,7 +124,7 @@ export async function POST(request: Request) {
             .eq("id", interview.id)
         }
 
-        errors.push({ id: interview.id, error: error.message })
+        errors.push({ id: interview.id, error: (error as any).message })
       }
     }
 

@@ -136,7 +136,7 @@ export async function GET() {
       .filter((entry: any) => entry.mapping !== null)
       .map((entry: any) => entry.mapping!.id)
 
-    let applicantCounts: Record<string, number> = {}
+    const applicantCounts: Record<string, number> = {}
     if (mappingIds.length > 0) {
       const countsPromises = mappingIds.map((id: any) =>
         supabase.rpc("get_job_applicant_count", { p_job_college_map_id: id })
