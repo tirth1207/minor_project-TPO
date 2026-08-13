@@ -14,17 +14,18 @@ export async function POST(request: Request) {
 
     // Only allow SA or COLLEGE_ADMIN to process mock interviews (internal operation)
     const role = user.app_metadata?.role
-    if (role !== 'SA' && role !== 'COLLEGE_ADMIN') {
+    if (role !== 'SA' && role !== 'COLLEGE_ADMIN' && role !== 'STUDENT') {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     // Find all mock interviews with QUEUED status
     const { data: queuedInterviews, error: fetchError } = await supabase
       .from("mock_interviews")
-      .select("id, job_role_context, retry_count")
+      .select("id, student_id, job_role_context, retry_count")
       .eq("status", "QUEUED")
 
     if (fetchError) {
+      console.error("Error fetching queued mock interviews:", fetchError)
       return NextResponse.json({ error: fetchError.message }, { status: 500 })
     }
 
