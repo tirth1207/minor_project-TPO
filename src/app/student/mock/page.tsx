@@ -17,7 +17,7 @@ export default function StudentMockPage() {
     handleStartMock,
     handleCompleteMock,
   } = useStudent()
-
+  console.log("Rendering StudentMockPage with activeMock:", activeMock)
   return (
     <div className="grid gap-6 md:grid-cols-3 items-start">
 
