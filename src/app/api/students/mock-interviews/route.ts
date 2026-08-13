@@ -147,6 +147,7 @@ export async function GET() {
       .order("id", { ascending: false })
 
     if (fetchError) {
+      console.error("Error fetching mock interviews after processing:", fetchError)
       return NextResponse.json({ error: fetchError.message }, { status: 400 })
     }
 
@@ -170,6 +171,7 @@ export async function POST(request: Request) {
 
     const { jobRoleContext } = await request.json()
     if (!jobRoleContext || typeof jobRoleContext !== "string") {
+      console.error("Invalid jobRoleContext:", jobRoleContext)
       return NextResponse.json({ error: "jobRoleContext is required" }, { status: 400 })
     }
 
@@ -186,6 +188,7 @@ export async function POST(request: Request) {
       .single()
 
     if (insertError) {
+      console.error("Error inserting new mock interview:", insertError)
       return NextResponse.json({ error: insertError.message }, { status: 400 })
     }
 
