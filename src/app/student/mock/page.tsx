@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useStudent } from "../student-context"
 import { IconRobot, IconExclamationCircle, IconAward } from "@tabler/icons-react"
+import Link from "next/link"
 
 export default function StudentMockPage() {
   const {
@@ -62,11 +63,13 @@ export default function StudentMockPage() {
             <p className="text-[10px] text-zinc-400 italic">No mock records yet.</p>
           ) : (
             mocks.map(m => (
-              <div key={m.id} className="p-2.5 border rounded-lg flex items-center justify-between text-xs dark:border-secondary bg-zinc-50/30">
-                <div className="truncate max-w-[140px]">
-                  <p className="font-bold truncate text-zinc-800 dark:text-zinc-200">{m.job_role_context}</p>
-                  <p className="text-[9px] text-zinc-400 capitalize">{m.status.toLowerCase()}</p>
-                </div>
+              <div key={m.id} className="p-2.5 border rounded-lg flex items-center justify-between text-xs dark:border-secondary">
+                <Link href={`/student/mock/${m.id}`} className="block w-full">
+                  <div className="truncate max-w-[140px]">
+                    <p className="font-bold truncate text-zinc-800 dark:text-zinc-200">{m.job_role_context}</p>
+                    <p className="text-[9px] text-zinc-400 capitalize">{m.status.toLowerCase()}</p>
+                  </div>
+                </Link>
                 {m.ai_score !== null && (
                   <span className="font-black text-sm text-primary">{m.ai_score}%</span>
                 )}
