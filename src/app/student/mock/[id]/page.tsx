@@ -42,10 +42,10 @@ type AIResult = {
 
 type MockInterview = {
   id: string;
-  student_id: string;
+  student_id?: string;
   job_role_context: string;
-  questions: Question[] | string[];
-  answers: Answer[] | string[];
+  questions: Question[] | string[] | any;
+  answers: Answer[] | string[] | any;
   ai_score: number | null;
   ai_feedback: string | null;
   overall_score: number | null;
@@ -53,7 +53,7 @@ type MockInterview = {
   ai_results: AIResult[] | Record<string, unknown> | null;
   completed_at: string | null;
   status: string;
-  retry_count: number;
+  retry_count?: number;
 };
 
 function getQuestionText(question: Question | string) {
@@ -137,7 +137,7 @@ export default function InterviewScorePage() {
     if (!id || !mocks) return;
 
     const found = mocks.find(
-      (item: MockInterview) => item.id === id
+      (item) => item.id === id
     );
 
     if (found) {
@@ -163,7 +163,7 @@ export default function InterviewScorePage() {
           </h1>
 
           <p className="mt-2 text-sm text-muted-foreground">
-            We couldn't find this interview evaluation.
+            We couldn&apos;t find this interview evaluation.
           </p>
 
           <button
@@ -328,7 +328,7 @@ export default function InterviewScorePage() {
           <StatCard
             icon={<IconTrendingUp />}
             label="Attempts"
-            value={`${mock.retry_count + 1}`}
+            value={`${(mock.retry_count ?? 0) + 1}`}
             description="Total attempts"
           />
         </section>
@@ -526,7 +526,7 @@ function StatCard({
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary text-muted-foreground">
         {React.cloneElement(
-          icon as React.ReactElement,
+          icon as React.ReactElement<{ className?: string }>,
           {
             className: "h-4 w-4",
           }
@@ -564,7 +564,7 @@ function InfoCard({
       <div className="flex items-center gap-3">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-secondary text-primary">
           {React.cloneElement(
-            icon as React.ReactElement,
+            icon as React.ReactElement<{ className?: string }>,
             {
               className: "h-4 w-4",
             }

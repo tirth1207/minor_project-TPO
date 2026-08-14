@@ -143,16 +143,18 @@ export interface Application {
 
 export interface MockInterview {
   id: string
+  student_id?: string
   job_role_context: string
-  questions: { id: number; text: string }[] // legacy, will be replaced by full question objects when AI is used
-  answers: string[]
+  questions: any[] // legacy or full question objects when AI is used
+  answers: any[]
   ai_score: number | null // legacy field, keep for backward compatibility
   ai_feedback: string | null // legacy field
   overall_score: number | null
   ai_summary: string | null
   ai_results: any // JSON of per‑question results (typed via MockInterviewReport when available)
   completed_at: string | null
-  status: "REQUESTED" | "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | "ANSWERING" | "EVALUATING" | "EVALUATED"
+  status: "REQUESTED" | "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | "ANSWERING" | "EVALUATING" | "EVALUATED" | string
+  retry_count?: number
 }
 
 interface StudentContextType {

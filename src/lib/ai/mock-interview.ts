@@ -23,8 +23,8 @@ Return ONLY a JSON array of the question objects, no surrounding text.
 `
   const userPrompt = `Role: ${jobRoleContext}\n${jobInfo ? `Job description: ${jobInfo.description}\nRequired skills: ${jobInfo.skills?.join(', ')}` : ''}`
   const messages = [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: userPrompt },
+    { role: 'system' as const, content: systemPrompt },
+    { role: 'user' as const, content: userPrompt },
   ]
   const data = await callNvidiaChat('meta/llama-3.1-70b-instruct', messages)
   // Expect data.choices[0].message.content to contain JSON.

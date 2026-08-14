@@ -122,13 +122,13 @@ async function evaluateMockInterview(
     raw?.length ?? 0
   );
 
-  let parsed: unknown;
+  let parsed: any;
   
   try {
     parsed = JSON.parse(raw);
     console.log("[Mock AI] Evaluation parsed successfully");
     console.log("[Mock AI] Score:", parsed?.overallScore);
-    console.log("[Mock AI] Results:", parsed?.results.length);
+    console.log("[Mock AI] Results:", parsed?.results?.length);
   } catch (error) {
     console.error("Failed to parse evaluation JSON:", raw);
     throw new Error("Malformed evaluation response");
