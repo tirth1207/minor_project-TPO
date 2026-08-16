@@ -104,8 +104,30 @@ export default function InterviewScorePage() {
 
   useEffect(() => {
     if (!id || !mocks) return;
-    const found = mocks.find((item: MockInterview) => item.id === id);
-    if (found) setMock(found);
+    const found = mocks.find((item: any) => item.id === id);
+    if (found) {
+      const normalized: MockInterview = {
+        id: found.id,
+        job_role_context: found.job_role_context,
+        questions: Array.isArray(found.questions)
+          ? found.questions.map((q: any) => ({
+              id: String(q.id || q.questionId || ''),
+              text: typeof q.text === 'string' ? q.text : (typeof q.question === 'string' ? q.question : 'Untitled question')
+            }))
+          : (found.questions as any),
+        answers: Array.isArray(found.answers) ? found.answers : [],
+        ai_score: typeof found.ai_score === 'number' ? found.ai_score : null,
+        ai_feedback: typeof found.ai_feedback === 'string' ? found.ai_feedback : null,
+        overall_score: typeof found.overall_score === 'number' ? found.overall_score : null,
+        ai_summary: typeof found.ai_summary === 'string' ? found.ai_summary : null,
+        ai_results: typeof found.ai_results === 'object' && found.ai_results !== null ? found.ai_results : null,
+        completed_at: typeof found.completed_at === 'string' ? found.completed_at : null,
+        status: found.status || 'REQUESTED',
+        student_id: found.student_id || '',
+        retry_count: typeof found.retry_count === 'number' ? found.retry_count : 0,
+      };
+      setMock(normalized);
+    }
   }, [id, mocks]);
 
   const results = useMemo(
@@ -164,7 +186,13 @@ export default function InterviewScorePage() {
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <span
               className={`h-1.5 w-1.5 rounded-full ${
-                mock.status === "COMPLETED" ? "bg-emerald-500" : "bg-amber-500"
+                mock.status === "EVALUATED"
+                  ? "bg-emerald-500"
+                : mock.status === "EVALUATING"
+                  ? "bg-amber-500"
+                : mock.status === "FAILED"
+                  ? "bg-destructive"
+                : "bg-zinc-500"
               }`}
             />
             {mock.status}

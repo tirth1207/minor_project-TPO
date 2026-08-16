@@ -77,13 +77,13 @@ export async function POST(
     }
 
     // --------------------------------------------------
-    // 5. Verify interview is ready
+    // 5. Verify interview is ready for answering
     // --------------------------------------------------
 
-    if (mock.status !== "COMPLETED") {
+    if (mock.status !== "ANSWERING") {
       return NextResponse.json(
         {
-          error: `Interview not ready for evaluation. Current status: ${mock.status}`,
+          error: `Interview not ready for submission. Current status: ${mock.status}`,
         },
         { status: 400 }
       );
@@ -182,11 +182,12 @@ export async function POST(
         error
       );
 
-      // Allow the student to retry.
+      // Allow the student to retry evaluation.
+      // Do not leave stuck in EVALUATING - transition back to ANSWERING
       await supabase
         .from("mock_interviews")
         .update({
-          status: "COMPLETED",
+          status: "ANSWERING",
         })
         .eq("id", id)
         .eq("student_id", studentId);
@@ -229,11 +230,11 @@ export async function POST(
         updateError
       );
 
-      // Don't leave it stuck in EVALUATING.
+      // Don't leave it stuck in EVALUATING - transition back to ANSWERING
       await supabase
         .from("mock_interviews")
         .update({
-          status: "COMPLETED",
+          status: "ANSWERING",
         })
         .eq("id", id)
         .eq("student_id", studentId);
@@ -262,7 +263,7 @@ export async function POST(
         await supabase.from("notifications").insert({
           user_id: studentProfile.user_id,
           title: "Mock Interview Completed",
-          message: "...",
+          message: `Your mock interview for "${updatedMock.job_role_context}" has been evaluated. Your score is ${updatedMock.overallScore}%.`,
           is_read: false,
         });
 

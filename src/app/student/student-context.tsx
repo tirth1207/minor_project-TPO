@@ -153,6 +153,8 @@ export interface MockInterview {
   ai_results: any // JSON of per‑question results (typed via MockInterviewReport when available)
   completed_at: string | null
   status: "REQUESTED" | "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | "ANSWERING" | "EVALUATING" | "EVALUATED"
+  student_id: string
+  retry_count: number
 }
 
 interface StudentContextType {
@@ -210,7 +212,7 @@ interface StudentContextType {
   handleApplyJob: (mappingId: string | null) => Promise<void> // accept nullable mappingId
   handleDecideOffer: (offerId: string, status: "ACCEPTED" | "REJECTED") => Promise<void>
   handleStartMock: () => Promise<void>
-  handleCompleteMock: () => Promise<void>
+  handleCompleteMock: (answersOverride?: string[]) => Promise<void>
 }
 
 const StudentContext = React.createContext<StudentContextType | undefined>(undefined)
@@ -522,13 +524,14 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       // Trigger processing of queued mock interviews
       await fetch("/api/mock-interviews/process", { method: "POST" })
 
-      // Poll for completion (max 10 attempts, 1s interval)
+      // Poll for ANSWERING status (max 15 attempts, 1s interval)
+      // ANSWERING is the new "questions ready" state after NVIDIA generation
       const poll = async (attempt = 0): Promise<any> => {
-        if (attempt >= 10) return null
+        if (attempt >= 15) return null
         const freshRes = await fetch("/api/students/mock-interviews")
         const freshData = await freshRes.json()
         const found = (freshData.mockInterviews || []).find((m: any) => m.id === mock.id)
-        if (found && found.status === "COMPLETED") return found
+        if (found && found.status === "ANSWERING") return found
         await new Promise(r => setTimeout(r, 1000))
         return poll(attempt + 1)
       }
@@ -545,34 +548,70 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Complete and score AI Mock interview
-  const handleCompleteMock = async () => {
+  // Complete and score AI Mock interview
+const handleCompleteMock = async (
+    answersOverride?: string[]
+  ) => {
     if (!activeMock) return
-    if (mockAnswers.some(ans => !ans.trim())) {
-      alert("Please provide an answer for all mock interview questions.")
+
+    const answersToSubmit =
+      answersOverride ?? mockAnswers
+
+    if (
+      answersToSubmit.length !== activeMock.questions.length ||
+      answersToSubmit.some((ans) => !ans.trim())
+    ) {
+      alert(
+        "Please provide an answer for all mock interview questions."
+      )
       return
     }
 
     setScoringMock(true)
+
     try {
-// Submit answers for evaluation
-        const answersPayload = (activeMock.questions || []).map((q: any, idx: number) => ({
+      const answersPayload = activeMock.questions.map(
+        (q, idx) => ({
           questionId: q.id,
-          answer: mockAnswers[idx] || ''
-        }))
-        const res = await fetch(`/api/students/mock-interviews/${activeMock.id}/submit`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answers: answersPayload })
+          answer: answersToSubmit[idx].trim(),
         })
+      )
+
+      const res = await fetch(
+        `/api/students/mock-interviews/${activeMock.id}/submit`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            answers: answersPayload,
+          }),
+        }
+      )
 
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to score interview")
 
-      alert("AI Mock Interview completed and scored successfully!")
+      if (!res.ok) {
+        throw new Error(
+          data.error || "Failed to score interview"
+        )
+      }
+
+      alert(
+        "AI Mock Interview completed and scored successfully!"
+      )
+
+      setMockAnswers(answersToSubmit)
       setActiveMock(null)
-      fetchData(true)
+
+      await fetchData(true)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "An unexpected error occurred")
+      alert(
+        err instanceof Error
+          ? err.message
+          : "An unexpected error occurred"
+      )
     } finally {
       setScoringMock(false)
     }

@@ -7,7 +7,7 @@
 
 import OpenAI from "openai";
 
-type NvidiaMessage = {
+export type NvidiaMessage = {
   role: "system" | "user" | "assistant";
   content: string;
 };

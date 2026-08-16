@@ -127,8 +127,6 @@ async function evaluateMockInterview(
   try {
     parsed = JSON.parse(raw);
     console.log("[Mock AI] Evaluation parsed successfully");
-    console.log("[Mock AI] Score:", parsed?.overallScore);
-    console.log("[Mock AI] Results:", parsed?.results.length);
   } catch (error) {
     console.error("Failed to parse evaluation JSON:", raw);
     throw new Error("Malformed evaluation response");
@@ -144,7 +142,11 @@ async function evaluateMockInterview(
     throw new Error("Invalid evaluation format");
   }
 
-  return parsed as MockInterviewReport;
+  // Type is narrowed by the validation above
+  const report = parsed as MockInterviewReport;
+  console.log("[Mock AI] Overall score:", report.overallScore);
+  console.log("[Mock AI] Results:", report.results?.length);
+  return report;
 }
 
 export { evaluateMockInterview };

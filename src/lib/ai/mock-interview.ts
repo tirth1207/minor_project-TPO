@@ -1,5 +1,6 @@
 import { callNvidiaChat } from './nvidia'
 import type { MockInterviewQuestion } from '@/types/mock-interview'
+import type { NvidiaMessage } from './nvidia'
 
 /**
  * Generate a set of interview questions for a given role.
@@ -22,7 +23,7 @@ If a job description is provided, tailor the questions to that context.
 Return ONLY a JSON array of the question objects, no surrounding text.
 `
   const userPrompt = `Role: ${jobRoleContext}\n${jobInfo ? `Job description: ${jobInfo.description}\nRequired skills: ${jobInfo.skills?.join(', ')}` : ''}`
-  const messages = [
+  const messages: NvidiaMessage[] = [
     { role: 'system', content: systemPrompt },
     { role: 'user', content: userPrompt },
   ]
