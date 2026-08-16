@@ -13,7 +13,7 @@ export async function generateMockInterview(
   jobRoleContext: string,
   jobInfo?: any
 ): Promise<MockInterviewQuestion[]> {
-  const model = process.env.NVIDIA_MODEL ?? "meta/llama-3.2-3b-instruct"
+  const model = process.env.NVIDIA_MODEL ?? "openai/gpt-oss-120b"
 
   // Build a system prompt that instructs the model to output strict JSON.
   const systemPrompt = `You are an expert interview designer.
@@ -48,11 +48,19 @@ Return ONLY a JSON array of the question objects, no surrounding text.
     throw new Error("Empty AI response")
   }
 
+  // Strip possible markdown code fences and extract the first JSON block (object or array)
+  const cleaned = raw.replace(/^```(?:json)?\n/, "").replace(/```$/,"").trim()
+  const jsonMatch = cleaned.match(/(\{[\s\S]*\})|(\[[\s\S]*\])/)
+  if (!jsonMatch) {
+    console.error("Failed to locate JSON in AI response", raw)
+    throw new Error("Malformed AI response")
+  }
+
   let parsed: any
   try {
-    parsed = JSON.parse(raw)
+    parsed = JSON.parse(jsonMatch[0])
   } catch (e) {
-    console.error("Failed to parse AI response", raw)
+    console.error("Failed to parse AI JSON", jsonMatch[0])
     throw new Error("Malformed AI response")
   }
 

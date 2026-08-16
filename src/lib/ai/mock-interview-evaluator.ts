@@ -117,18 +117,21 @@ async function evaluateMockInterview(
   if (!raw) {
     throw new Error("Empty AI evaluation response");
   }
-  console.log(
-    "[Mock AI] Raw response length:",
-    raw?.length ?? 0
-  );
+  // Strip markdown fences if present and locate JSON block
+  const cleaned = raw.replace(/^```(?:json)?\n/, "").replace(/```$/, "").trim();
+  const jsonMatch = cleaned.match(/(\{[\s\S]*\})|(\[[\s\S]*\])/);
+  if (!jsonMatch) {
+    console.error("Failed to locate JSON in evaluation response", raw);
+    throw new Error("Malformed evaluation response");
+  }
 
   let parsed: unknown;
   
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(jsonMatch[0]);
     console.log("[Mock AI] Evaluation parsed successfully");
   } catch (error) {
-    console.error("Failed to parse evaluation JSON:", raw);
+    console.error("Failed to parse evaluation JSON:", jsonMatch[0]);
     throw new Error("Malformed evaluation response");
   }
 

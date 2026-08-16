@@ -60,79 +60,8 @@ export async function POST(request: Request) {
           throw new Error("Concurrent processing detected - interview no longer in QUEUED state")
         }
 
-        // Call NVIDIA NIM to generate questions with retry
-        let generatedQuestions: any[] = []
-        let lastError: any = null
-
-        for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-          try {
-            generatedQuestions = await generateMockInterview(
-              updatedInterview.job_role_context
-            )
-            // Success - break out of retry loop
-            break
-          } catch (generateError: any) {
-            lastError = generateError
-            console.error(
-              `[MOCK] NVIDIA generation attempt ${attempt}/${MAX_RETRIES} failed:`,
-              generateError.message
-            )
-
-            if (attempt >= MAX_RETRIES) {
-              // Max retries reached - mark as FAILED
-              await supabase
-                .from("mock_interviews")
-                .update({
-                  status: "FAILED",
-                  retry_count: (interview.retry_count ?? 0) + MAX_RETRIES,
-                })
-                .eq("id", interview.id)
-
-              // Send notification of failure
-              const { data: studentProfile, error: studentError } = await supabase
-                .from("student_profiles")
-                .select("user_id")
-                .eq("id", updatedInterview.student_id)
-                .single()
-
-              if (!studentError && studentProfile) {
-                await supabase
-                  .from("notifications")
-                  .insert({
-                    user_id: studentProfile.user_id,
-                    title: "Mock Interview Processing Failed",
-                    message: `Your mock interview for "${updatedInterview.job_role_context}" failed to process after ${MAX_RETRIES} attempts. Please try creating a new mock interview.`,
-                    is_read: false,
-                  })
-              }
-
-              errors.push({
-                id: interview.id,
-                error: lastError.message,
-              })
-              continue // continue to next interview
-            }
-
-            // Wait with exponential backoff before retry
-            const backoffMs = Math.min(
-              BASE_DELAY_MS * 2 ** (attempt - 1),
-              MAX_DELAY_MS
-            )
-            await new Promise((resolve) => setTimeout(resolve, backoffMs))
-          }
-        }
-
-        // If we got here and generatedQuestions is still undefined, all retries failed
-        if (
-          !generatedQuestions ||
-          !Array.isArray(generatedQuestions)
-        ) {
-          throw new Error(
-            `AI question generation failed after ${MAX_RETRIES} retries: ${
-              lastError?.message || "unknown error"
-            }`
-          )
-        }
+        // Generate interview questions (retry logic handled inside generateMockInterview)
+        const generatedQuestions = await generateMockInterview(updatedInterview.job_role_context);
 
         // Validate generated questions minimum count
         if (generatedQuestions.length < 3) {
