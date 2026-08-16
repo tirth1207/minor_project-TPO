@@ -31,7 +31,7 @@ export async function generateMockQuestions(jobRoleContext: string): Promise<{ i
         Authorization: `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'meta/llama3-8b-instruct', // example model, adjust as needed
+        // model: 'meta/llama3-8b-instruct', // example model, adjust as needed
         stream: false,
         messages: [
           {

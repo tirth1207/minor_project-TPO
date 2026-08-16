@@ -17,7 +17,6 @@ export interface StudentProfile {
   branch: string
   semester: number
   cgpa: number
-  active_backlogs: number
 
   skills: string[] | null
   hobbies: string[] | null
@@ -28,9 +27,9 @@ export interface StudentProfile {
   social_links: Record<string, string> | null
 
   profile_status:
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED"
+    | "PENDING"
+    | "APPROVED"
+    | "REJECTED"
 
   is_placed: boolean
   mentor_id: string | null
@@ -63,9 +62,9 @@ export interface StudentProfile {
       specialization: string | null
       phone: string | null
       profile_status:
-      | "PENDING"
-      | "APPROVED"
-      | "REJECTED"
+        | "PENDING"
+        | "APPROVED"
+        | "REJECTED"
     } | null
   } | null
 }
@@ -141,10 +140,19 @@ export interface Application {
   }[]
 }
 
+export interface MockQuestion {
+  id: string
+  type: "behavioral" | "technical" | "coding"
+  prompt: string
+  rubric: string
+  referenceAnswer?: string
+  language?: string
+}
+
 export interface MockInterview {
   id: string
   job_role_context: string
-  questions: { id: number; text: string }[] // legacy, will be replaced by full question objects when AI is used
+  questions: MockQuestion[]
   answers: string[]
   ai_score: number | null // legacy field, keep for backward compatibility
   ai_feedback: string | null // legacy field
@@ -152,7 +160,15 @@ export interface MockInterview {
   ai_summary: string | null
   ai_results: any // JSON of per‑question results (typed via MockInterviewReport when available)
   completed_at: string | null
-  status: "REQUESTED" | "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED" | "ANSWERING" | "EVALUATING" | "EVALUATED"
+  status:
+    | "REQUESTED"
+    | "QUEUED"
+    | "PROCESSING"
+    | "COMPLETED"
+    | "FAILED"
+    | "ANSWERING"
+    | "EVALUATING"
+    | "EVALUATED"
   student_id: string
   retry_count: number
 }
@@ -162,7 +178,7 @@ interface StudentContextType {
   refreshing: boolean
   error: string | null
   profile: StudentProfile | null
-  jobs: JobWithMapping[] // renamed from eligibleJobs to reflect new structure
+  jobs: JobWithMapping[]
   applications: Application[]
   mocks: MockInterview[]
 
@@ -295,6 +311,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         setEditPhone(studentProf.phone ?? "")
         setEditBio(studentProf.bio ?? "")
         setEditEnrollmentNo(studentProf.enrollment_no ?? "")
+
         setEditCgpa(
           studentProf.cgpa?.toString() ?? ""
         )
@@ -392,7 +409,9 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
             address: editAddress.trim(),
 
             phone: editPhone.trim(),
+
             enrollment_no: editEnrollmentNo.trim(),
+
             bio: editBio.trim(),
 
             cgpa: Number(editCgpa),
@@ -433,7 +452,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) {
         throw new Error(
           data.error ||
-          "Failed to update profile"
+            "Failed to update profile"
         )
       }
 
@@ -511,6 +530,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     if (!targetRole.trim()) return
     setScoringMock(true)
     try {
+      // Step 1: Create mock interview (status defaults to REQUESTED)
       const res = await fetch("/api/students/mock-interviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -521,26 +541,107 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) throw new Error(data.error || "Failed to start mock")
 
       const mock = data.mockInterview
-      // Trigger processing of queued mock interviews
+      setActiveMock(mock)
+
+      // Step 2: Trigger processing of queued mock interviews
       await fetch("/api/mock-interviews/process", { method: "POST" })
 
-      // Poll for ANSWERING status (max 15 attempts, 1s interval)
-      // ANSWERING is the new "questions ready" state after NVIDIA generation
-      const poll = async (attempt = 0): Promise<any> => {
-        if (attempt >= 15) return null
-        const freshRes = await fetch("/api/students/mock-interviews")
-        const freshData = await freshRes.json()
-        const found = (freshData.mockInterviews || []).find((m: any) => m.id === mock.id)
-        if (found && found.status === "ANSWERING") return found
-        await new Promise(r => setTimeout(r, 1000))
-        return poll(attempt + 1)
+      // Step 3: Status-driven polling with backoff
+      // States where we should continue polling: QUEUED, PROCESSING
+      // States where we should stop: ANSWERING, FAILED, EVALUATED, COMPLETED
+      const pollStates = new Set(["QUEUED", "PROCESSING"])
+
+      // Backoff sequence: 1s, 2s, 3s, 5s, 8s, 10s, 10s, ...
+      const backoffSequence = [1000, 2000, 3000, 5000, 8000, 10000, 10000]
+
+      let sequenceIndex = 0
+
+      const poll = async (): Promise<MockInterview | null> => {
+        // Check current active mock status
+        if (!activeMock) return null
+
+        const currentStatus = activeMock.status
+
+        // Stop polling if we reached a terminal state
+        if (!pollStates.has(currentStatus)) {
+          // Terminal state reached - return the mock
+          return activeMock
+        }
+
+        // Don't poll past the maximum duration
+        if (sequenceIndex >= backoffSequence.length) {
+          console.log("[Mock] Poll maximum attempts reached")
+          return null
+        }
+
+        const delayMs = backoffSequence[sequenceIndex]
+        sequenceIndex++
+
+        try {
+          const freshRes = await fetch("/api/students/mock-interviews")
+          const freshData = await freshRes.json()
+          const found = (freshData.mockInterviews || []).find(
+            (m: any) => m.id === activeMock!.id
+          )
+
+          if (found) {
+            // Update activeMock with latest state from server
+            setActiveMock(found)
+          }
+
+          // If we reached ANSWERING, stop polling and return
+          if (found && found.status === "ANSWERING") {
+            return found
+          }
+
+          // If we reached FAILED, stop polling
+          if (found && found.status === "FAILED") {
+            console.log("[Mock] Interview failed during polling")
+            setActiveMock(found)
+            return found
+          }
+
+          // If we reached EVALUATED, stop polling
+          if (found && found.status === "EVALUATED") {
+            console.log("[Mock] Interview evaluated during polling")
+            setActiveMock(found)
+            return found
+          }
+
+          // Continue polling with backoff
+          await new Promise((resolve) => setTimeout(resolve, delayMs))
+          return poll()
+        } catch (pollError) {
+          console.error("[Mock] Poll error:", pollError)
+          return null
+        }
       }
 
       const completedMock = await poll()
-      const finalMock = completedMock || mock
-      setActiveMock(finalMock)
-      setMockAnswers(new Array(finalMock.questions?.length || 0).fill(""))
+
+      // Critical fix: Never fall back to an interview with zero questions
+      // If completedMock is null (timeout/max attempts) and activeMock has questions, keep activeMock
+      // If activeMock has no questions, show a helpful message
+      if (!completedMock) {
+        // Polling timed out - check if we already have mock data
+        // If activeMock has questions, we can use it
+        if (activeMock && activeMock.questions && activeMock.questions.length > 0) {
+          console.log("[Mock] Using active mock from creation, questions ready")
+          setActiveMock(activeMock)
+        } else {
+          console.log("[Mock] Polling timed out, interview still processing")
+          // Don't setActiveMock with empty questions - show preparing state instead
+          setActiveMock(null)
+        }
+        setMockAnswers(new Array(0).fill(""))
+      } else {
+        setActiveMock(completedMock)
+        setMockAnswers(
+          new Array(completedMock.questions?.length || 0).fill("")
+        )
+      }
     } catch (err) {
+      console.error("[Mock Start] Error:", err)
       alert(err instanceof Error ? err.message : "An unexpected error occurred")
     } finally {
       setScoringMock(false)
@@ -548,8 +649,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   }
 
   // Complete and score AI Mock interview
-  // Complete and score AI Mock interview
-const handleCompleteMock = async (
+  const handleCompleteMock = async (
     answersOverride?: string[]
   ) => {
     if (!activeMock) return
@@ -607,6 +707,7 @@ const handleCompleteMock = async (
 
       await fetchData(true)
     } catch (err) {
+      console.error("[Mock Complete] Error:", err)
       alert(
         err instanceof Error
           ? err.message
