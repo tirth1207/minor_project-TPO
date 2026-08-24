@@ -1,0 +1,44 @@
+export const dynamic = "force-dynamic"
+
+import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
+import { NextResponse } from "next/server"
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    const auth = await requireApprovedStudent()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
+    }
+
+    const { supabase, studentId } = auth
+
+    const { data: mock, error } = await supabase
+      .from("mock_interviews")
+      .select("*")
+      .eq("id", id)
+      .eq("student_id", studentId)
+      .single()
+
+    if (error || !mock) {
+      return NextResponse.json({ error: "Mock interview not found" }, { status: 404 })
+    }
+
+    if (mock.status !== "EVALUATED") {
+      return NextResponse.json(
+        { error: "Assessment has not been evaluated yet.", status: mock.status },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json({
+      mock,
+      result: mock.ai_results,
+    })
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 })
+  }
+}

@@ -1,408 +1,338 @@
 "use client"
 
 import * as React from "react"
-import { toast } from "@/components/ui/toast"
-import { useStudent } from "../student-context"
-import { IconRobot, IconExclamationCircle, IconAward } from "@tabler/icons-react"
 import Link from "next/link"
-
+import { useRouter } from "next/navigation"
+import { useStudent } from "../student-context"
 import {
-  Questionnaire,
-  QuestionnaireActions,
-  QuestionnaireDescription,
-  QuestionnaireError,
-  QuestionnaireInput,
-  QuestionnaireItem,
-  QuestionnaireNext,
-  QuestionnairePrevious,
-  QuestionnaireProgress,
-  QuestionnaireSkip,
-  QuestionnaireSubmit,
-  QuestionnaireTitle,
-} from "@/components/ui/questionnaire"
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import {
+  IconBrain,
+  IconBriefcase,
+  IconHistory,
+  IconSparkles,
+  IconCheck,
+  IconX,
+  IconArrowRight,
+  IconLock,
+} from "@tabler/icons-react"
 
-export default function StudentMockPage() {
-  const {
-    mocks,
-    targetRole,
-    setTargetRole,
-    activeMock,
-    setActiveMock,
-    mockAnswers,
-    setMockAnswers,
-    scoringMock,
-    handleStartMock,
-    handleCompleteMock,
-  } = useStudent()
+export default function StudentMockHubPage() {
+  const router = useRouter()
+  const { jobs, mockInterviews, refreshMockInterviews } = useStudent()
 
-  console.log(
-    "Rendering StudentMockPage with activeMock:",
-    activeMock
-  )
+  const [selectedRole, setSelectedRole] = React.useState("Full Stack Developer")
+  const [startingPractice, setStartingPractice] = React.useState(false)
 
-  /**
-   * Get status badge text and class for the active mock status.
-   */
-  function getStatusInfo(status: string | null) {
-    switch (status) {
-      case "REQUESTED":
-        return { text: "Preparing...", class: "bg-zinc-100 text-zinc-800" }
-      case "QUEUED":
-        return { text: "Waiting for AI...", class: "bg-amber-100 text-amber-800" }
-      case "PROCESSING":
-        return { text: "Generating questions...", class: "bg-blue-100 text-blue-800" }
-      case "ANSWERING":
-        return { text: "Ready to answer", class: "bg-green-100 text-green-800" }
-      case "EVALUATING":
-        return { text: "AI evaluating", class: "bg-amber-100 text-amber-800" }
-      case "EVALUATED":
-        return { text: "Evaluated", class: "bg-emerald-100 text-emerald-800" }
-      case "FAILED":
-        return { text: "Failed", class: "bg-destructive text-white" }
-      default:
-        return { text: status || "Unknown", class: "bg-zinc-100 text-zinc-800" }
+  // Filter required job assessments
+  const requiredJobPostings = jobs.filter((j) => j.job?.require_mock)
+
+  // Compute skill progress metrics from practice and job mock history
+  const skillMetrics: Record<string, { total: number; count: number }> = {}
+  mockInterviews.forEach((m) => {
+    if (m.skill_scores && typeof m.skill_scores === "object") {
+      Object.entries(m.skill_scores).forEach(([skill, score]) => {
+        const num = Number(score)
+        if (!isNaN(num)) {
+          if (!skillMetrics[skill]) skillMetrics[skill] = { total: 0, count: 0 }
+          skillMetrics[skill].total += num
+          skillMetrics[skill].count += 1
+        }
+      })
     }
-  }
+  })
 
-  /**
-   * Convert questionnaire FormData into the existing
-   * mockAnswers array used by the student context.
-   */
-  function handleQuestionnaireSubmit(
-    event: React.FormEvent<HTMLFormElement>
-  ) {
-    event.preventDefault()
+  const averageSkillScores = Object.entries(skillMetrics).map(([skill, data]) => ({
+    skill,
+    score: Math.round(data.total / data.count),
+  })).sort((a, b) => b.score - a.score)
 
-    const formData = new FormData(event.currentTarget)
-
-    const answers =
-      activeMock?.questions.map((_, index) => {
-        return String(formData.get(`answer-${index}`) ?? "")
-      }) ?? []
-
-    const hasEmptyAnswer = answers.some(
-      (answer) => !answer.trim()
-    )
-
-    if (hasEmptyAnswer) {
-      toast.error("Please answer every question before submitting.")
-      return
+  const handleStartPractice = async () => {
+    if (!selectedRole.trim()) return
+    setStartingPractice(true)
+    try {
+      const res = await fetch("/api/students/mock-interviews", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: selectedRole }),
+      })
+      const data = await res.json()
+      if (res.ok && data.mock?.id) {
+        await refreshMockInterviews()
+        router.push(`/student/mock/${data.mock.id}`)
+      }
+    } catch (err) {
+      console.error("Error starting practice mock:", err)
+    } finally {
+      setStartingPractice(false)
     }
-
-    setMockAnswers(answers)
-
-    /**
-     * Pass answers to handleCompleteMock via override.
-     * The context function uses answersOverride ?? mockAnswers.
-     */
-    handleCompleteMock(answers)
-  }
-
-  /**
-   * Render the mock control bar based on activeMock status.
-   */
-  function renderMockControlBar() {
-    if (!activeMock) {
-      return null
-    }
-
-    const { text, class: badgeClass } = getStatusInfo(activeMock.status)
-
-    return (
-      <div className="mb-4 p-3 rounded-lg border" style={{ borderColor: activeMock.status === "FAILED" ? "var(--destructive)" : activeMock.status === "EVALUATED" ? "var(--emerald)" : "var(--secondary)" }}>
-        <span className={`font-medium text-sm ${badgeClass}`}>{text}</span>
-      </div>
-    )
-  }
-
-  /**
-   * Render AI feedback for completed/ evaluated mocks.
-   */
-  function renderAIFeedback() {
-    if (!activeMock) return null
-
-    const isEvaluated =
-      activeMock.status === "EVALUATED" ||
-      (activeMock.ai_score !== null && activeMock.overall_score !== null)
-
-    if (!isEvaluated) return null
-
-    return (
-      <div className="mt-6 border-t pt-5 border-zinc-100 dark:border-zinc-900">
-        <h4 className="text-sm font-extrabold flex items-center gap-1.5 text-zinc-800 dark:text-zinc-200 mb-2">
-          <IconAward className="h-5 w-5 text-zinc-400" />
-          Latest AI Performance Assessment Report
-        </h4>
-
-        <div className="p-4 rounded-xl border border-zinc-150 bg-zinc-50/40 text-xs leading-relaxed font-sans whitespace-pre-wrap dark:border-zinc-850 dark:bg-zinc-900/10 dark:text-zinc-300">
-          {activeMock.ai_summary || activeMock.ai_feedback || "No feedback available."}
-        </div>
-      </div>
-    )
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-3 items-start">
-      {/* ============================================================
-          LEFT: START MOCK + HISTORICAL
-      ============================================================ */}
-      <div className="rounded-2xl border border-secondary bg-background p-5 dark:border-secondary dark:bg-background flex flex-col gap-4">
-        <h3 className="text-md font-bold flex items-center gap-2 border-b pb-3 border-zinc-100 dark:border-zinc-900">
-          <IconRobot className="h-4.5 w-4.5 text-zinc-400" />
-          Spawn Mock Prep
-        </h3>
-
-        {!activeMock ? (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              handleStartMock()
-            }}
-            className="flex flex-col gap-3"
-          >
-            <div>
-              <label className="text-xs font-semibold text-zinc-400 block mb-1">
-                Target Job Role Context *
-              </label>
-
-              <input
-                type="text"
-                placeholder="e.g. Frontend Engineer"
-                value={targetRole}
-                onChange={(e) =>
-                  setTargetRole(e.target.value)
-                }
-                className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900"
-                required
-              />
+    <div className="w-full space-y-6">
+      {/* Header Banner */}
+      <div className="rounded-2xl border border-zinc-200 bg-gradient-to-r from-zinc-900 to-zinc-800 p-6 text-white dark:border-zinc-800">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-800/80 px-2.5 py-0.5 text-[10px] font-medium text-amber-400">
+              <IconSparkles className="h-3 w-3" />
+              Placement AI Prep Engine
             </div>
-
-            <button
-              type="submit"
-              disabled={
-                scoringMock ||
-                !targetRole.trim()
-              }
-              className="h-9 px-4 rounded-lg bg-zinc-950 text-zinc-55 text-xs font-semibold hover:bg-zinc-800 transition-all dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 cursor-pointer disabled:opacity-50"
-            >
-              {scoringMock
-                ? "Seeding Interview..."
-                : "Start AI Mock Prep"}
-            </button>
-          </form>
-        ) : (
-          renderMockControlBar()
-        )}
-
-        {/* ============================================================
-            HISTORICAL SCORES
-        ============================================================ */}
-        <div className="flex flex-col gap-2 mt-2">
-          <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">
-            Historical Scores Roster
-          </h4>
-
-          {mocks.length === 0 ? (
-            <p className="text-[10px] text-zinc-400 italic">
-              No mock records yet.
+            <h1 className="text-xl font-semibold tracking-tight">
+              AI Interview Preparation & Job Assessments
+            </h1>
+            <p className="text-xs text-zinc-400 max-w-xl">
+              Master technical MCQs, core theory, and coding questions tailored specifically to company job drives or practice freely for your target career.
             </p>
-          ) : (
-            mocks.map((m) => (
-              <div
-                key={m.id}
-                className="p-2.5 border rounded-lg flex items-center justify-between text-xs dark:border-secondary"
-              >
-                <Link
-                  href={`/student/mock/${m.id}`}
-                  className="block w-full"
-                >
-                  <div className="truncate max-w-[140px]">
-                    <p className="font-bold truncate text-zinc-800 dark:text-zinc-200">
-                      {m.job_role_context}
-                    </p>
+          </div>
 
-                    <p className="text-[9px] text-zinc-400 capitalize">
-                      {m.status.toLowerCase()}
-                    </p>
-                  </div>
-                </Link>
-
-                {m.overall_score !== null && (
-                  <span className="font-black text-sm text-primary">
-                    {m.overall_score}%
-                  </span>
-                )}
-
-                {m.ai_score !== null && (
-                  <span className="font-text text-sm text-secondary">
-                    {m.ai_score}%
-                  </span>
-                )}
-              </div>
-            ))
-          )}
+          <Link href="/student/roadmap">
+            <Button size="sm" variant="secondary" className="h-8 text-xs gap-1.5 bg-white text-zinc-900 hover:bg-zinc-100">
+              <IconBrain className="h-3.5 w-3.5 text-primary" />
+              View Career Roadmap
+            </Button>
+          </Link>
         </div>
       </div>
 
-      {/* ============================================================
-          RIGHT: MOCK WORKSPACE
-      ============================================================ */}
-      <div className="md:col-span-2 rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background min-h-[400px]">
-        {!activeMock ? (
-          <div className="flex flex-col items-center justify-center py-16 gap-2 text-zinc-400">
-            <IconRobot className="h-12 w-12 stroke-[1.2]" />
+      {/* Main Tabs Hub */}
+      <Tabs defaultValue="practice" className="w-full space-y-5">
+        <TabsList className="grid w-full grid-cols-3 max-w-md h-9 text-xs">
+          <TabsTrigger value="practice" className="gap-1.5">
+            <IconSparkles className="h-3.5 w-3.5" />
+            Practice Hub
+          </TabsTrigger>
+          <TabsTrigger value="job-assessments" className="gap-1.5">
+            <IconBriefcase className="h-3.5 w-3.5" />
+            Job Assessments
+          </TabsTrigger>
+          <TabsTrigger value="history" className="gap-1.5">
+            <IconHistory className="h-3.5 w-3.5" />
+            Attempt History
+          </TabsTrigger>
+        </TabsList>
 
-            <p className="text-sm font-semibold">
-              Ready to prep? Initiate an AI mock prep
-              workspace to the left
-            </p>
+        {/* Tab 1: Practice Mode */}
+        <TabsContent value="practice" className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-3">
+            {/* Practice Setup Card */}
+            <Card className="md:col-span-2 rounded-xl border-zinc-200 dark:border-zinc-800">
+              <CardHeader>
+                <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                  <IconSparkles className="h-4 w-4 text-primary" />
+                  Mode A — Practice Interview
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Generate unlimited AI preparation tests containing MCQs, theory rubrics, and technical code challenges. Does not satisfy job gate requirements.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                    Target Role or Domain
+                  </label>
+                  <Input
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value)}
+                    placeholder="e.g. Frontend Developer, Full Stack Engineer, Python Developer"
+                    className="h-9 text-xs"
+                  />
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  {["Frontend Developer", "Backend Developer", "Full Stack Engineer", "Data Analyst", "DevOps Engineer"].map((role) => (
+                    <Button
+                      key={role}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedRole(role)}
+                      className="h-6 rounded-full text-[10px]"
+                    >
+                      {role}
+                    </Button>
+                  ))}
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    onClick={handleStartPractice}
+                    disabled={startingPractice || !selectedRole.trim()}
+                    className="h-9 w-full sm:w-auto text-xs gap-1.5"
+                  >
+                    {startingPractice ? "Generating Assessment..." : "Start Practice Session"}
+                    <IconArrowRight className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Skill Performance Sidebar */}
+            <Card className="rounded-xl border-zinc-200 dark:border-zinc-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-xs font-semibold">Skill Performance Analytics</CardTitle>
+                <CardDescription className="text-[11px]">Aggregated mock score across topics</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {averageSkillScores.length === 0 ? (
+                  <p className="text-xs text-zinc-400 py-4 text-center">
+                    No mock test performance recorded yet.
+                  </p>
+                ) : (
+                  averageSkillScores.slice(0, 5).map((item) => (
+                    <div key={item.skill} className="space-y-1">
+                      <div className="flex justify-between text-[11px]">
+                        <span className="font-medium text-zinc-700 dark:text-zinc-300">{item.skill}</span>
+                        <span className="font-semibold text-primary">{item.score}%</span>
+                      </div>
+                      <Progress value={item.score} className="h-1.5" />
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
           </div>
-        ) : (
-          <div className="flex flex-col gap-5">
-            {/* ======================================================
-                HEADER
-            ====================================================== */}
-            <div className="border-b pb-3 border-zinc-100 dark:border-zinc-900 flex justify-between items-center">
-              <div>
-                <h4 className="font-extrabold text-base text-zinc-900 dark:text-zinc-100">
-                  AI Mock Workspace:{" "}
-                  {activeMock.job_role_context}
-                </h4>
+        </TabsContent>
 
-                <p className="text-[10px] text-zinc-400">
-                  {getStatusInfo(activeMock.status).text}
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setActiveMock(null)
-                  setMockAnswers([])
-                }}
-                className="text-xs text-zinc-400 hover:text-zinc-900 underline"
-              >
-                Reset Workspace
-              </button>
+        {/* Tab 2: Job Assessments (JOB_REQUIRED) */}
+        <TabsContent value="job-assessments" className="space-y-4">
+          <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+            <div className="mb-4 space-y-1">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <IconBriefcase className="h-4 w-4 text-amber-500" />
+                Company Required Job Assessments
+              </h3>
+              <p className="text-xs text-zinc-500">
+                These company drives require you to pass a job-specific AI assessment before submitting your application.
+              </p>
             </div>
 
-            {/* ======================================================
-                QUESTIONNAIRE
-            ====================================================== */}
-            {activeMock.status === "ANSWERING" && (
-              <Questionnaire
-                key={activeMock.id}
-                className="w-full"
-                defaultItem={`answer-0`}
-                items={activeMock.questions.map((question, index) => ({
-                  name: `answer-${index}`,
-                  title: `Question ${index + 1}`,
-                  description: question.text,
-                  required: true,
-                }))}
-                shortcuts="letters"
-                onSubmit={handleQuestionnaireSubmit}
-              >
-                <QuestionnaireProgress />
-
-                {activeMock.questions.map((question, index) => (
-                  <QuestionnaireItem
-                    key={question.id}
-                    name={`answer-${index}`}
-                    required
-                  >
-                    <QuestionnaireTitle>
-                      Question {index + 1}
-                    </QuestionnaireTitle>
-
-                    <QuestionnaireDescription>
-                      {question.text}
-                    </QuestionnaireDescription>
-
-                    <QuestionnaireInput
-                      aria-label={`Answer to question ${index + 1}`}
-                      placeholder="Write your comprehensive technical explanation here..."
-                    />
-
-                    <QuestionnaireError />
-                  </QuestionnaireItem>
-                ))}
-
-                <QuestionnaireActions>
-                  <QuestionnairePrevious />
-
-                  <QuestionnaireSkip />
-
-                  <QuestionnaireNext>
-                    Next Question
-                  </QuestionnaireNext>
-
-                  <QuestionnaireSubmit>
-                    {scoringMock
-                      ? "Simulating AI Assessment..."
-                      : "Submit & Score Interview"}
-                  </QuestionnaireSubmit>
-                </QuestionnaireActions>
-              </Questionnaire>
-            )}
-
-            {activeMock.status === "EVALUATING" && (
-              <div className="mt-6 p-4 rounded-lg bg-amber-50/30 border border-amber-100">
-                <p className="text-sm text-amber-800">
-                  AI is evaluating your answers...
-                </p>
+            {requiredJobPostings.length === 0 ? (
+              <div className="py-8 text-center text-xs text-zinc-500">
+                No active placement drives currently require mandatory mock assessments.
               </div>
-            )}
+            ) : (
+              <div className="grid gap-4 md:grid-cols-2">
+                {requiredJobPostings.map((item) => {
+                  const job = item.job!
+                  const mapping = item.mapping!
 
-            {activeMock.status === "EVALUATED" && (
-              <div className="mt-6 border-t pt-5 border-zinc-100 dark:border-zinc-900">
-                <h4 className="text-sm font-extrabold flex items-center gap-1.5 text-zinc-800 dark:text-zinc-200 mb-2">
-                  <IconAward className="h-5 w-5 text-zinc-400" />
+                  // Find student's best JOB_REQUIRED attempt for this mapping
+                  const attempts = mockInterviews.filter(
+                    (m) => m.job_college_mapping_id === mapping.id && m.mock_type === "JOB_REQUIRED" && m.status === "EVALUATED"
+                  )
+                  const bestAttempt = attempts.sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0))[0]
 
-                  AI Evaluation Results
-                </h4>
+                  const passThreshold = job.mock_pass_score || 70
+                  const isPassed = Boolean(bestAttempt && (bestAttempt.overall_score ?? 0) >= passThreshold)
 
-                <div className="p-4 rounded-xl border border-zinc-150 bg-zinc-50/40 text-xs leading-relaxed font-sans whitespace-pre-wrap dark:border-zinc-850 dark:bg-zinc-900/10 dark:text-zinc-300">
-                  <p className="font-bold text-lg text-primary">
-                    {activeMock.overall_score}%
-                  </p>
-                  <p className="mt-2 text-muted-foreground">
-                    {activeMock.ai_summary || "No summary available."}
-                  </p>
-                </div>
-              </div>
-            )}
+                  return (
+                    <div
+                      key={mapping.id}
+                      className="flex flex-col justify-between rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">{job.title}</h4>
+                            <p className="text-[11px] text-zinc-500">{job.company?.company_name || "Corporate Partner"}</p>
+                          </div>
+                          <Badge variant="outline" className="text-[10px] border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                            Passing: {passThreshold}%
+                          </Badge>
+                        </div>
 
-            {activeMock.status === "FAILED" && (
-              <div className="mt-6 p-4 rounded-lg bg-destructive/20 border border-destructive">
-                <p className="text-sm text-destructive">
-                  Your mock interview failed to process. Please try creating a new mock interview.
-                </p>
-              </div>
-            )}
+                        <div className="flex items-center gap-4 text-[11px] text-zinc-600 dark:text-zinc-400 pt-1">
+                          <div>
+                            Status:{" "}
+                            {bestAttempt ? (
+                              isPassed ? (
+                                <span className="font-semibold text-emerald-600 dark:text-emerald-400">Passed ✓</span>
+                              ) : (
+                                <span className="font-semibold text-rose-600 dark:text-rose-400">Needs Improvement</span>
+                              )
+                            ) : (
+                              <span className="font-medium text-zinc-500">Not Attempted</span>
+                            )}
+                          </div>
+                          <div>
+                            Your Best Score:{" "}
+                            <span className="font-semibold">{bestAttempt?.overall_score ?? "—"}%</span>
+                          </div>
+                        </div>
+                      </div>
 
-            {/* ============================================================
-                AI FEEDBACK
-            ============================================================ */}
-            {!activeMock &&
-              mocks.length > 0 &&
-              (mocks[0].status === "EVALUATED" ||
-                (mocks[0].ai_score !== null && mocks[0].overall_score !== null)) && (
-              <div className="mt-6 border-t pt-5 border-zinc-100 dark:border-zinc-900">
-                <h4 className="text-sm font-extrabold flex items-center gap-1.5 text-zinc-800 dark:text-zinc-200 mb-2">
-                  <IconAward className="h-5 w-5 text-zinc-400" />
-
-                  Latest AI Performance Assessment Report
-                </h4>
-
-                <div className="p-4 rounded-xl border border-zinc-150 bg-zinc-50/40 text-xs leading-relaxed font-sans whitespace-pre-wrap dark:border-zinc-850 dark:bg-zinc-900/10 dark:text-zinc-300">
-                  {mocks[0].ai_feedback || mocks[0].ai_summary || "No feedback available."}
-                </div>
+                      <div className="mt-4 pt-3 border-t border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
+                        <span className="text-[10px] text-zinc-400">
+                          {attempts.length} Attempt{attempts.length === 1 ? "" : "s"} recorded
+                        </span>
+                        <Link href={`/student/mock/job/${mapping.id}`}>
+                          <Button size="sm" variant={isPassed ? "outline" : "default"} className="h-7 text-xs">
+                            {isPassed ? "Retake Assessment" : bestAttempt ? "Retake Assessment" : "Take Job Mock"}
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
-        )}
-      </div>
+        </TabsContent>
+
+        {/* Tab 3: Attempt History */}
+        <TabsContent value="history" className="space-y-4">
+          <div className="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-800 dark:bg-zinc-950">
+            <h3 className="text-sm font-semibold mb-4">Historical Mock Assessment Records</h3>
+            {mockInterviews.length === 0 ? (
+              <p className="text-xs text-zinc-500 py-6 text-center">No completed mock assessments found.</p>
+            ) : (
+              <div className="space-y-3">
+                {mockInterviews.map((mock) => (
+                  <div
+                    key={mock.id}
+                    className="flex items-center justify-between rounded-lg border border-zinc-200 p-3 text-xs dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-zinc-900 dark:text-zinc-100">{mock.job_role_context}</span>
+                        <Badge variant="outline" className="text-[9px]">
+                          {mock.mock_type || "PRACTICE"}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-zinc-400">
+                        Completed on {mock.completed_at ? new Date(mock.completed_at).toLocaleDateString() : "In progress"}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-4">
+                      <div className="text-right">
+                        <div className="font-bold text-primary text-sm">{mock.overall_score ?? mock.ai_score ?? 0}%</div>
+                        <div className="text-[10px] text-zinc-500">Overall Score</div>
+                      </div>
+
+                      <Link href={`/student/mock/${mock.id}`}>
+                        <Button size="sm" variant="ghost" className="h-7 text-[11px]">
+                          View Report
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

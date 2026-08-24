@@ -47,7 +47,6 @@ interface NvidiaApiError extends Error {
  */
 function isRetriableError(error: any): boolean {
   const status = error.status;
-  const code = error.code;
 
   // Retry on timeout / network errors (no status code)
   if (!status) {
@@ -145,12 +144,6 @@ async function attemptNvidiaChat(
 
 /**
  * Primary NVIDIA chat completion function with retry logic.
- *
- * @param model - The NVIDIA model identifier (e.g. "meta/llama-3.1-70b-instruct")
- * @param messages - The chat messages (system + user prompts)
- * @param options - Retry configuration (optional)
- * @returns The chat completion response
- * @throws Error if all attempts fail or response is invalid
  */
 export async function callNvidiaChat(
   model: string,
@@ -179,14 +172,12 @@ export async function callNvidiaChat(
       return result.completion;
     }
 
-    lastError = result.error as Error || lastError;
+    lastError = (result.error as Error) || lastError;
 
-    // If this is the last attempt, stop retrying
     if (attempt >= maxAttempts) {
       break;
     }
 
-    // Check if the error is retriable
     if (!isRetriableError(result.error)) {
       console.log(
         `[NVIDIA] Attempt ${attempt}/${maxAttempts} non-retriable error: ${result.error?.message}`
@@ -194,100 +185,17 @@ export async function callNvidiaChat(
       break;
     }
 
-    // Log the retry attempt with duration
     console.log(
       `[NVIDIA] Attempt ${attempt}/${maxAttempts} failed after ${result.durationMs}ms: ${
         result.error?.message || "unknown error"
       } [NVIDIA] Retrying in...`
     );
 
-    // Wait with exponential backoff before next attempt
     const waitMs = await delayWithBackoff(baseDelay, attempt, maxDelay);
     await waitMs;
   }
 
-  console.log(
-    `[NVIDIA] All ${maxAttempts} attempts failed${
-      lastError ? `: ${lastError.message}` : ""
-    } [NVIDIA] Last error type: ${lastError?.name || "unknown"}`
-  );
-
   throw lastError || new Error("AI service request failed after all retries");
 }
 
-/**
- * Convenience wrapper that uses the configured NVIDIA model from environment.
- */
-export async function generateMockInterview(
-  jobRoleContext: string,
-  options?: NvidiaRetryOptions
-): Promise<MockInterviewQuestion[]> {
-  const model = process.env.NVIDIA_MODEL ?? "meta/llama-3.2-3b-instruct";
-
-  // Build a system prompt that instructs the model to output strict JSON.
-  const systemPrompt = `You are an expert interview designer.
-Generate exactly five interview questions (a mix of behavioral, technical, and coding) for the role described.
-Each question must be an object with the following fields:
-{
-  "id": "q1" (string),
-  "type": "behavioral" | "technical" | "coding",
-  "prompt": "question text",
-  "rubric": "what the evaluator should look for",
-  "referenceAnswer": "ideal answer (optional)",
-  "language": "javascript|typescript|python|java" (only for coding questions)
-}
-If a job description is provided, tailor the questions to that context.
-Return ONLY a JSON array of the question objects, no surrounding text.
-`;
-
-  const userPrompt = `Role: ${jobRoleContext}`;
-
-  const messages: NvidiaMessage[] = [
-    { role: "system", content: systemPrompt },
-    { role: "user", content: userPrompt },
-  ];
-
-  const completion = await callNvidiaChat(model, messages, options);
-
-  // Expect data.choices[0].message.content to contain JSON.
-  const raw = completion?.choices?.[0]?.message?.content?.trim();
-  if (!raw) {
-    throw new Error("Empty AI response");
-  }
-
-  let parsed: any;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (e) {
-    console.error("Failed to parse AI response", raw);
-    throw new Error("Malformed AI response");
-  }
-
-  if (!Array.isArray(parsed) || parsed.length < 3) {
-    throw new Error("AI returned insufficient questions");
-  }
-
-  // Validate each question has required fields and normalize to MockInterviewQuestion
-  const questions: MockInterviewQuestion[] = parsed.map(
-    (q: any) => {
-      if (!q.id || !q.type || !q.prompt || !q.rubric) {
-        throw new Error("Invalid question format from AI");
-      }
-      return {
-        id: String(q.id),
-        type: q.type,
-        prompt: q.prompt,
-        rubric: q.rubric,
-        referenceAnswer: q.referenceAnswer,
-        language: q.language,
-      };
-    }
-  );
-
-  return questions;
-}
-
-/**
- * Type import - MockInterviewQuestion is re-exported from types
- */
 export type { MockInterviewQuestion } from "@/types/mock-interview";

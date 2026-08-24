@@ -97,6 +97,22 @@ function QuestionnaireChoices({
   )
 }
 
+function QuestionnaireChoiceLabel({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof QuestionnairePrimitive.ChoiceLabel>) {
+  return (
+    <QuestionnairePrimitive.ChoiceLabel
+      data-slot="questionnaire-choice-label"
+      className={cn("flex min-w-0 flex-1 flex-col gap-0.5 leading-snug", className)}
+      {...props}
+    >
+      {children}
+    </QuestionnairePrimitive.ChoiceLabel>
+  )
+}
+
 function QuestionnaireChoice({
   children,
   className,
@@ -127,12 +143,9 @@ function QuestionnaireChoice({
         />
         <IconCheck data-slot="questionnaire-choice-indicator-check" className="hidden size-3.5 group-data-[type=radio]/questionnaire-choice:hidden group-data-checked/questionnaire-choice:block" />
       </span>
-      <QuestionnairePrimitive.ChoiceLabel
-        data-slot="questionnaire-choice-label"
-        className="flex min-w-0 flex-1 flex-col gap-0.5 leading-snug"
-      >
+      <QuestionnaireChoiceLabel>
         {children}
-      </QuestionnairePrimitive.ChoiceLabel>
+      </QuestionnaireChoiceLabel>
       <QuestionnairePrimitive.ChoiceShortcut
         data-slot="questionnaire-choice-shortcut"
         className="pointer-events-none ms-auto hidden size-5 shrink-0 translate-y-[--spacing(0.45)] items-center justify-center rounded-md border border-input bg-background font-mono text-[0.625rem] leading-none font-medium text-muted-foreground group-has-data-[slot=questionnaire-choice-description]/questionnaire-choice:translate-y-0.5 group-data-[shortcut]/questionnaire-choice:inline-flex"
@@ -309,6 +322,7 @@ export {
   Questionnaire,
   QuestionnaireActions,
   QuestionnaireChoice,
+  QuestionnaireChoiceLabel,
   QuestionnaireChoiceDescription,
   QuestionnaireChoices,
   QuestionnaireDescription,

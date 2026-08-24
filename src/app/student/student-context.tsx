@@ -17,6 +17,7 @@ export interface StudentProfile {
   branch: string
   semester: number
   cgpa: number
+  active_backlogs: number
 
   skills: string[] | null
   hobbies: string[] | null
@@ -142,7 +143,7 @@ export interface Application {
 
 export interface MockQuestion {
   id: string
-  type: "behavioral" | "technical" | "coding"
+  type: string
   prompt: string
   rubric: string
   referenceAnswer?: string
@@ -151,14 +152,24 @@ export interface MockQuestion {
 
 export interface MockInterview {
   id: string
+  student_id: string
+  job_id?: string | null
+  job_college_mapping_id?: string | null
+  mock_type?: "PRACTICE" | "JOB_REQUIRED"
   job_role_context: string
+  job_spec_snapshot?: any
   questions: MockQuestion[]
-  answers: string[]
-  ai_score: number | null // legacy field, keep for backward compatibility
-  ai_feedback: string | null // legacy field
+  answers: any
+  ai_score: number | null
+  ai_feedback: string | null
   overall_score: number | null
+  mcq_score?: number | null
+  theory_score?: number | null
+  coding_score?: number | null
+  skill_scores?: Record<string, number> | null
+  passed?: boolean | null
   ai_summary: string | null
-  ai_results: any // JSON of per‑question results (typed via MockInterviewReport when available)
+  ai_results: any
   completed_at: string | null
   status:
     | "REQUESTED"
@@ -169,7 +180,6 @@ export interface MockInterview {
     | "ANSWERING"
     | "EVALUATING"
     | "EVALUATED"
-  student_id: string
   retry_count: number
 }
 
@@ -181,6 +191,7 @@ interface StudentContextType {
   jobs: JobWithMapping[]
   applications: Application[]
   mocks: MockInterview[]
+  mockInterviews: MockInterview[]
 
   // Edit fields
   editName: string
@@ -224,8 +235,9 @@ interface StudentContextType {
   scoringMock: boolean
 
   fetchData: (isRefresh?: boolean) => Promise<void>
+  refreshMockInterviews: () => Promise<void>
   handleUpdateProfile: (e: React.FormEvent) => Promise<void>
-  handleApplyJob: (mappingId: string | null) => Promise<void> // accept nullable mappingId
+  handleApplyJob: (mappingId: string | null) => Promise<void>
   handleDecideOffer: (offerId: string, status: "ACCEPTED" | "REJECTED") => Promise<void>
   handleStartMock: () => Promise<void>
   handleCompleteMock: (answersOverride?: string[]) => Promise<void>
@@ -250,7 +262,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   const [editSocialLinks, setEditSocialLinks] = React.useState<Record<string, string>>({})
   // Data states
   const [profile, setProfile] = React.useState<StudentProfile | null>(null)
-  const [jobs, setJobs] = React.useState<JobWithMapping[]>([]) // changed from eligibleJobs
+  const [jobs, setJobs] = React.useState<JobWithMapping[]>([])
   const [applications, setApplications] = React.useState<Application[]>([])
   const [mocks, setMocks] = React.useState<MockInterview[]>([])
 
@@ -270,6 +282,18 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   const [mockAnswers, setMockAnswers] = React.useState<string[]>([])
   const [scoringMock, setScoringMock] = React.useState(false)
 
+  const refreshMockInterviews = React.useCallback(async () => {
+    try {
+      const mocksRes = await fetch("/api/students/mock-interviews")
+      if (mocksRes.ok) {
+        const mocksData = await mocksRes.json()
+        setMocks(mocksData.mocks || mocksData.mockInterviews || [])
+      }
+    } catch (err) {
+      console.error("Failed to refresh mock interviews:", err)
+    }
+  }, [])
+
   const fetchData = React.useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true)
     else setLoading(true)
@@ -282,7 +306,6 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // Check role
       const { data: dbUser } = await supabase
         .from("users")
         .select("role")
@@ -295,13 +318,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // 1. Fetch Student Profile
       const profileRes = await fetch("/api/students/profile")
       if (!profileRes.ok) throw new Error("Failed to fetch student profile")
       const profileData = await profileRes.json()
-      console.log("Fetched student profile:", profileData)
       const studentProf = profileData.profile
-      console.log("Student profile:", studentProf)
       setProfile(studentProf)
 
       if (studentProf) {
@@ -311,169 +331,81 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         setEditPhone(studentProf.phone ?? "")
         setEditBio(studentProf.bio ?? "")
         setEditEnrollmentNo(studentProf.enrollment_no ?? "")
-
-        setEditCgpa(
-          studentProf.cgpa?.toString() ?? ""
-        )
-
-        setEditBacklogs(
-          studentProf.active_backlogs?.toString() ?? "0"
-        )
-
+        setEditCgpa(studentProf.cgpa?.toString() ?? "")
+        setEditBacklogs(studentProf.active_backlogs?.toString() ?? "0")
         setEditBranch(studentProf.branch ?? "")
-
-        setEditSemester(
-          studentProf.semester?.toString() ?? "1"
-        )
-
-        setEditSkills(
-          Array.isArray(studentProf.skills)
-            ? studentProf.skills.join(", ")
-            : ""
-        )
-
-        setEditHobbies(
-          Array.isArray(studentProf.hobbies)
-            ? studentProf.hobbies.join(", ")
-            : ""
-        )
-
-        setEditResumeUrl(
-          studentProf.resume_url ?? ""
-        )
-
-        setEditMarksheetUrl(
-          studentProf.marksheet_url ?? ""
-        )
-
-        setEditSocialLinks(
-          studentProf.social_links ?? {}
-        )
+        setEditSemester(studentProf.semester?.toString() ?? "1")
+        setEditSkills(Array.isArray(studentProf.skills) ? studentProf.skills.join(", ") : "")
+        setEditHobbies(Array.isArray(studentProf.hobbies) ? studentProf.hobbies.join(", ") : "")
+        setEditResumeUrl(studentProf.resume_url ?? "")
+        setEditMarksheetUrl(studentProf.marksheet_url ?? "")
+        setEditSocialLinks(studentProf.social_links ?? {})
       }
 
-      // 2. Fetch Jobs (now returns jobs with mapping info)
       const jobsRes = await fetch("/api/students/jobs")
       if (jobsRes.ok) {
         const jobsData = await jobsRes.json()
-        // Expecting { jobs: JobWithMapping[] }
         setJobs(jobsData.jobs || [])
-        console.log("Fetched jobs:", jobsData.jobs)
       }
 
-      // 3. Fetch Applications
       const appsRes = await fetch("/api/students/applications")
       if (appsRes.ok) {
         const appsData = await appsRes.json()
         setApplications(appsData.applications || [])
       }
 
-      // 4. Fetch Historical Mock Interviews
-      const mocksRes = await fetch("/api/students/mock-interviews")
-      if (mocksRes.ok) {
-        const mocksData = await mocksRes.json()
-        setMocks(mocksData.mockInterviews || [])
-      }
+      await refreshMockInterviews()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong loading dashboard data")
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [router, supabase])
+  }, [router, supabase, refreshMockInterviews])
 
   React.useEffect(() => {
     fetchData()
   }, [fetchData])
 
-  // Profile update handler
-  const handleUpdateProfile = async (
-    e: React.FormEvent
-  ) => {
+  const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()
     setUpdatingProfile(true)
 
     try {
-      const res = await fetch(
-        "/api/students/profile",
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-
-          body: JSON.stringify({
-            name: editName.trim(),
-
-            dob: editDob,
-
-            address: editAddress.trim(),
-
-            phone: editPhone.trim(),
-
-            enrollment_no: editEnrollmentNo.trim(),
-
-            bio: editBio.trim(),
-
-            cgpa: Number(editCgpa),
-
-            active_backlogs:
-              Number(editBacklogs),
-
-            semester:
-              Number(editSemester),
-
-            branch:
-              editBranch.trim(),
-
-            skills: editSkills
-              .split(",")
-              .map((value) => value.trim())
-              .filter(Boolean),
-
-            hobbies: editHobbies
-              .split(",")
-              .map((value) => value.trim())
-              .filter(Boolean),
-
-            resume_url:
-              editResumeUrl.trim(),
-
-            marksheet_url:
-              editMarksheetUrl.trim(),
-
-            social_links:
-              editSocialLinks,
-          }),
-        }
-      )
+      const res = await fetch("/api/students/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editName.trim(),
+          dob: editDob,
+          address: editAddress.trim(),
+          phone: editPhone.trim(),
+          enrollment_no: editEnrollmentNo.trim(),
+          bio: editBio.trim(),
+          cgpa: Number(editCgpa),
+          active_backlogs: Number(editBacklogs),
+          semester: Number(editSemester),
+          branch: editBranch.trim(),
+          skills: editSkills.split(",").map((v) => v.trim()).filter(Boolean),
+          hobbies: editHobbies.split(",").map((v) => v.trim()).filter(Boolean),
+          resume_url: editResumeUrl.trim(),
+          marksheet_url: editMarksheetUrl.trim(),
+          social_links: editSocialLinks,
+        }),
+      })
 
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to update profile")
 
-      if (!res.ok) {
-        throw new Error(
-          data.error ||
-            "Failed to update profile"
-        )
-      }
-
-      alert(
-        "Profile updated successfully. Your profile is now pending mentor verification."
-      )
-
+      alert("Profile updated successfully. Your profile is now pending mentor verification.")
       await fetchData(true)
     } catch (err) {
-      alert(
-        err instanceof Error
-          ? err.message
-          : "An unexpected error occurred"
-      )
+      alert(err instanceof Error ? err.message : "An unexpected error occurred")
     } finally {
       setUpdatingProfile(false)
     }
   }
 
-  // Apply to Job
-  // Note: mappingId can be null if no approved mapping exists for the student's college
   const handleApplyJob = async (mappingId: string | null) => {
     if (!profile) return
     if (profile.profile_status !== "APPROVED") {
@@ -490,9 +422,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      const res = await fetch(`/api/students/jobs/${mappingId}/apply`, {
-        method: "POST"
-      })
+      const res = await fetch(`/api/students/jobs/${mappingId}/apply`, { method: "POST" })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to apply for this job")
 
@@ -503,7 +433,6 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Accept/Reject extended job offer
   const handleDecideOffer = async (offerId: string, status: "ACCEPTED" | "REJECTED") => {
     const actionText = status === "ACCEPTED" ? "accept" : "reject"
     if (!confirm(`Are you absolutely sure you want to ${actionText} this job offer? This action is terminal and cannot be reversed.`)) return
@@ -525,194 +454,48 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  // Start AI Mock Prep interview
   const handleStartMock = async () => {
     if (!targetRole.trim()) return
     setScoringMock(true)
     try {
-      // Step 1: Create mock interview (status defaults to REQUESTED)
       const res = await fetch("/api/students/mock-interviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ jobRoleContext: targetRole })
+        body: JSON.stringify({ role: targetRole })
       })
-
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to start mock")
-
-      const mock = data.mockInterview
-      setActiveMock(mock)
-
-      // Step 2: Trigger processing of queued mock interviews
-      await fetch("/api/mock-interviews/process", { method: "POST" })
-
-      // Step 3: Status-driven polling with backoff
-      // States where we should continue polling: QUEUED, PROCESSING
-      // States where we should stop: ANSWERING, FAILED, EVALUATED, COMPLETED
-      const pollStates = new Set(["QUEUED", "PROCESSING"])
-
-      // Backoff sequence: 1s, 2s, 3s, 5s, 8s, 10s, 10s, ...
-      const backoffSequence = [1000, 2000, 3000, 5000, 8000, 10000, 10000]
-
-      let sequenceIndex = 0
-
-      const poll = async (): Promise<MockInterview | null> => {
-        // Check current active mock status
-        if (!activeMock) return null
-
-        const currentStatus = activeMock.status
-
-        // Stop polling if we reached a terminal state
-        if (!pollStates.has(currentStatus)) {
-          // Terminal state reached - return the mock
-          return activeMock
-        }
-
-        // Don't poll past the maximum duration
-        if (sequenceIndex >= backoffSequence.length) {
-          console.log("[Mock] Poll maximum attempts reached")
-          return null
-        }
-
-        const delayMs = backoffSequence[sequenceIndex]
-        sequenceIndex++
-
-        try {
-          const freshRes = await fetch("/api/students/mock-interviews")
-          const freshData = await freshRes.json()
-          const found = (freshData.mockInterviews || []).find(
-            (m: any) => m.id === activeMock!.id
-          )
-
-          if (found) {
-            // Update activeMock with latest state from server
-            setActiveMock(found)
-          }
-
-          // If we reached ANSWERING, stop polling and return
-          if (found && found.status === "ANSWERING") {
-            return found
-          }
-
-          // If we reached FAILED, stop polling
-          if (found && found.status === "FAILED") {
-            console.log("[Mock] Interview failed during polling")
-            setActiveMock(found)
-            return found
-          }
-
-          // If we reached EVALUATED, stop polling
-          if (found && found.status === "EVALUATED") {
-            console.log("[Mock] Interview evaluated during polling")
-            setActiveMock(found)
-            return found
-          }
-
-          // Continue polling with backoff
-          await new Promise((resolve) => setTimeout(resolve, delayMs))
-          return poll()
-        } catch (pollError) {
-          console.error("[Mock] Poll error:", pollError)
-          return null
-        }
-      }
-
-      const completedMock = await poll()
-
-      // Critical fix: Never fall back to an interview with zero questions
-      // If completedMock is null (timeout/max attempts) and activeMock has questions, keep activeMock
-      // If activeMock has no questions, show a helpful message
-      if (!completedMock) {
-        // Polling timed out - check if we already have mock data
-        // If activeMock has questions, we can use it
-        if (activeMock && activeMock.questions && activeMock.questions.length > 0) {
-          console.log("[Mock] Using active mock from creation, questions ready")
-          setActiveMock(activeMock)
-        } else {
-          console.log("[Mock] Polling timed out, interview still processing")
-          // Don't setActiveMock with empty questions - show preparing state instead
-          setActiveMock(null)
-        }
-        setMockAnswers(new Array(0).fill(""))
-      } else {
-        setActiveMock(completedMock)
-        setMockAnswers(
-          new Array(completedMock.questions?.length || 0).fill("")
-        )
-      }
+      setActiveMock(data.mock)
     } catch (err) {
-      console.error("[Mock Start] Error:", err)
       alert(err instanceof Error ? err.message : "An unexpected error occurred")
     } finally {
       setScoringMock(false)
     }
   }
 
-  // Complete and score AI Mock interview
-  const handleCompleteMock = async (
-    answersOverride?: string[]
-  ) => {
+  const handleCompleteMock = async (answersOverride?: string[]) => {
     if (!activeMock) return
-
-    const answersToSubmit =
-      answersOverride ?? mockAnswers
-
-    if (
-      answersToSubmit.length !== activeMock.questions.length ||
-      answersToSubmit.some((ans) => !ans.trim())
-    ) {
-      alert(
-        "Please provide an answer for all mock interview questions."
-      )
-      return
-    }
-
+    const answersToSubmit = answersOverride ?? mockAnswers
     setScoringMock(true)
-
     try {
-      const answersPayload = activeMock.questions.map(
-        (q, idx) => ({
-          questionId: q.id,
-          answer: answersToSubmit[idx].trim(),
-        })
-      )
+      const answersPayload = activeMock.questions.map((q, idx) => ({
+        questionId: q.id,
+        answer: answersToSubmit[idx]?.trim() || "",
+      }))
 
-      const res = await fetch(
-        `/api/students/mock-interviews/${activeMock.id}/submit`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            answers: answersPayload,
-          }),
-        }
-      )
+      const res = await fetch(`/api/students/mock-interviews/${activeMock.id}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: answersPayload }),
+      })
 
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Failed to score interview")
 
-      if (!res.ok) {
-        throw new Error(
-          data.error || "Failed to score interview"
-        )
-      }
-
-      alert(
-        "AI Mock Interview completed and scored successfully!"
-      )
-
-      setMockAnswers(answersToSubmit)
       setActiveMock(null)
-
       await fetchData(true)
     } catch (err) {
-      console.error("[Mock Complete] Error:", err)
-      alert(
-        err instanceof Error
-          ? err.message
-          : "An unexpected error occurred"
-      )
+      alert(err instanceof Error ? err.message : "An unexpected error occurred")
     } finally {
       setScoringMock(false)
     }
@@ -728,6 +511,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         jobs,
         applications,
         mocks,
+        mockInterviews: mocks,
         editEnrollmentNo,
         setEditEnrollmentNo,
         editName,
@@ -767,6 +551,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
         setMockAnswers,
         scoringMock,
         fetchData,
+        refreshMockInterviews,
         handleUpdateProfile,
         handleApplyJob,
         handleDecideOffer,

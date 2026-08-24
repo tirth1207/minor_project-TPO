@@ -1,325 +1,92 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
 import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
-import { evaluateMockInterview } from "@/lib/ai/mock-interview-evaluator"
+import { evaluateStructuredMockInterview } from "@/lib/ai/mock-interview-evaluator"
+import type { StudentAnswer } from "@/types/mock-interview"
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // --------------------------------------------------
-    // 1. Get interview ID
-    // --------------------------------------------------
-
     const { id } = await params
-
-    // --------------------------------------------------
-    // 2. Authenticate student
-    // --------------------------------------------------
-
     const auth = await requireApprovedStudent()
-
     if (!auth.ok) {
-      return NextResponse.json(
-        { error: auth.error },
-        { status: auth.status }
-      )
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
     const { supabase, studentId } = auth
-
-    // --------------------------------------------------
-    // 3. Parse request body
-    // --------------------------------------------------
-
     const body = await request.json()
-    const { answers } = body
 
-    if (!Array.isArray(answers)) {
-      return NextResponse.json(
-        { error: "Answers array is required" },
-        { status: 400 }
-      )
-    }
+    const submittedAnswers: StudentAnswer[] = Array.isArray(body.answers) ? body.answers : []
 
-    // --------------------------------------------------
-    // 4. Fetch interview with locking
-    // --------------------------------------------------
-
-    console.log("[Mock Submit] Fetching interview:", id)
-
-    const { data: mock, error: mockError } = await supabase
+    const { data: mock, error: fetchError } = await supabase
       .from("mock_interviews")
       .select("*")
       .eq("id", id)
       .eq("student_id", studentId)
-      .maybeSingle()
+      .single()
 
-    if (mockError) {
-      console.error(
-        "[Mock Submit] Failed to fetch interview:",
-        mockError
-      )
-
-      return NextResponse.json(
-        { error: mockError.message },
-        { status: 500 }
-      )
+    if (fetchError || !mock) {
+      return NextResponse.json({ error: "Mock interview not found" }, { status: 404 })
     }
 
-    if (!mock) {
-      return NextResponse.json(
-        { error: "Mock interview not found" },
-        { status: 404 }
-      )
+    if (mock.status === "EVALUATED") {
+      return NextResponse.json({ error: "Mock interview has already been evaluated" }, { status: 400 })
     }
 
-    // --------------------------------------------------
-    // 5. Atomic state transition: ANSWERING → EVALUATING
-    //    Only the first request wins this race.
-    //    If status is not ANSWERING, return 409 Conflict.
-    // --------------------------------------------------
+    // Set status to EVALUATING
+    await supabase
+      .from("mock_interviews")
+      .update({ status: "EVALUATING", answers: submittedAnswers })
+      .eq("id", id)
 
-    if (mock.status !== "ANSWERING") {
-      return NextResponse.json(
-        {
-          error: `Interview not ready for submission. Current status: ${mock.status}`,
-        },
-        { status: 409 }
-      )
+    // Determine target pass threshold
+    let passThreshold = 70
+    if (mock.mock_type === "JOB_REQUIRED" && mock.job_spec_snapshot) {
+      passThreshold = mock.job_spec_snapshot.mockPassScore || 70
     }
 
-    // Perform atomic state transition using a single database operation
-    // We update status from ANSWERING to EVALUATING and verify the row count
-    const { error: transitionError, data: transitionData } = await supabase
+    const questions = Array.isArray(mock.questions) ? mock.questions : []
+    const evalResult = await evaluateStructuredMockInterview(
+      questions,
+      submittedAnswers,
+      passThreshold
+    )
+
+    // Update database record with final results
+    const now = new Date().toISOString()
+    const { data: updatedMock, error: updateError } = await supabase
       .from("mock_interviews")
       .update({
-        status: "EVALUATING",
+        status: "EVALUATED",
+        overall_score: evalResult.overallScore,
+        ai_score: evalResult.overallScore,
+        mcq_score: evalResult.mcqScore,
+        theory_score: evalResult.theoryScore,
+        coding_score: evalResult.codingScore,
+        skill_scores: evalResult.skillScores,
+        passed: evalResult.passed,
+        ai_feedback: evalResult.summary,
+        ai_summary: evalResult.summary,
+        ai_results: evalResult,
+        completed_at: now,
       })
       .eq("id", id)
-      .eq("status", "ANSWERING") // Atomic: only update if still in ANSWERING
       .select()
       .single()
 
-    if (transitionError) {
-      throw new Error(
-        `Failed to transition to EVALUATING: ${transitionError.message}`
-      )
-    }
-
-    // Verify the transition succeeded
-    if (!transitionData) {
-      // Another request already claimed this interview
-      return NextResponse.json(
-        {
-          error:
-            "This interview is already being evaluated by another request. Please try again.",
-        },
-        { status: 409 }
-      )
-    }
-
-    // --------------------------------------------------
-    // 6. Prepare questions and answers
-    // --------------------------------------------------
-
-    const questions = Array.isArray(mock.questions)
-      ? mock.questions
-      : []
-
-    const formattedAnswers = answers.map((answer: any) => ({
-      questionId: answer.questionId ?? answer.id,
-      answer: answer.answer ?? "",
-      language: answer.language ?? null,
-    }))
-
-    console.log("[Mock Submit] Questions:", questions.length)
-    console.log("[Mock Submit] Answers:", formattedAnswers.length)
-
-    if (questions.length === 0) {
-      // Reset state if no questions
-      await supabase
-        .from("mock_interviews")
-        .update({ status: "ANSWERING" })
-        .eq("id", id)
-        .eq("student_id", studentId)
-      return NextResponse.json(
-        { error: "Mock interview has no questions" },
-        { status: 400 }
-      )
-    }
-
-    if (formattedAnswers.length !== questions.length) {
-      // Reset state on mismatch
-      await supabase
-        .from("mock_interviews")
-        .update({ status: "ANSWERING" })
-        .eq("id", id)
-        .eq("student_id", studentId)
-      return NextResponse.json(
-        {
-          error: "Number of answers does not match number of questions",
-        },
-        { status: 400 }
-      )
-    }
-
-    // --------------------------------------------------
-    // 7. Send to NVIDIA for evaluation
-    // --------------------------------------------------
-
-    let report
-
-    try {
-      console.log("[Mock Submit] Starting AI evaluation...")
-
-      const start = Date.now()
-
-      report = await evaluateMockInterview(
-        questions,
-        formattedAnswers,
-        {
-          jobRole: mock.job_role_context,
-        }
-      )
-
-      console.log(
-        `[Mock Submit] AI evaluation completed in ${
-          Date.now() - start
-        }ms`
-      )
-
-      console.log(
-        "[Mock Submit] Overall score:",
-        report.overallScore
-      )
-
-      console.log(
-        "[Mock Submit] Results:",
-        report.results?.length
-      )
-    } catch (error: any) {
-      console.error(
-        "[Mock Submit] AI evaluation failed:",
-        error
-      )
-
-      // Transition back to ANSWERING since evaluation failed
-      await supabase
-        .from("mock_interviews")
-        .update({
-          status: "ANSWERING",
-        })
-        .eq("id", id)
-        .eq("student_id", studentId)
-
-      return NextResponse.json(
-        {
-          error:
-            error?.message ||
-            "AI evaluation failed",
-        },
-        { status: 500 }
-      )
-    }
-
-    // --------------------------------------------------
-    // 8. Save evaluation
-    // --------------------------------------------------
-
-    console.log("[Mock Submit] Saving evaluation...")
-
-    const { data: updatedMock, error: updateError } =
-      await supabase
-        .from("mock_interviews")
-        .update({
-          answers: formattedAnswers,
-          overall_score: report.overallScore,
-          ai_summary: report.summary,
-          ai_results: report.results,
-          completed_at: new Date().toISOString(),
-          status: "EVALUATED",
-        })
-        .eq("id", id)
-        .eq("student_id", studentId)
-        .select()
-        .single()
-
     if (updateError) {
-      console.error(
-        "[Mock Submit] Failed to save evaluation:",
-        updateError
-      )
-
-      // Transition back to ANSWERING on save failure
-      await supabase
-        .from("mock_interviews")
-        .update({
-          status: "ANSWERING",
-        })
-        .eq("id", id)
-        .eq("student_id", studentId)
-
-      return NextResponse.json(
-        { error: updateError.message },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: updateError.message }, { status: 500 })
     }
-
-    // --------------------------------------------------
-    // 9. Notify student
-    // --------------------------------------------------
-
-    console.log("[Mock Submit] Creating notification...")
-
-    const { data: studentProfile, error: studentError } =
-      await supabase
-        .from("student_profiles")
-        .select("user_id")
-        .eq("id", updatedMock.student_id)
-        .single()
-
-    if (!studentError && studentProfile) {
-      const { error: notificationError } =
-        await supabase.from("notifications").insert({
-          user_id: studentProfile.user_id,
-          title: "Mock Interview Completed",
-          message: `Your mock interview for "${updatedMock.job_role_context}" has been evaluated. Your score is ${updatedMock.overallScore}%.`,
-          is_read: false,
-        })
-
-      if (notificationError) {
-        console.error(
-          "[Mock Submit] Notification failed:",
-          notificationError
-        )
-      }
-    }
-
-    // --------------------------------------------------
-    // 10. Return result
-    // --------------------------------------------------
-
-    console.log(
-      "[Mock Submit] Successfully completed:",
-      updatedMock.id
-    )
 
     return NextResponse.json({
       mock: updatedMock,
+      result: evalResult,
+      message: "Assessment submitted and evaluated successfully!",
     })
   } catch (err: any) {
-    console.error("[Mock Submit] Unexpected error:", err)
-
-    return NextResponse.json(
-      {
-        error:
-          err?.message || "Unexpected error",
-      },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 })
   }
 }
