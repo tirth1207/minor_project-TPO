@@ -29,12 +29,12 @@ import {
   IconAlertCircle,
   IconRefresh,
   IconDashboard,
-  IconSchool,
-  IconBuilding,
   IconBriefcase,
   IconLifebuoy,
   IconSend,
   IconUser,
+  IconBrain,
+  IconSettings,
 } from "@tabler/icons-react"
 
 function StudentDashboardShell({ children }: { children: React.ReactNode }) {
@@ -59,25 +59,18 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
     email: "",
     avatar: "/avatars/default.jpg",
   })
-  
+
   React.useEffect(() => {
     async function fetchUser() {
       try {
         const res = await fetch("/api/users/me")
 
         if (!res.ok) {
-          console.error(
-            "Failed to fetch user:",
-            res.status,
-            res.statusText
-          )
           return
         }
 
         const data = await res.json()
-
         const email = data.user?.email ?? ""
-
         const name =
           data.studentProfile?.name ||
           email.split("@")[0] ||
@@ -91,29 +84,19 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
           )}`,
         })
       } catch (error) {
-        console.error(
-          "Error fetching student user:",
-          error
-        )
+        console.error("Error fetching student user:", error)
       }
     }
 
     fetchUser()
   }, [])
 
-  // Student specific navigation links for AppSidebar
   const studentNavMains = React.useMemo(() => [
     {
       title: "Dashboard Overview",
       url: "/student/dashboard",
       icon: <IconDashboard className="size-4" />,
       isActive: pathname === "/student/dashboard",
-    },
-    {
-      title: "Candidate Profile",
-      url: "/student/profile",
-      icon: <IconUser className="size-4" />,
-      isActive: pathname === "/student/profile",
     },
     {
       title: "Eligible Jobs",
@@ -128,10 +111,28 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
       isActive: pathname === "/student/applications",
     },
     {
-      title: "AI Mock Prep",
+      title: "Interview Prep & Mocks",
       url: "/student/mock",
       icon: <IconRobot className="size-4" />,
-      isActive: pathname === "/student/mock",
+      isActive: pathname?.startsWith("/student/mock"),
+    },
+    {
+      title: "AI Career Roadmap",
+      url: "/student/roadmap",
+      icon: <IconBrain className="size-4" />,
+      isActive: pathname === "/student/roadmap",
+    },
+    {
+      title: "Candidate Profile",
+      url: "/student/profile",
+      icon: <IconUser className="size-4" />,
+      isActive: pathname === "/student/profile",
+    },
+    {
+      title: "Settings & Preferences",
+      url: "/student/settings",
+      icon: <IconSettings className="size-4" />,
+      isActive: pathname === "/student/settings",
     },
   ], [pathname])
 
@@ -152,7 +153,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <AppSidebar
         title="Student Portal"
-        subtitle="Recruitment Drive"
+        subtitle="Placement System"
         navMain={studentNavMains}
         navSecondary={navSecondary}
         user={user}
@@ -170,7 +171,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">Student Candidate</BreadcrumbLink>
+                  <BreadcrumbLink href="#">Student Portal</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
@@ -179,7 +180,9 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
                      : pathname === "/student/profile" ? "Candidate Profile"
                      : pathname === "/student/jobs" ? "Eligible Jobs"
                      : pathname === "/student/applications" ? "My Applications"
-                     : "AI Mock Prep"}
+                     : pathname === "/student/roadmap" ? "AI Career Roadmap"
+                     : pathname === "/student/settings" ? "Career Preferences"
+                     : "Interview Prep"}
                   </BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
@@ -205,7 +208,6 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
         </header>
 
         <div className="flex flex-1 flex-col gap-6 p-6">
-          {/* Error Box */}
           {error && (
             <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/50 p-4 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400">
               <IconAlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
@@ -219,17 +221,16 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
           {loading ? (
             <div className="flex flex-col items-center justify-center min-h-[400px] gap-2">
               <IconLoader className="h-8 w-8 text-primary animate-spin" />
-              <span className="text-sm text-zinc-500 font-medium">Loading candidate portal...</span>
+              <span className="text-sm text-zinc-500 font-medium">Loading student portal...</span>
             </div>
           ) : (
             <>
-              {/* Dynamic status alert */}
               {profile && profile.profile_status !== "APPROVED" && (
                 <div className="rounded-xl border border-amber-200 bg-amber-50/45 p-4 text-sm text-amber-800 flex items-center gap-3 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-400">
                   <IconExclamationCircle className="h-5 w-5 shrink-0" />
                   <div>
                     <p className="font-bold">Your profile is currently PENDING verification</p>
-                    <p className="text-xs mt-0.5">Your dashboard application capabilities are locked. Please consult with your assigned Faculty Mentor to review and verify your candidate fields and credentials.</p>
+                    <p className="text-xs mt-0.5">Your job application capabilities are locked. Please contact your Faculty Mentor to verify your candidate credentials.</p>
                   </div>
                 </div>
               )}
@@ -239,7 +240,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
                   <IconCircleCheck className="h-5 w-5 shrink-0 animate-bounce" />
                   <div>
                     <p className="font-bold">Congratulations! You have been successfully PLACED 🎉</p>
-                    <p className="text-xs mt-0.5">Your college placement process is completed. We wish you an amazing corporate career ahead!</p>
+                    <p className="text-xs mt-0.5">Your placement drive process is completed. Best wishes for your career!</p>
                   </div>
                 </div>
               )}

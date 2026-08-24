@@ -2,12 +2,7 @@ export const dynamic = "force-dynamic"
 
 import { requireUser } from "@/lib/auth/require-user"
 import { NextResponse } from "next/server"
-import { generateMockInterview } from "@/lib/ai/mock-interview"
-import { callNvidiaChat } from "@/lib/ai/nvidia"
-
-const MAX_RETRIES = 3
-const BASE_DELAY_MS = 2000
-const MAX_DELAY_MS = 30000
+import { generateStructuredMockInterview } from "@/lib/ai/mock-interview"
 
 export async function POST(request: Request) {
   try {
@@ -18,16 +13,14 @@ export async function POST(request: Request) {
 
     const { supabase, user } = auth
 
-    // Only allow SA, COLLEGE_ADMIN, or STUDENT to process mock interviews (internal operation)
     const role = user.app_metadata?.role
     if (role !== "SA" && role !== "COLLEGE_ADMIN" && role !== "STUDENT") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Find all mock interviews with QUEUED status
     const { data: queuedInterviews, error: fetchError } = await supabase
       .from("mock_interviews")
-      .select("id, student_id, job_role_context, retry_count, status")
+      .select("*")
       .eq("status", "QUEUED")
 
     if (fetchError) {
@@ -35,115 +28,68 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: fetchError.message }, { status: 500 })
     }
 
-    // Process each queued interview
     const processed = []
     const errors = []
 
     for (const interview of queuedInterviews) {
       try {
-        // Atomic status transition: QUEUED → PROCESSING
-        // Use a single query to transition and verify the update succeeded
         const { error: updateError, data: updatedInterview } = await supabase
           .from("mock_interviews")
           .update({ status: "PROCESSING" })
           .eq("id", interview.id)
-          .eq("status", "QUEUED") // Ensure we only transition from QUEUED
+          .eq("status", "QUEUED")
           .select()
           .single()
 
-        if (updateError) {
-          throw new Error(`Failed to transition to PROCESSING: ${updateError.message}`)
+        if (updateError || !updatedInterview) {
+          throw new Error("Concurrent processing detected or status update failed")
         }
 
-        // Verify the transition succeeded (status is now PROCESSING)
-        if (!updatedInterview || updatedInterview.status !== "PROCESSING") {
-          throw new Error("Concurrent processing detected - interview no longer in QUEUED state")
-        }
+        const mockType = updatedInterview.mock_type || "PRACTICE"
+        const jobRole = updatedInterview.job_role_context || "Software Engineer"
+        const jobInfo = updatedInterview.job_spec_snapshot
 
-        // Generate interview questions (retry logic handled inside generateMockInterview)
-        const generatedQuestions = await generateMockInterview(updatedInterview.job_role_context);
+        const generatedQuestions = await generateStructuredMockInterview(
+          mockType,
+          jobRole,
+          jobInfo
+        )
 
-        // Validate generated questions minimum count
-        if (generatedQuestions.length < 3) {
-          throw new Error(
-            `AI returned insufficient questions (expected at least 3, got ${generatedQuestions.length})`
-          )
-        }
-
-        // Validate each question has required fields
-        for (const q of generatedQuestions) {
-          if (
-            !q.id ||
-            !q.prompt ||
-            !q.rubric ||
-            !q.type
-          ) {
-            throw new Error(
-              `Invalid question format from AI - each question must have id, prompt, rubric, and type`
-            )
-          }
-        }
-
-        // Save generated questions and transition to ANSWERING
         await supabase
           .from("mock_interviews")
           .update({
             questions: generatedQuestions,
-            status: "ANSWERING", // Student can now start answering
+            status: "ANSWERING",
           })
           .eq("id", interview.id)
 
-        // Send notification to student that mock interview questions are ready
-        const { data: studentProfile, error: studentError } = await supabase
+        const { data: studentProfile } = await supabase
           .from("student_profiles")
           .select("user_id")
           .eq("id", updatedInterview.student_id)
           .single()
 
-        if (!studentError && studentProfile) {
-          await supabase
-            .from("notifications")
-            .insert({
-              user_id: studentProfile.user_id,
-              title: "Mock Interview Ready",
-              message: `Your mock interview for "${updatedInterview.job_role_context}" is ready. You can now start answering the questions.`,
-              is_read: false,
-            })
+        if (studentProfile) {
+          await supabase.from("notifications").insert({
+            user_id: studentProfile.user_id,
+            title: "Mock Assessment Ready",
+            message: `Your AI interview assessment for "${jobRole}" is ready. You can now begin your questions.`,
+            is_read: false,
+          })
         }
 
         processed.push(updatedInterview)
-      } catch (error) {
-        console.error(
-          `Error processing mock interview ${interview.id}:`,
-          error
-        )
-        errors.push({ id: interview.id, error: (error as Error).message })
+      } catch (error: any) {
+        console.error(`Error processing mock interview ${interview.id}:`, error)
+        errors.push({ id: interview.id, error: error.message })
 
-        // Ensure we don't leave the interview stuck in PROCESSING
-        // If the error happened after the status transition, we need to handle it
-        try {
-          // Try to reset if still PROCESSING
-          const { data: stillProcessing } = await supabase
-            .from("mock_interviews")
-            .select("status")
-            .eq("id", interview.id)
-            .single()
-
-          if (stillProcessing?.status === "PROCESSING") {
-            await supabase
-              .from("mock_interviews")
-              .update({
-                status: "QUEUED",
-                retry_count: (interview.retry_count ?? 0) + 1,
-              })
-              .eq("id", interview.id)
-          }
-        } catch (resetError) {
-          console.error(
-            `Failed to reset stuck interview ${interview.id}:`,
-            resetError
-          )
-        }
+        await supabase
+          .from("mock_interviews")
+          .update({
+            status: "FAILED",
+            ai_summary: `Generation failed: ${error.message}`,
+          })
+          .eq("id", interview.id)
       }
     }
 

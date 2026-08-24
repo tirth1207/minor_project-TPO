@@ -1,8 +1,10 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useStudent } from "../student-context"
-import { IconAlertTriangle, IconCheck } from "@tabler/icons-react"
+import { StudentCareerOnboardingDialog } from "@/components/student/career-onboarding-dialog"
+import { IconAlertTriangle, IconCheck, IconSparkles, IconArrowRight, IconLock } from "@tabler/icons-react"
 
 import {
   Table,
@@ -21,29 +23,48 @@ export default function StudentJobsPage() {
     profile,
     jobs,
     applications,
+    mockInterviews,
     handleApplyJob,
   } = useStudent()
+
+  const [onboardingOpen, setOnboardingOpen] = React.useState(false)
 
   const isApproved = profile?.profile_status === "APPROVED"
 
   return (
     <div className="w-full space-y-5">
-      {/* Header */}
-      <div>
-        <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-          Campus Placements
-        </h1>
+      <StudentCareerOnboardingDialog
+        open={onboardingOpen}
+        onOpenChange={setOnboardingOpen}
+      />
 
-        <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-          Explore approved placement opportunities and apply to eligible drives.
-        </p>
+      {/* Header */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Campus Placement Drives
+          </h1>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Explore active recruitment postings and complete mandatory AI assessments to unlock job applications.
+          </p>
+        </div>
+
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => setOnboardingOpen(true)}
+          className="h-8 text-xs gap-1.5 self-start sm:self-auto"
+        >
+          <IconSparkles className="h-3.5 w-3.5 text-amber-500" />
+          Update Career Goals
+        </Button>
       </div>
 
       {/* Table */}
       {jobs.length === 0 ? (
         <div className="rounded-lg border border-dashed border-zinc-200 py-12 text-center dark:border-zinc-800">
           <p className="text-xs text-zinc-500">
-            No active job postings available.
+            No active job postings available in your college portal.
           </p>
         </div>
       ) : (
@@ -69,7 +90,7 @@ export default function StudentJobsPage() {
                   </TableHead>
 
                   <TableHead className="h-9 px-3">
-                    Criteria
+                    AI Assessment Gate
                   </TableHead>
 
                   <TableHead className="h-9 px-3 text-center">
@@ -94,18 +115,29 @@ export default function StudentJobsPage() {
 
                   const alreadyApplied = mapping
                     ? applications.some(
-                      (app) =>
-                        app.job_college_mapping?.id === mapping.id
+                      (app) => app.job_college_mapping?.id === mapping.id
                     )
                     : false
 
                   const isEligible = is_eligible !== false
+                  const requireMock = Boolean(job.require_mock)
+                  const mockPassScore = job.mock_pass_score || 70
 
-                  const reasons = eligibility_reasons || {
-                    branch: true,
-                    cgpa: true,
-                    backlogs: true,
-                  }
+                  // Find best JOB_REQUIRED mock attempt for this exact mapping
+                  const attempts = mockInterviews.filter(
+                    (m) =>
+                      m.job_college_mapping_id === mapping?.id &&
+                      m.mock_type === "JOB_REQUIRED" &&
+                      m.status === "EVALUATED"
+                  )
+                  const bestAttempt = attempts.sort(
+                    (a, b) => (b.overall_score || 0) - (a.overall_score || 0)
+                  )[0]
+
+                  const bestScore = bestAttempt?.overall_score ?? bestAttempt?.ai_score ?? null
+                  const hasPassedMock = Boolean(
+                    bestScore !== null && bestScore >= mockPassScore && bestAttempt?.passed !== false
+                  )
 
                   return (
                     <TableRow
@@ -119,12 +151,6 @@ export default function StudentJobsPage() {
                             <span className="font-medium text-zinc-900 dark:text-zinc-100">
                               {job.title}
                             </span>
-
-                            {job.require_mock && (
-                              <span className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[9px] font-medium text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-400">
-                                Mock
-                              </span>
-                            )}
                           </div>
 
                           <p className="mt-0.5 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
@@ -146,7 +172,6 @@ export default function StudentJobsPage() {
                           <span className="text-zinc-700 dark:text-zinc-300">
                             {job.location || "—"}
                           </span>
-
                           <span className="ml-1.5 text-[10px] text-zinc-400">
                             {job.work_mode || ""}
                           </span>
@@ -164,69 +189,43 @@ export default function StudentJobsPage() {
                             Eligible
                           </Badge>
                         ) : (
-                          <div className="group relative inline-flex">
-                            <Badge
-                              variant="outline"
-                              className="h-5 gap-1 rounded-md border-rose-200 bg-rose-50 px-1.5 text-[10px] font-medium text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400"
-                            >
-                              <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-                              Ineligible
-                            </Badge>
-
-                            <div className="pointer-events-none absolute left-0 top-7 z-50 hidden w-56 rounded-md border border-zinc-200 bg-white p-2.5 text-[10px] shadow-lg group-hover:block dark:border-zinc-800 dark:bg-zinc-950">
-                              <div className="mb-1.5 flex items-center gap-1 font-medium text-zinc-700 dark:text-zinc-300">
-                                <IconAlertTriangle className="h-3 w-3 text-amber-500" />
-                                Unmatched criteria
-                              </div>
-
-                              <div className="space-y-1 text-zinc-500">
-                                {!reasons.branch && (
-                                  <p>
-                                    Branch &quot;{profile?.branch}&quot; is not eligible.
-                                  </p>
-                                )}
-
-                                {!reasons.cgpa && (
-                                  <p>
-                                    CGPA {profile?.cgpa} is below {job.min_cgpa}.
-                                  </p>
-                                )}
-
-                                {!reasons.backlogs && (
-                                  <p>
-                                    {profile?.active_backlogs} backlogs; maximum is{" "}
-                                    {job.max_backlogs}.
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                          <Badge
+                            variant="outline"
+                            className="h-5 gap-1 rounded-md border-rose-200 bg-rose-50 px-1.5 text-[10px] font-medium text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400"
+                          >
+                            Ineligible
+                          </Badge>
                         )}
                       </TableCell>
 
-                      {/* Criteria */}
+                      {/* AI Assessment Gate */}
                       <TableCell className="px-3 py-2">
-                        <div className="whitespace-nowrap text-[10px] text-zinc-500">
-                          <span>
-                            {job.branches?.length
-                              ? job.branches
-                                .map((b) => b.branch_name)
-                                .join(", ")
-                              : "All Branches"}
-                          </span>
-
-                          <span className="mx-1 text-zinc-300 dark:text-zinc-700">
-                            •
-                          </span>
-
-                          <span>CGPA ≥ {job.min_cgpa}</span>
-
-                          <span className="mx-1 text-zinc-300 dark:text-zinc-700">
-                            •
-                          </span>
-
-                          <span>Backlogs ≤ {job.max_backlogs}</span>
-                        </div>
+                        {!requireMock ? (
+                          <span className="text-[11px] text-zinc-400">Not Required</span>
+                        ) : (
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-1 text-[11px]">
+                              {hasPassedMock ? (
+                                <Badge variant="outline" className="h-5 text-[9px] border-emerald-300 bg-emerald-50 text-emerald-700">
+                                  Passed ({bestScore}%)
+                                </Badge>
+                              ) : bestScore !== null ? (
+                                <Badge variant="outline" className="h-5 text-[9px] border-rose-300 bg-rose-50 text-rose-700">
+                                  Score: {bestScore}% (Req: {mockPassScore}%)
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="h-5 text-[9px] border-amber-300 bg-amber-50 text-amber-800">
+                                  Required ({mockPassScore}%)
+                                </Badge>
+                              )}
+                            </div>
+                            {mapping && !hasPassedMock && (
+                              <Link href={`/student/mock/job/${mapping.id}`} className="block text-[10px] text-primary hover:underline font-medium">
+                                {bestScore !== null ? "Retake Job Assessment →" : "Take Required Assessment →"}
+                              </Link>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
 
                       {/* Applicants */}
@@ -246,17 +245,21 @@ export default function StudentJobsPage() {
                             <IconCheck className="h-3 w-3" />
                             Applied
                           </Badge>
+                        ) : requireMock && !hasPassedMock ? (
+                          <Link href={`/student/mock/job/${mapping?.id}`}>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 rounded-md px-2.5 text-[11px] border-amber-300 text-amber-800 dark:text-amber-300"
+                            >
+                              Take Job Mock
+                            </Button>
+                          </Link>
                         ) : (
                           <Button
                             size="sm"
-                            onClick={() =>
-                              handleApplyJob(mapping?.id ?? null)
-                            }
-                            disabled={
-                              !isApproved ||
-                              !mapping ||
-                              !isEligible
-                            }
+                            onClick={() => handleApplyJob(mapping?.id ?? null)}
+                            disabled={!isApproved || !mapping || !isEligible}
                             className="h-7 rounded-md px-2.5 text-[11px]"
                           >
                             {!mapping
@@ -265,7 +268,7 @@ export default function StudentJobsPage() {
                                 ? "Profile Pending"
                                 : !isEligible
                                   ? "Ineligible"
-                                  : "Apply"}
+                                  : "Apply Now"}
                           </Button>
                         )}
                       </TableCell>

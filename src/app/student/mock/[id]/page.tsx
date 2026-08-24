@@ -1,351 +1,441 @@
-"use client";
+"use client"
 
-import React, { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
-import { IconArrowLeft, IconFileText } from "@tabler/icons-react";
+import * as React from "react"
+import { useParams, useRouter } from "next/navigation"
+import Link from "next/link"
+import { QuestionnaireMCQ } from "@/components/mock-interview/questionnaire-mcq"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import {
+  IconCheck,
+  IconX,
+  IconArrowLeft,
+  IconArrowRight,
+  IconSparkles,
+  IconClock,
+  IconAlertTriangle,
+  IconCode,
+  IconFileText,
+} from "@tabler/icons-react"
+import type { MockInterviewQuestion, StudentAnswer, MockEvaluationResult } from "@/types/mock-interview"
 
-import { useStudent } from "../../student-context";
+export default function StudentMockExecutionPage() {
+  const params = useParams()
+  const router = useRouter()
+  const mockId = params.id as string
 
-type Question = {
-  question?: string;
-  text?: string;
-  id?: string;
-};
+  const [loading, setLoading] = React.useState(true)
+  const [submitting, setSubmitting] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
 
-type Answer = {
-  answer?: string;
-  text?: string;
-  score?: number;
-  feedback?: string;
-  questionId?: string;
-};
+  const [mockSession, setMockSession] = React.useState<any>(null)
+  const [questions, setQuestions] = React.useState<MockInterviewQuestion[]>([])
+  const [currentIdx, setCurrentIdx] = React.useState(0)
+  const [answers, setAnswers] = React.useState<Record<string, StudentAnswer>>({})
+  const [evaluationResult, setEvaluationResult] = React.useState<MockEvaluationResult | null>(null)
 
-type AIResult = {
-  question?: string;
-  question_id?: string;
-  score?: number;
-  feedback?: string;
-  answer?: string;
-};
+  React.useEffect(() => {
+    async function loadMockSession() {
+      try {
+        const res = await fetch(`/api/students/mock-interviews/${mockId}`)
+        const data = await res.json()
 
-type MockInterview = {
-  id: string;
-  student_id: string;
-  job_role_context: string;
-  questions: Question[] | string[];
-  answers: Answer[] | string[];
-  ai_score: number | null;
-  ai_feedback: string | null;
-  overall_score: number | null;
-  ai_summary: string | null;
-  ai_results: AIResult[] | Record<string, unknown> | null;
-  completed_at: string | null;
-  status: string;
-  retry_count: number;
-};
+        if (res.ok && data.mock) {
+          setMockSession(data.mock)
+          const qs = Array.isArray(data.mock.questions) ? data.mock.questions : []
+          setQuestions(qs)
 
-function getQuestionText(question: Question | string) {
-  if (typeof question === "string") return question;
-  return question.question || question.text || "Untitled question";
-}
+          if (data.mock.status === "EVALUATED" && data.mock.ai_results) {
+            setEvaluationResult(data.mock.ai_results)
+          }
 
-function getAnswerText(answer: Answer | string | undefined) {
-  if (!answer) return "No answer provided";
-  if (typeof answer === "string") return answer;
-  return answer.answer || answer.text || "No answer provided";
-}
-
-function getScoreLabel(score: number) {
-  if (score >= 90) return "Excellent";
-  if (score >= 80) return "Very good";
-  if (score >= 70) return "Good";
-  if (score >= 60) return "Needs improvement";
-  return "Needs work";
-}
-
-function getScoreClass(score: number) {
-  if (score >= 80) return "text-emerald-600";
-  if (score >= 60) return "text-amber-600";
-  return "text-destructive";
-}
-
-function formatDate(date: string | null) {
-  if (!date) return "Not completed";
-  return new Date(date).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function normalizeResults(results: MockInterview["ai_results"]): AIResult[] {
-  if (!results) return [];
-  if (Array.isArray(results)) return results;
-
-  if (typeof results === "object") {
-    const possibleResults =
-      (results as any).results ||
-      (results as any).questions ||
-      (results as any).evaluations;
-
-    if (Array.isArray(possibleResults)) return possibleResults;
-  }
-
-  return [];
-}
-
-export default function InterviewScorePage() {
-  const params = useParams();
-  const router = useRouter();
-  const { mocks } = useStudent();
-
-  const [mock, setMock] = useState<MockInterview | null>(null);
-  const id = params?.id as string;
-
-  useEffect(() => {
-    if (!id || !mocks) return;
-    const found = mocks.find((item: any) => item.id === id);
-    if (found) {
-      const normalized: MockInterview = {
-        id: found.id,
-        job_role_context: found.job_role_context,
-        questions: Array.isArray(found.questions)
-          ? found.questions.map((q: any) => ({
-              id: String(q.id || q.questionId || ''),
-              text: typeof q.text === 'string' ? q.text : (typeof q.question === 'string' ? q.question : 'Untitled question')
-            }))
-          : (found.questions as any),
-        answers: Array.isArray(found.answers) ? found.answers : [],
-        ai_score: typeof found.ai_score === 'number' ? found.ai_score : null,
-        ai_feedback: typeof found.ai_feedback === 'string' ? found.ai_feedback : null,
-        overall_score: typeof found.overall_score === 'number' ? found.overall_score : null,
-        ai_summary: typeof found.ai_summary === 'string' ? found.ai_summary : null,
-        ai_results: typeof found.ai_results === 'object' && found.ai_results !== null ? found.ai_results : null,
-        completed_at: typeof found.completed_at === 'string' ? found.completed_at : null,
-        status: found.status || 'REQUESTED',
-        student_id: found.student_id || '',
-        retry_count: typeof found.retry_count === 'number' ? found.retry_count : 0,
-      };
-      setMock(normalized);
+          // Initialize answers state from existing mock answers if present
+          if (Array.isArray(data.mock.answers)) {
+            const map: Record<string, StudentAnswer> = {}
+            data.mock.answers.forEach((ans: StudentAnswer) => {
+              if (ans.questionId) map[ans.questionId] = ans
+            })
+            setAnswers(map)
+          }
+        } else {
+          setError(data.error || "Failed to fetch mock interview session.")
+        }
+      } catch (err: any) {
+        setError(err?.message || "Failed to load session.")
+      } finally {
+        setLoading(false)
+      }
     }
-  }, [id, mocks]);
 
-  const results = useMemo(
-    () => normalizeResults(mock?.ai_results ?? null),
-    [mock]
-  );
+    if (mockId) loadMockSession()
+  }, [mockId])
 
-  if (!mock) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background px-6">
-        <div className="max-w-sm text-center">
-          <div className="mx-auto mb-5 flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-            <IconFileText className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <h1 className="text-base font-medium text-foreground">
-            Interview not found
-          </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            We couldn&apos;t find this interview evaluation.
-          </p>
-          <button
-            onClick={() => router.back()}
-            className="mt-6 text-sm font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground"
-          >
-            Go back
-          </button>
-        </div>
-      </div>
-    );
+  const currentQ = questions[currentIdx]
+
+  const handleMcqSelect = (qId: string, optionId: string) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [qId]: {
+        questionId: qId,
+        selectedOptionId: optionId,
+      },
+    }))
   }
 
-  const overallScore = mock.overall_score ?? mock.ai_score ?? 0;
-  const questions = Array.isArray(mock.questions) ? mock.questions : [];
-  const answers = Array.isArray(mock.answers) ? mock.answers : [];
+  const handleTextChange = (qId: string, text: string) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [qId]: {
+        ...prev[qId],
+        questionId: qId,
+        answerText: text,
+      },
+    }))
+  }
 
-  const answeredCount = answers.filter((answer) => {
-    const text = getAnswerText(answer);
-    return text && text !== "No answer provided";
-  }).length;
+  const handleLanguageChange = (qId: string, lang: string) => {
+    setAnswers((prev) => ({
+      ...prev,
+      [qId]: {
+        ...prev[qId],
+        questionId: qId,
+        codeLanguage: lang,
+      },
+    }))
+  }
 
-  const scoreLabel = getScoreLabel(overallScore);
+  const handleSubmitAssessment = async () => {
+    setSubmitting(true)
+    setError(null)
+    try {
+      const answerList = Object.values(answers)
+      const res = await fetch(`/api/students/mock-interviews/${mockId}/submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answers: answerList }),
+      })
+
+      const data = await res.json()
+      if (res.ok && data.result) {
+        setEvaluationResult(data.result)
+        setMockSession(data.mock)
+      } else {
+        setError(data.error || "Submission and evaluation failed.")
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to submit assessment.")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <p className="text-xs text-zinc-500">Initializing AI Mock Interview Assessment...</p>
+      </div>
+    )
+  }
+
+  if (error || !mockSession) {
+    return (
+      <div className="mx-auto max-w-xl py-12 text-center space-y-4">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400">
+          {error || "Assessment session unavailable."}
+        </div>
+        <Link href="/student/mock">
+          <Button variant="outline" size="sm" className="h-8 text-xs">
+            Return to Mock Hub
+          </Button>
+        </Link>
+      </div>
+    )
+  }
+
+  // View: Evaluation Report view when test is evaluated
+  if (mockSession.status === "EVALUATED" || evaluationResult) {
+    const report = evaluationResult || mockSession.ai_results
+    const passThreshold = mockSession.job_spec_snapshot?.mockPassScore || 70
+    const isPassed = Boolean(mockSession.passed)
+
+    return (
+      <div className="mx-auto max-w-4xl space-y-6 py-4">
+        <div className="flex items-center justify-between">
+          <Link href="/student/mock">
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1">
+              <IconArrowLeft className="h-3.5 w-3.5" />
+              Mock Hub
+            </Button>
+          </Link>
+
+          {mockSession.job_college_mapping_id && (
+            <Link href="/student/jobs">
+              <Button size="sm" variant="default" className="h-8 text-xs">
+                Back to Jobs
+              </Button>
+            </Link>
+          )}
+        </div>
+
+        {/* Score Header Card */}
+        <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800">
+          <CardHeader className="border-b border-zinc-100 dark:border-zinc-800 pb-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-lg font-bold">
+                  {mockSession.job_role_context || "AI Assessment Report"}
+                </CardTitle>
+                <CardDescription className="text-xs text-zinc-500">
+                  Completed on {new Date(mockSession.completed_at || Date.now()).toLocaleDateString()}
+                </CardDescription>
+              </div>
+
+              <Badge
+                variant="outline"
+                className={`text-xs px-3 py-1 font-semibold ${
+                  isPassed
+                    ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"
+                    : "border-rose-300 bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300"
+                }`}
+              >
+                {isPassed ? "PASSED ✓" : "NEEDS IMPROVEMENT"}
+              </Badge>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-6 pt-6">
+            {/* Score Metrics Grid */}
+            <div className="grid grid-cols-4 gap-3 text-center">
+              <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/40">
+                <div className="text-2xl font-extrabold text-primary">{report?.overallScore ?? mockSession.overall_score ?? 0}%</div>
+                <div className="text-[10px] text-zinc-500 font-medium mt-0.5">Overall Score</div>
+              </div>
+
+              <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/40">
+                <div className="text-xl font-bold text-zinc-800 dark:text-zinc-200">{report?.mcqScore ?? mockSession.mcq_score ?? 0}%</div>
+                <div className="text-[10px] text-zinc-500 font-medium mt-0.5">MCQ Section</div>
+              </div>
+
+              <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/40">
+                <div className="text-xl font-bold text-zinc-800 dark:text-zinc-200">{report?.theoryScore ?? mockSession.theory_score ?? 0}%</div>
+                <div className="text-[10px] text-zinc-500 font-medium mt-0.5">Theory Section</div>
+              </div>
+
+              <div className="rounded-xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/40">
+                <div className="text-xl font-bold text-zinc-800 dark:text-zinc-200">{report?.codingScore ?? mockSession.coding_score ?? 0}%</div>
+                <div className="text-[10px] text-zinc-500 font-medium mt-0.5">Coding Section</div>
+              </div>
+            </div>
+
+            {/* AI Summary Feedback */}
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 text-xs dark:border-zinc-800 dark:bg-zinc-900/30 space-y-1">
+              <h4 className="font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                <IconSparkles className="h-4 w-4 text-amber-500" />
+                AI Assessment Summary
+              </h4>
+              <p className="text-zinc-600 dark:text-zinc-400">{report?.summary || mockSession.ai_summary}</p>
+            </div>
+
+            {/* Skill Score Breakdown */}
+            {report?.skillScores && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Skill Proficiency Breakdown</h4>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {Object.entries(report.skillScores).map(([skill, score]: [string, any]) => (
+                    <div key={skill} className="rounded-lg border border-zinc-200 p-3 text-xs dark:border-zinc-800 space-y-1">
+                      <div className="flex justify-between font-medium">
+                        <span>{skill}</span>
+                        <span className="font-semibold text-primary">{score}%</span>
+                      </div>
+                      <Progress value={score} className="h-1.5" />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Active Test View
+  const answeredCount = Object.keys(answers).length
+  const totalQuestions = questions.length
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Header */}
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-5">
-          <button
-            onClick={() => router.back()}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <IconArrowLeft className="h-4 w-4" />
-            Interviews
-          </button>
+    <div className="mx-auto max-w-4xl space-y-6 py-4">
+      {/* Top Test Navigation Header */}
+      <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+        <div className="space-y-0.5">
+          <Badge variant="outline" className="text-[10px]">
+            {mockSession.mock_type || "PRACTICE"}
+          </Badge>
+          <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+            {mockSession.job_role_context || "AI Mock Assessment"}
+          </h2>
+        </div>
 
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                mock.status === "EVALUATED"
-                  ? "bg-emerald-500"
-                : mock.status === "EVALUATING"
-                  ? "bg-amber-500"
-                : mock.status === "FAILED"
-                  ? "bg-destructive"
-                : "bg-zinc-500"
+        <div className="flex items-center gap-4">
+          <div className="text-right text-xs">
+            <span className="font-semibold text-primary">{answeredCount}</span> of{" "}
+            <span className="font-semibold text-zinc-800 dark:text-zinc-200">{totalQuestions}</span> answered
+          </div>
+
+          <Button
+            onClick={handleSubmitAssessment}
+            disabled={submitting}
+            size="sm"
+            className="h-8 text-xs font-semibold gap-1.5"
+          >
+            <IconCheck className="h-3.5 w-3.5" />
+            {submitting ? "Evaluating Answers..." : "Submit Assessment"}
+          </Button>
+        </div>
+      </div>
+
+      {/* Question Stepper Tabs */}
+      <div className="flex flex-wrap gap-1.5">
+        {questions.map((q, idx) => {
+          const isAnswered = Boolean(answers[q.id])
+          const isCurrent = idx === currentIdx
+
+          return (
+            <button
+              key={q.id}
+              onClick={() => setCurrentIdx(idx)}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg border text-xs font-semibold transition-all ${
+                isCurrent
+                  ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                  : isAnswered
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-400"
+                  : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400"
               }`}
+            >
+              {idx + 1}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Current Question Container */}
+      {currentQ && (
+        <div className="space-y-4">
+          {currentQ.type === "MCQ" && (
+            <QuestionnaireMCQ
+              question={currentQ as any}
+              selectedOptionId={answers[currentQ.id]?.selectedOptionId}
+              onSelectOption={(optId) => handleMcqSelect(currentQ.id, optId)}
             />
-            {mock.status}
+          )}
+
+          {currentQ.type === "THEORY" || currentQ.type === "BEHAVIORAL" ? (
+            <Card className="rounded-xl border-zinc-200 dark:border-zinc-800 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px] font-semibold text-primary">
+                    <IconFileText className="h-3 w-3 mr-1 inline" />
+                    THEORY
+                  </Badge>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {currentQ.skill}
+                  </Badge>
+                </div>
+                <span className="text-xs font-semibold text-zinc-500">{currentQ.points || 10} Points</span>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{currentQ.question}</h3>
+              </div>
+
+              <Textarea
+                value={answers[currentQ.id]?.answerText || ""}
+                onChange={(e) => handleTextChange(currentQ.id, e.target.value)}
+                placeholder="Type your explanation and reasoning in detail..."
+                className="min-h-[140px] text-xs resize-y"
+              />
+            </Card>
+          ) : null}
+
+          {currentQ.type === "CODE" && (
+            <Card className="rounded-xl border-zinc-200 dark:border-zinc-800 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-[10px] font-semibold text-primary">
+                    <IconCode className="h-3 w-3 mr-1 inline" />
+                    CODING
+                  </Badge>
+                  <Badge variant="secondary" className="text-[10px]">
+                    {currentQ.skill}
+                  </Badge>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-zinc-500">{currentQ.points || 15} Points</span>
+                  <Select
+                    value={answers[currentQ.id]?.codeLanguage || (currentQ as any).defaultLanguage || "TypeScript"}
+                    onValueChange={(lang) => handleLanguageChange(currentQ.id, lang)}
+                  >
+                    <SelectTrigger className="h-7 w-28 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {((currentQ as any).languageOptions || ["TypeScript", "JavaScript", "Python", "Java", "C++"]).map((l: string) => (
+                        <SelectItem key={l} value={l} className="text-xs">
+                          {l}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{currentQ.question}</h3>
+                {(currentQ as any).description && (
+                  <p className="text-xs text-zinc-600 dark:text-zinc-400">{(currentQ as any).description}</p>
+                )}
+              </div>
+
+              <Textarea
+                value={answers[currentQ.id]?.answerText || (currentQ as any).starterCode || ""}
+                onChange={(e) => handleTextChange(currentQ.id, e.target.value)}
+                placeholder="Write your code implementation here..."
+                className="min-h-[200px] font-mono text-xs leading-relaxed resize-y bg-zinc-950 text-zinc-100 border-zinc-800"
+              />
+            </Card>
+          )}
+
+          {/* Stepper Controls */}
+          <div className="flex items-center justify-between pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentIdx(Math.max(0, currentIdx - 1))}
+              disabled={currentIdx === 0}
+              className="h-8 text-xs gap-1"
+            >
+              <IconArrowLeft className="h-3.5 w-3.5" />
+              Previous
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentIdx(Math.min(questions.length - 1, currentIdx + 1))}
+              disabled={currentIdx === questions.length - 1}
+              className="h-8 text-xs gap-1"
+            >
+              Next
+              <IconArrowRight className="h-3.5 w-3.5" />
+            </Button>
           </div>
         </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl px-6 py-12">
-        {/* Title + score */}
-        <section className="flex flex-col gap-8 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              AI interview evaluation
-            </p>
-            <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">
-              {mock.job_role_context}
-            </h1>
-            <p className="mt-3 text-sm text-muted-foreground">
-              {formatDate(mock.completed_at)} · {answeredCount} of{" "}
-              {questions.length} answered · attempt {mock.retry_count + 1}
-            </p>
-          </div>
-
-          <div className="shrink-0">
-            <div className="flex items-baseline gap-1">
-              <span
-                className={`text-5xl font-semibold tracking-tight ${getScoreClass(
-                  overallScore
-                )}`}
-              >
-                {overallScore}
-              </span>
-              <span className="text-base text-muted-foreground">/ 100</span>
-            </div>
-            <p className={`mt-1 text-sm font-medium ${getScoreClass(overallScore)}`}>
-              {scoreLabel}
-            </p>
-          </div>
-        </section>
-
-        {/* AI Summary / Feedback */}
-        {(mock.ai_summary || mock.ai_feedback) && (
-          <section className="mt-10 grid gap-6 border-t border-border pt-8 sm:grid-cols-2">
-            <div>
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Summary
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {mock.ai_summary || "No AI summary is available yet."}
-              </p>
-            </div>
-
-            <div>
-              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Feedback
-              </h2>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {mock.ai_feedback || "No detailed feedback is available yet."}
-              </p>
-            </div>
-          </section>
-        )}
-
-        {/* Questions */}
-        <section className="mt-10 border-t border-border pt-8">
-          <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Question-by-question
-          </h2>
-
-          <div className="mt-4 divide-y divide-border">
-            {questions.map((question, index) => {
-              const answer = answers[index];
-              const result = results[index];
-              const answerText = getAnswerText(answer);
-
-              const questionScore =
-                result?.score ??
-                (typeof answer === "object" && answer !== null
-                  ? answer.score
-                  : undefined);
-
-              const questionFeedback =
-                result?.feedback ??
-                (typeof answer === "object" && answer !== null
-                  ? answer.feedback
-                  : undefined);
-
-              return (
-                <div key={index} className="py-6 first:pt-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <p className="text-sm font-medium leading-6">
-                      <span className="text-muted-foreground">
-                        {String(index + 1).padStart(2, "0")}
-                      </span>{" "}
-                      {getQuestionText(question)}
-                    </p>
-
-                    {questionScore !== undefined && (
-                      <span
-                        className={`shrink-0 text-sm font-semibold ${getScoreClass(
-                          questionScore
-                        )}`}
-                      >
-                        {questionScore}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="mt-4 space-y-4 pl-0 sm:pl-7">
-                    <div>
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        Your answer
-                      </p>
-                      <p
-                        className={`mt-1.5 text-sm leading-6 ${
-                          answerText === "No answer provided"
-                            ? "text-destructive"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        {answerText}
-                      </p>
-                    </div>
-
-                    <div className="border-l-2 border-border pl-4">
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                        AI evaluation
-                      </p>
-                      <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
-                        {questionFeedback ||
-                          "No question-level feedback available."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Footer */}
-        <section className="mt-10 flex items-center justify-between border-t border-border pt-8">
-          <p className="text-sm text-muted-foreground">
-            Use this evaluation to prepare for your next interview.
-          </p>
-          <button
-            onClick={() => router.back()}
-            className="text-sm font-medium text-foreground underline underline-offset-4 decoration-border hover:decoration-foreground"
-          >
-            Back to interviews
-          </button>
-        </section>
-      </main>
+      )}
     </div>
-  );
+  )
 }

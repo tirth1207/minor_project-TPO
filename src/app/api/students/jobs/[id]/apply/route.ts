@@ -57,7 +57,7 @@ export async function POST(
         )
       `)
       .eq("id", id)
-      .eq("org_id", orgId) // Secure boundary: student can only apply to mappings belonging to their org!
+      .eq("org_id", orgId)
       .maybeSingle()
 
     if (mappingError || !mapping) {
@@ -86,26 +86,53 @@ export async function POST(
       )
     }
 
-    let highestMockScore = null
+    let jobSpecificMockScore: number | null = null
+    let passedMockId: string | null = null
 
-    // Check AI Mock Interview Gate if required
+    // Strictly enforce AI Mock Interview Gate for JOB_REQUIRED interviews
     if (job.require_mock) {
-      const { data: mockInterviews, error: mockError } = await supabase
-        .from("mock_interviews")
-        .select("ai_score")
-        .eq("student_id", studentId)
-        .eq("status", "COMPLETED")
-        .gte("ai_score", job.mock_pass_score || 50)
-        .order("ai_score", { ascending: false })
+      const requiredPassScore = job.mock_pass_score || 70
 
-      if (mockError || !mockInterviews || mockInterviews.length === 0) {
+      // Search for evaluated JOB_REQUIRED mock for this exact job mapping
+      const { data: jobMocks, error: mockError } = await supabase
+        .from("mock_interviews")
+        .select("id, overall_score, ai_score, passed, status, mock_type")
+        .eq("student_id", studentId)
+        .eq("job_college_mapping_id", id)
+        .eq("mock_type", "JOB_REQUIRED")
+        .eq("status", "EVALUATED")
+        .order("overall_score", { ascending: false })
+
+      if (mockError || !jobMocks || jobMocks.length === 0) {
         return NextResponse.json(
-          { error: `This job requires a completed AI Mock Interview with a passing score of at least ${job.mock_pass_score || 50}%.` },
+          {
+            code: "MOCK_INTERVIEW_REQUIRED",
+            error: `This job requires you to complete and pass a job-specific AI mock assessment before applying.`,
+            jobMappingId: id,
+            requiredScore: requiredPassScore,
+          },
           { status: 400 }
         )
       }
 
-      highestMockScore = mockInterviews[0].ai_score
+      const bestAttempt = jobMocks[0]
+      const bestScore = bestAttempt.overall_score ?? bestAttempt.ai_score ?? 0
+
+      if (bestScore < requiredPassScore || !bestAttempt.passed) {
+        return NextResponse.json(
+          {
+            code: "MOCK_INTERVIEW_FAILED",
+            error: `Your score on the job mock assessment (${bestScore}%) is below the required passing score (${requiredPassScore}%). Please retake the assessment before applying.`,
+            score: bestScore,
+            requiredScore: requiredPassScore,
+            jobMappingId: id,
+          },
+          { status: 400 }
+        )
+      }
+
+      jobSpecificMockScore = bestScore
+      passedMockId = bestAttempt.id
     }
 
     // Create Job Application
@@ -114,14 +141,13 @@ export async function POST(
       .insert({
         student_id: studentId,
         job_college_map_id: id,
-        mock_score: highestMockScore,
+        mock_score: jobSpecificMockScore,
         status: "APPLIED",
       })
       .select()
       .single()
 
     if (appError) {
-      // If error is unique constraint, they've already applied
       if (appError.code === "23505") {
         return NextResponse.json({ error: "You have already applied for this job." }, { status: 400 })
       }
