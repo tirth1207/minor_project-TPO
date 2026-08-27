@@ -2,13 +2,26 @@ export const dynamic = "force-dynamic"
 
 import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
-import { generateGroundedCareerRoadmap } from "@/lib/ai/career-roadmap"
+import {
+  generateGroundedCareerRoadmap,
+  generateProfileHash,
+  generateJobsHash,
+} from "@/lib/ai/career-roadmap"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export async function POST() {
   try {
     const auth = await requireApprovedStudent()
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
+      return NextResponse.json(
+        { success: false, error: auth.error, code: "UNAUTHORIZED" },
+        { status: auth.status }
+      )
+    }
+
+    const rateLimit = checkRateLimit(`career-roadmap-refresh:${auth.user.id}`, { windowMs: 60 * 1000, maxRequests: 5 })
+    if (!rateLimit.success) {
+      return rateLimitResponse()
     }
 
     const { supabase, studentId, orgId } = auth
@@ -19,9 +32,13 @@ export async function POST() {
       .eq("student_id", studentId)
       .maybeSingle()
 
-    if (!profile) {
+    if (!profile || !profile.onboarding_completed) {
       return NextResponse.json(
-        { error: "Complete career onboarding before refreshing your roadmap." },
+        {
+          success: false,
+          error: "Complete career onboarding before refreshing your roadmap.",
+          code: "ONBOARDING_REQUIRED",
+        },
         { status: 400 }
       )
     }
@@ -66,24 +83,36 @@ export async function POST() {
       mocks || []
     )
 
+    const profileHash = generateProfileHash(profile)
+    const jobsHash = generateJobsHash(approvedJobs)
+    const nowIso = new Date().toISOString()
+
     await supabase.from("student_career_roadmaps").upsert(
       {
         student_id: studentId,
         roadmap_data: roadmapData,
-        generated_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        profile_hash: profileHash,
+        jobs_hash: jobsHash,
+        generated_at: nowIso,
+        updated_at: nowIso,
       },
       { onConflict: "student_id" }
     )
 
     return NextResponse.json({
+      success: true,
       roadmap: roadmapData,
-      generatedAt: new Date().toISOString(),
+      generatedAt: nowIso,
       message: "AI Roadmap refreshed successfully!",
     })
   } catch (err: any) {
+    console.error("[CAREER_ROADMAP_REFRESH_ERROR]", err)
     return NextResponse.json(
-      { error: err?.message || "Failed to refresh career roadmap" },
+      {
+        success: false,
+        error: "AI career analysis is temporarily unavailable. Your profile is safe. Try again.",
+        code: "ROADMAP_REFRESH_FAILED",
+      },
       { status: 500 }
     )
   }

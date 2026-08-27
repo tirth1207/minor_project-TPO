@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
-import { IconSparkles, IconCheck, IconArrowRight, IconArrowLeft } from "@tabler/icons-react"
+import { IconSparkles, IconCheck, IconArrowRight, IconArrowLeft, IconAlertTriangle } from "@tabler/icons-react"
 
 interface StudentCareerOnboardingDialogProps {
   open: boolean
@@ -31,6 +31,7 @@ export function StudentCareerOnboardingDialog({
   const router = useRouter()
   const [step, setStep] = React.useState(1)
   const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
 
   // Form State
   const [dreamJob, setDreamJob] = React.useState("Software Engineer")
@@ -49,23 +50,52 @@ export function StudentCareerOnboardingDialog({
   const progressPercent = (step / totalSteps) * 100
 
   const handleNext = () => {
+    setError(null)
+    if (step === 1) {
+      if (!dreamJob.trim() || !dreamRole.trim()) {
+        setError("Please enter your dream job domain and target role.")
+        return
+      }
+    }
     if (step < totalSteps) setStep(step + 1)
   }
 
   const handlePrev = () => {
+    setError(null)
     if (step > 1) setStep(step - 1)
   }
 
   const handleSubmit = async () => {
+    setError(null)
     setLoading(true)
-    try {
-      const dreamSkills = dreamSkillsInput.split(",").map((s) => s.trim()).filter(Boolean)
-      const currentSkills = currentSkillsInput.split(",").map((s) => s.trim()).filter(Boolean)
-      const targetCompanies = targetCompaniesInput.split(",").map((s) => s.trim()).filter(Boolean)
 
+    // Pre-submission validation
+    if (!dreamJob.trim() || !dreamRole.trim()) {
+      setError("Please specify both your dream job domain and target role.")
+      setLoading(false)
+      return
+    }
+
+    const dreamSkills = dreamSkillsInput.split(",").map((s) => s.trim()).filter(Boolean)
+    const currentSkills = currentSkillsInput.split(",").map((s) => s.trim()).filter(Boolean)
+    const targetCompanies = targetCompaniesInput.split(",").map((s) => s.trim()).filter(Boolean)
+
+    if (currentSkills.length === 0) {
+      setError("Please specify at least one current skill.")
+      setLoading(false)
+      return
+    }
+
+    if (!targetTimeline) {
+      setError("Please select your target readiness timeline.")
+      setLoading(false)
+      return
+    }
+
+    try {
       const payload = {
-        dream_job: dreamJob,
-        dream_role: dreamRole,
+        dream_job: dreamJob.trim(),
+        dream_role: dreamRole.trim(),
         dream_ctc: dreamCtc ? parseFloat(dreamCtc) : null,
         dream_skills: dreamSkills,
         current_skills: currentSkills,
@@ -83,13 +113,19 @@ export function StudentCareerOnboardingDialog({
         body: JSON.stringify(payload),
       })
 
-      if (res.ok) {
+      const data = await res.json()
+
+      if (res.ok && data.profile) {
         onOpenChange(false)
-        if (onCompleted) onCompleted()
+        if (onCompleted) {
+          onCompleted()
+        }
         router.push("/student/roadmap")
+      } else {
+        setError(data.error || "Failed to save career profile. Please verify your details.")
       }
-    } catch (err) {
-      console.error("Failed to save career profile:", err)
+    } catch (err: any) {
+      setError(err?.message || "An unexpected network error occurred while saving your profile.")
     } finally {
       setLoading(false)
     }
@@ -110,6 +146,13 @@ export function StudentCareerOnboardingDialog({
             Help us personalize your AI Interview practice and generate real portal-grounded job recommendations.
           </DialogDescription>
         </DialogHeader>
+
+        {error && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 flex items-center gap-2">
+            <IconAlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
+            <span>{error}</span>
+          </div>
+        )}
 
         {/* Progress Bar */}
         <div className="my-2 space-y-1">
@@ -278,7 +321,7 @@ export function StudentCareerOnboardingDialog({
             variant="ghost"
             size="sm"
             onClick={handlePrev}
-            disabled={step === 1}
+            disabled={step === 1 || loading}
             className="h-8 text-xs gap-1"
           >
             <IconArrowLeft className="h-3.5 w-3.5" />
@@ -290,6 +333,7 @@ export function StudentCareerOnboardingDialog({
               type="button"
               size="sm"
               onClick={handleNext}
+              disabled={loading}
               className="h-8 text-xs gap-1"
             >
               Next Step
@@ -304,7 +348,7 @@ export function StudentCareerOnboardingDialog({
               className="h-8 text-xs gap-1.5 bg-primary"
             >
               <IconCheck className="h-3.5 w-3.5" />
-              {loading ? "Generating Career Trajectory..." : "Complete & Generate Roadmap"}
+              {loading ? "Saving Career Goals..." : "Complete & Generate Roadmap"}
             </Button>
           )}
         </div>

@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { useStudent } from "../student-context"
 import { StudentCareerOnboardingDialog } from "@/components/student/career-onboarding-dialog"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -13,40 +12,52 @@ import {
   IconBriefcase,
   IconRefresh,
   IconSparkles,
-  IconCheck,
   IconAlertTriangle,
   IconArrowRight,
   IconTarget,
   IconBook,
+  IconLoader2,
+  IconCalendar,
+  IconUserCheck,
 } from "@tabler/icons-react"
 import type { CareerRoadmapData } from "@/types/career"
 
 export default function StudentCareerRoadmapPage() {
-  const { profile } = useStudent()
   const [roadmap, setRoadmap] = React.useState<CareerRoadmapData | null>(null)
+  const [cached, setCached] = React.useState<boolean>(false)
+  const [generatedAt, setGeneratedAt] = React.useState<string | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [onboardingRequired, setOnboardingRequired] = React.useState(false)
   const [onboardingOpen, setOnboardingOpen] = React.useState(false)
 
   const fetchRoadmap = React.useCallback(async () => {
     setLoading(true)
     setError(null)
+    setOnboardingRequired(false)
+
     try {
       const res = await fetch("/api/students/career-roadmap")
       const data = await res.json()
 
-      if (res.ok) {
+      if (res.ok && data.success !== false) {
         if (data.onboardingRequired) {
+          setOnboardingRequired(true)
           setOnboardingOpen(true)
-        } else {
+        } else if (data.roadmap) {
           setRoadmap(data.roadmap)
+          setCached(Boolean(data.cached))
+          setGeneratedAt(data.generatedAt || null)
+        } else {
+          setError("No roadmap data available. Please complete your career onboarding.")
         }
       } else {
-        setError(data.error || "Failed to load career roadmap.")
+        const msg = data.error || "AI career analysis is temporarily unavailable. Your profile is safe. Try again."
+        setError(msg)
       }
     } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred.")
+      setError("AI career analysis is temporarily unavailable. Your profile is safe. Try again.")
     } finally {
       setLoading(false)
     }
@@ -57,31 +68,138 @@ export default function StudentCareerRoadmapPage() {
   }, [fetchRoadmap])
 
   const handleRefresh = async () => {
+    if (refreshing) return
     setRefreshing(true)
+    setError(null)
+
     try {
       const res = await fetch("/api/students/career-roadmap/refresh", {
         method: "POST",
       })
       const data = await res.json()
+
       if (res.ok && data.roadmap) {
         setRoadmap(data.roadmap)
+        setCached(false)
+        setGeneratedAt(data.generatedAt || new Date().toISOString())
       } else {
-        setError(data.error || "Failed to refresh roadmap.")
+        setError(data.error || "AI career analysis is temporarily unavailable. Your profile is safe. Try again.")
       }
     } catch (err: any) {
-      setError(err?.message || "Failed to refresh roadmap.")
+      setError("AI career analysis is temporarily unavailable. Your profile is safe. Try again.")
     } finally {
       setRefreshing(false)
     }
   }
 
+  // 1. Initial Loading State
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-xs text-zinc-500">Generating Grounded AI Career Trajectory...</p>
+      <div className="flex h-[450px] flex-col items-center justify-center space-y-4 text-center">
+        <div className="rounded-full bg-zinc-100 p-4 dark:bg-zinc-800">
+          <IconLoader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+        <div className="space-y-1">
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            Building your career trajectory...
+          </h3>
+          <p className="text-xs text-zinc-500 max-w-sm">
+            Synthesizing your career profile, skill evaluation, and active campus drives.
+          </p>
+        </div>
       </div>
     )
   }
+
+  // 4. Onboarding-Required State (when roadmap is null and onboardingRequired is true)
+  if (onboardingRequired && !roadmap) {
+    return (
+      <div className="w-full space-y-6">
+        <StudentCareerOnboardingDialog
+          open={onboardingOpen}
+          onOpenChange={setOnboardingOpen}
+          onCompleted={fetchRoadmap}
+        />
+
+        <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 p-8 text-center space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400">
+            <IconUserCheck className="h-6 w-6" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
+              Career Profile Onboarding Required
+            </h2>
+            <p className="text-xs text-zinc-500 max-w-md mx-auto">
+              Please complete your target career goals, current skill levels, and dream role preferences to generate your AI career trajectory.
+            </p>
+          </div>
+          <Button onClick={() => setOnboardingOpen(true)} className="h-9 text-xs font-semibold gap-1.5">
+            <IconSparkles className="h-3.5 w-3.5" />
+            Complete Career Onboarding
+          </Button>
+        </Card>
+      </div>
+    )
+  }
+
+  // 5 & 6. AI Failure / Timeout State
+  if (error && !roadmap) {
+    return (
+      <div className="w-full space-y-6">
+        <StudentCareerOnboardingDialog
+          open={onboardingOpen}
+          onOpenChange={setOnboardingOpen}
+          onCompleted={fetchRoadmap}
+        />
+
+        <Card className="rounded-2xl border-rose-200 bg-rose-50/30 dark:border-rose-950 dark:bg-rose-950/10 p-8 text-center space-y-4">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400">
+            <IconAlertTriangle className="h-6 w-6" />
+          </div>
+          <div className="space-y-1">
+            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+              Unable to Load Career Trajectory
+            </h2>
+            <p className="text-xs text-rose-700 dark:text-rose-400 max-w-md mx-auto">
+              {error}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Button onClick={fetchRoadmap} size="sm" className="h-8 text-xs gap-1.5">
+              <IconRefresh className="h-3.5 w-3.5" />
+              Retry Now
+            </Button>
+            <Button onClick={() => setOnboardingOpen(true)} variant="outline" size="sm" className="h-8 text-xs">
+              Edit Goals
+            </Button>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  // 8. Empty Roadmap Data State
+  if (!roadmap) {
+    return (
+      <div className="w-full space-y-6">
+        <StudentCareerOnboardingDialog
+          open={onboardingOpen}
+          onOpenChange={setOnboardingOpen}
+          onCompleted={fetchRoadmap}
+        />
+
+        <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 p-8 text-center space-y-4">
+          <p className="text-xs text-zinc-500">No career roadmap data available.</p>
+          <Button onClick={() => setOnboardingOpen(true)} size="sm" className="h-8 text-xs">
+            Setup Career Profile
+          </Button>
+        </Card>
+      </div>
+    )
+  }
+
+  const hasNoJobs = !roadmap.recommendedJobs || roadmap.recommendedJobs.length === 0
 
   return (
     <div className="w-full space-y-6">
@@ -99,6 +217,7 @@ export default function StudentCareerRoadmapPage() {
             <div className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-800/80 px-2.5 py-0.5 text-[10px] font-medium text-amber-400">
               <IconBrain className="h-3.5 w-3.5" />
               Grounded AI Career Intelligence
+              {cached && <span className="text-zinc-400 ml-1">• Cached</span>}
             </div>
             <h1 className="text-xl font-semibold tracking-tight">
               Personalized Career Trajectory & Learning Roadmap
@@ -128,86 +247,95 @@ export default function StudentCareerRoadmapPage() {
             </Button>
           </div>
         </div>
+
+        {generatedAt && (
+          <div className="mt-4 pt-3 border-t border-zinc-800 flex items-center gap-1.5 text-[10px] text-zinc-400">
+            <IconCalendar className="h-3 w-3 text-zinc-500" />
+            Last calculated: {new Date(generatedAt).toLocaleString()}
+          </div>
+        )}
       </div>
 
       {error && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <IconAlertTriangle className="h-4 w-4 text-rose-500" />
+            <IconAlertTriangle className="h-4 w-4 text-rose-500 shrink-0" />
             <span>{error}</span>
           </div>
-          <Button size="sm" variant="outline" onClick={() => setOnboardingOpen(true)} className="h-7 text-xs">
-            Complete Onboarding
+          <Button size="sm" variant="outline" onClick={fetchRoadmap} className="h-7 text-xs gap-1">
+            <IconRefresh className="h-3 w-3" />
+            Retry
           </Button>
         </div>
       )}
 
-      {roadmap && (
-        <div className="space-y-6">
-          {/* Top Goal & Readiness Overview */}
-          <div className="grid gap-6 md:grid-cols-3">
-            {/* Career Goal Card */}
-            <Card className="rounded-xl border-zinc-200 dark:border-zinc-800">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-xs font-semibold text-zinc-500 flex items-center gap-1.5">
-                  <IconTarget className="h-4 w-4 text-primary" />
-                  Target Career Goal
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-xs">
-                <div>
-                  <div className="font-bold text-base text-zinc-900 dark:text-zinc-100">
-                    {roadmap.careerGoal.dreamRole}
-                  </div>
-                  <div className="text-zinc-500">{roadmap.careerGoal.dreamJob}</div>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800">
-                  <span className="text-zinc-500">Target CTC:</span>
-                  <span className="font-bold text-primary">₹{roadmap.careerGoal.targetCtc || "—"} LPA</span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <span className="text-zinc-500">Target Timeline:</span>
-                  <span className="font-semibold text-zinc-800 dark:text-zinc-200">{roadmap.careerGoal.targetTimeline || "3 months"}</span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Readiness Index */}
-            <Card className="rounded-xl border-zinc-200 dark:border-zinc-800 md:col-span-2">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-xs font-semibold text-zinc-500 flex items-center gap-1.5">
-                    <IconSparkles className="h-4 w-4 text-amber-500" />
-                    Career Placement Readiness Index
-                  </CardTitle>
-                  <Badge variant="outline" className="text-xs font-bold text-primary">
-                    {roadmap.readiness.score}% Readiness Score
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3 text-xs">
-                <Progress value={roadmap.readiness.score} className="h-2" />
-                <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
-                  {roadmap.readiness.summary}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Skill Gap Matrix */}
+      {/* Main Roadmap Content */}
+      <div className="space-y-6">
+        {/* Top Goal & Readiness Overview */}
+        <div className="grid gap-6 md:grid-cols-3">
+          {/* Career Goal Card */}
           <Card className="rounded-xl border-zinc-200 dark:border-zinc-800">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <IconBrain className="h-4 w-4 text-primary" />
-                Target Skill Gap Analysis
+              <CardTitle className="text-xs font-semibold text-zinc-500 flex items-center gap-1.5">
+                <IconTarget className="h-4 w-4 text-primary" />
+                Target Career Goal
               </CardTitle>
-              <CardDescription className="text-xs">
-                Key missing or weak skills identified for your target roles
-              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-2 text-xs">
+              <div>
+                <div className="font-bold text-base text-zinc-900 dark:text-zinc-100">
+                  {roadmap.careerGoal.dreamRole}
+                </div>
+                <div className="text-zinc-500">{roadmap.careerGoal.dreamJob}</div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800">
+                <span className="text-zinc-500">Target CTC:</span>
+                <span className="font-bold text-primary">₹{roadmap.careerGoal.targetCtc || "—"} LPA</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-500">Target Timeline:</span>
+                <span className="font-semibold text-zinc-800 dark:text-zinc-200">{roadmap.careerGoal.targetTimeline || "3 months"}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Readiness Index */}
+          <Card className="rounded-xl border-zinc-200 dark:border-zinc-800 md:col-span-2">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xs font-semibold text-zinc-500 flex items-center gap-1.5">
+                  <IconSparkles className="h-4 w-4 text-amber-500" />
+                  Career Placement Readiness Index
+                </CardTitle>
+                <Badge variant="outline" className="text-xs font-bold text-primary">
+                  {roadmap.readiness.score}% Readiness Score
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-xs">
+              <Progress value={roadmap.readiness.score} className="h-2" />
+              <p className="text-zinc-600 dark:text-zinc-400 leading-relaxed">
+                {roadmap.readiness.summary}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Skill Gap Matrix */}
+        <Card className="rounded-xl border-zinc-200 dark:border-zinc-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <IconBrain className="h-4 w-4 text-primary" />
+              Target Skill Gap Analysis
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Key missing or weak skills identified for your target roles
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {roadmap.skillGaps.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
                 {roadmap.skillGaps.map((gap, i) => (
                   <div key={i} className="rounded-xl border border-zinc-200 p-3.5 text-xs dark:border-zinc-800 space-y-1.5 bg-zinc-50/50 dark:bg-zinc-900/30">
@@ -233,56 +361,69 @@ export default function StudentCareerRoadmapPage() {
                   </div>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            ) : (
+              <p className="text-xs text-zinc-500">No major skill gaps identified based on your current profile.</p>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Phased Learning Roadmap */}
-          <Card className="rounded-xl border-zinc-200 dark:border-zinc-800">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <IconBook className="h-4 w-4 text-primary" />
-                Phased AI Action Plan
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {roadmap.learningPlan.map((phase, idx) => (
-                <div key={idx} className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{phase.phase}</h4>
-                    <Badge variant="secondary" className="text-[10px]">{phase.duration}</Badge>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {phase.topics.map((t, i) => (
-                      <span key={i} className="rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[10px] text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-                        • {t}
-                      </span>
-                    ))}
-                  </div>
+        {/* Phased Learning Roadmap */}
+        <Card className="rounded-xl border-zinc-200 dark:border-zinc-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <IconBook className="h-4 w-4 text-primary" />
+              Phased AI Action Plan
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {roadmap.learningPlan.map((phase, idx) => (
+              <div key={idx} className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 space-y-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{phase.phase}</h4>
+                  <Badge variant="secondary" className="text-[10px]">{phase.duration}</Badge>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
 
-          {/* Grounded Job Recommendations */}
-          <Card className="rounded-xl border-zinc-200 dark:border-zinc-800">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <IconBriefcase className="h-4 w-4 text-primary" />
-                Grounded Campus Drive Recommendations
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Real active jobs available in your college placement portal
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {roadmap.recommendedJobs.map((rec) => (
+                <div className="flex flex-wrap gap-1.5 pt-1">
+                  {phase.topics.map((t, i) => (
+                    <span key={i} className="rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[10px] text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+                      • {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        {/* Grounded Job Recommendations (Handling 7. Empty-job state gracefully) */}
+        <Card className="rounded-xl border-zinc-200 dark:border-zinc-800">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <IconBriefcase className="h-4 w-4 text-primary" />
+              Grounded Campus Drive Recommendations
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Real active jobs available in your college placement portal
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {hasNoJobs ? (
+              <div className="rounded-xl border border-dashed border-zinc-200 p-6 text-center text-xs text-zinc-500 dark:border-zinc-800">
+                <p className="font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  No active campus drives currently match your profile.
+                </p>
+                <p className="text-[11px] text-zinc-400">
+                  As soon as new company drives are mapped to your college, personalized recommendations will appear here.
+                </p>
+              </div>
+            ) : (
+              roadmap.recommendedJobs.map((rec) => (
                 <div
                   key={rec.jobMappingId}
                   className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors gap-3 text-xs"
                 >
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm">{rec.title}</span>
                       <Badge variant="outline" className="text-[10px] border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                         {rec.matchScore}% Match
@@ -316,11 +457,11 @@ export default function StudentCareerRoadmapPage() {
                     )}
                   </div>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
