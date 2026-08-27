@@ -3,7 +3,7 @@ export const dynamic = "force-dynamic"
 import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
 
-// Sanitization helper to remove answer keys and rubrics
+// Sanitization helper to remove answer keys and rubrics while candidate is taking test
 function sanitizeQuestions(questions: any[]) {
   if (!Array.isArray(questions)) return []
   return questions.map((q) => {
@@ -27,7 +27,10 @@ export async function GET(
     const { id } = await params
     const auth = await requireApprovedStudent()
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
+      return NextResponse.json(
+        { success: false, error: auth.error, code: "UNAUTHORIZED" },
+        { status: auth.status }
+      )
     }
 
     const { supabase, studentId } = auth
@@ -37,20 +40,29 @@ export async function GET(
       .select("*")
       .eq("id", id)
       .eq("student_id", studentId)
-      .single()
+      .maybeSingle()
 
     if (error || !mock) {
-      return NextResponse.json({ error: "Mock interview session not found" }, { status: 404 })
+      return NextResponse.json(
+        { success: false, error: "Mock interview session not found", code: "NOT_FOUND" },
+        { status: 404 }
+      )
     }
 
-    // Hide answers if still answering
     const sanitizedMock = {
       ...mock,
       questions: mock.status === "EVALUATED" ? mock.questions : sanitizeQuestions(mock.questions),
     }
 
-    return NextResponse.json({ mock: sanitizedMock })
+    return NextResponse.json({
+      success: true,
+      status: mock.status,
+      mock: sanitizedMock,
+    })
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { success: false, error: err?.message || "Internal server error", code: "SERVER_ERROR" },
+      { status: 500 }
+    )
   }
 }

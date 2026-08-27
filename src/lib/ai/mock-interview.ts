@@ -1,41 +1,104 @@
 import { callNvidiaChat } from './nvidia'
-import type { MockInterviewQuestion, MCQQuestion, TheoryQuestion, CodeQuestion } from '@/types/mock-interview'
+import type { MockInterviewQuestion } from '@/types/mock-interview'
 import type { NvidiaMessage } from './nvidia'
 import { z } from 'zod'
+
+export function normalizeSkill(skill: string): string {
+  if (!skill) return ""
+  const trimmed = skill.trim()
+  const lower = trimmed.toLowerCase()
+
+  const aliases: Record<string, string> = {
+    "react": "React",
+    "reactjs": "React",
+    "react.js": "React",
+    "node": "Node.js",
+    "nodejs": "Node.js",
+    "node.js": "Node.js",
+    "js": "JavaScript",
+    "javascript": "JavaScript",
+    "ts": "TypeScript",
+    "typescript": "TypeScript",
+    "py": "Python",
+    "python": "Python",
+    "postgres": "PostgreSQL",
+    "postgresql": "PostgreSQL",
+    "mongo": "MongoDB",
+    "mongodb": "MongoDB",
+    "aws": "AWS",
+    "docker": "Docker",
+    "kubernetes": "Kubernetes",
+    "k8s": "Kubernetes",
+    "next": "Next.js",
+    "nextjs": "Next.js",
+    "next.js": "Next.js",
+    "express": "Express.js",
+    "expressjs": "Express.js",
+    "system design": "System Design",
+    "dsa": "Data Structures & Algorithms",
+    "algorithms": "Algorithms",
+    "sql": "SQL",
+  }
+
+  if (aliases[lower]) {
+    return aliases[lower]
+  }
+
+  return trimmed.replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+export function parseAndCleanJson<T = any>(rawContent: string): T {
+  if (!rawContent || typeof rawContent !== "string") {
+    throw new Error("Empty raw AI response content")
+  }
+
+  let cleaned = rawContent.trim()
+  cleaned = cleaned.replace(/^```[a-zA-Z]*\n?/, "").replace(/\n?```$/, "").trim()
+
+  const jsonMatch = cleaned.match(/(\[\s*[\s\S]*\s*\])|(\{\s*[\s\S]*\s*\})/)
+  const jsonString = jsonMatch ? jsonMatch[0] : cleaned
+
+  try {
+    return JSON.parse(jsonString) as T
+  } catch (err: any) {
+    console.error("[AI_PARSE_ERROR] Failed to parse JSON:", err?.message)
+    throw new Error("Malformed JSON in AI response")
+  }
+}
 
 const MCQSchema = z.object({
   id: z.string(),
   type: z.literal('MCQ'),
-  question: z.string(),
+  question: z.string().min(5),
   options: z.array(
     z.object({
       id: z.string(),
-      text: z.string(),
+      text: z.string().min(1),
     })
   ).min(2),
   correctOptionId: z.string(),
-  explanation: z.string(),
-  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']),
-  skill: z.string(),
+  explanation: z.string().default(""),
+  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
+  skill: z.string().min(1),
   points: z.number().default(10),
 })
 
 const TheorySchema = z.object({
   id: z.string(),
   type: z.enum(['THEORY', 'BEHAVIORAL']),
-  question: z.string(),
+  question: z.string().min(5),
   expectedTopics: z.array(z.string()).default([]),
-  rubric: z.string(),
+  rubric: z.string().default("Evaluate technical depth and reasoning."),
   referenceAnswer: z.string().optional(),
-  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']),
-  skill: z.string(),
+  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
+  skill: z.string().min(1),
   points: z.number().default(10),
 })
 
 const CodeSchema = z.object({
   id: z.string(),
   type: z.literal('CODE'),
-  question: z.string(),
+  question: z.string().min(5),
   description: z.string().optional(),
   constraints: z.array(z.string()).default([]),
   examples: z.array(
@@ -49,8 +112,8 @@ const CodeSchema = z.object({
   defaultLanguage: z.string().default('TypeScript'),
   starterCode: z.string().optional(),
   expectedConcepts: z.array(z.string()).default([]),
-  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']),
-  skill: z.string(),
+  difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']).default('MEDIUM'),
+  skill: z.string().min(1),
   points: z.number().default(15),
 })
 
@@ -97,9 +160,9 @@ Each question MUST be one of the following 3 structured types:
 {
   "id": "q2",
   "type": "THEORY",
-  "question": "Explain the difference between optimistic and pessimistic locking in databases. When would you use each?",
-  "expectedTopics": ["Optimistic locking", "Pessimistic locking", "Concurrency control", "Lock overhead"],
-  "rubric": "Look for explicit comparison, transaction isolation context, and lock overhead trade-offs.",
+  "question": "Explain the difference between optimistic and pessimistic locking in databases.",
+  "expectedTopics": ["Optimistic locking", "Pessimistic locking", "Concurrency control"],
+  "rubric": "Look for explicit comparison and transaction isolation trade-offs.",
   "referenceAnswer": "Detailed expected reference answer...",
   "difficulty": "MEDIUM",
   "skill": "PostgreSQL",
@@ -121,38 +184,44 @@ Each question MUST be one of the following 3 structured types:
   "starterCode": "function rateLimiter(userId: string, windowMs: number, maxRequests: number): boolean {\\n  // Your code here\\n}",
   "expectedConcepts": ["Sliding window", "Map / Hash table", "Timestamps"],
   "difficulty": "HARD",
-  "skill": "Algorithms & System Architecture",
+  "skill": "Algorithms",
   "points": 15
 }
 
-Generate between 6 to 10 questions total with a balanced distribution (e.g. 3 MCQ, 3 THEORY, 2-3 CODE).
-Ensure every question tests relevant, practical technical skills.
-Do NOT generate generic filler questions.
+Generate 6 to 10 questions total with a balanced distribution (e.g., 3 MCQ, 3 THEORY, 2-3 CODE).
 `
 
   let userPrompt = ""
 
   if (mockType === "JOB_REQUIRED" && jobInfo) {
+    const skillsList = Array.isArray(jobInfo.skills)
+      ? jobInfo.skills.map(normalizeSkill).join(", ")
+      : typeof jobInfo.skills === "string"
+      ? jobInfo.skills
+      : "General Technical Skills"
+
     userPrompt = `Mode: JOB_REQUIRED
 Target Job Title: ${jobInfo.title || jobRoleContext}
 Role: ${jobRoleContext}
 Company: ${jobInfo.companyName || "Employer"}
 Job Description: ${jobInfo.description || "N/A"}
-Required Skills: ${Array.isArray(jobInfo.skills) ? jobInfo.skills.join(", ") : jobInfo.skills || "N/A"}
-Preferred Skills: ${Array.isArray(jobInfo.preferredSkills) ? jobInfo.preferredSkills.join(", ") : "N/A"}
+Required Skills: ${skillsList}
 CTC: ${jobInfo.ctcMax ? `₹${jobInfo.ctcMax} LPA` : "N/A"}
 Minimum CGPA: ${jobInfo.minCgpa ?? "N/A"}
 
 Tailor EVERY question strictly to this exact job specification and company technical context.`
   } else {
+    const currentSkills = (studentCareerContext?.current_skills || []).map(normalizeSkill).join(", ")
+    const targetSkills = (studentCareerContext?.dream_skills || []).map(normalizeSkill).join(", ")
+
     userPrompt = `Mode: PRACTICE
 Role Focus: ${jobRoleContext}
-Student Current Skills: ${studentCareerContext?.current_skills?.join(", ") || "General"}
-Student Target Skills: ${studentCareerContext?.dream_skills?.join(", ") || "General"}
+Student Current Skills: ${currentSkills || "General"}
+Student Target Skills: ${targetSkills || "General"}
 Target CTC: ${studentCareerContext?.dream_ctc ? `₹${studentCareerContext.dream_ctc} LPA` : "N/A"}
 Skill Level: ${studentCareerContext?.skill_level || "Intermediate"}
 
-Generate a comprehensive practice mock interview to help the candidate master this role.`
+Generate a comprehensive practice mock interview for this role.`
   }
 
   const messages: NvidiaMessage[] = [
@@ -162,25 +231,12 @@ Generate a comprehensive practice mock interview to help the candidate master th
 
   const data = await callNvidiaChat(model, messages)
   const raw = data?.choices?.[0]?.message?.content?.trim()
-  if (!raw) throw new Error("Empty AI response")
+  if (!raw) throw new Error("Empty AI response received during question generation")
 
-  const cleaned = raw.replace(/^```(?:json)?\n/, "").replace(/```$/, "").trim()
-  const jsonMatch = cleaned.match(/(\{[\s\S]*\})|(\[[\s\S]*\])/)
-  if (!jsonMatch) {
-    console.error("Failed to locate JSON in AI response", raw)
-    throw new Error("Malformed AI response")
-  }
-
-  let parsed: any
-  try {
-    parsed = JSON.parse(jsonMatch[0])
-  } catch (e) {
-    console.error("Failed to parse AI JSON", jsonMatch[0])
-    throw new Error("Malformed AI JSON response")
-  }
+  const parsed = parseAndCleanJson<any[]>(raw)
 
   if (!Array.isArray(parsed) || parsed.length === 0) {
-    throw new Error("AI returned empty question list")
+    throw new Error("AI returned empty or invalid question array")
   }
 
   const validatedQuestions: MockInterviewQuestion[] = []
@@ -189,23 +245,27 @@ Generate a comprehensive practice mock interview to help the candidate master th
     const rawQ = parsed[i]
     if (!rawQ.id) rawQ.id = `q${i + 1}`
     if (!rawQ.points) rawQ.points = rawQ.type === 'CODE' ? 15 : 10
+    if (rawQ.skill) rawQ.skill = normalizeSkill(rawQ.skill)
 
     const result = QuestionUnionSchema.safeParse(rawQ)
     if (result.success) {
       validatedQuestions.push(result.data as MockInterviewQuestion)
     } else {
-      console.warn(`Question ${i + 1} validation failed:`, result.error.format())
+      console.warn(`[MOCK_GEN_WARN] Question ${i + 1} validation failed:`, result.error.format())
     }
   }
 
+  console.log(
+    `[MOCK_GEN] mockType=${mockType} role="${jobRoleContext}" generated=${parsed.length} valid=${validatedQuestions.length}`
+  )
+
   if (validatedQuestions.length < 3) {
-    throw new Error("Failed to validate sufficient AI generated questions")
+    throw new Error(`Insufficient valid questions generated (got ${validatedQuestions.length}, minimum 3 required)`)
   }
 
   return validatedQuestions
 }
 
-// Fallback compatibility wrapper for legacy callers
 export async function generateMockInterview(
   jobRoleContext: string,
   jobInfo?: any
