@@ -2,8 +2,14 @@ export const dynamic = "force-dynamic"
 
 import { createClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 
 export async function POST(request: Request) {
+  const ip = request.headers.get("x-forwarded-for") || "anonymous"
+  const rateLimit = checkRateLimit(`auth-login:${ip}`, { windowMs: 60 * 1000, maxRequests: 10 })
+  if (!rateLimit.success) {
+    return rateLimitResponse()
+  }
   try {
     const { email, password } = await request.json()
 

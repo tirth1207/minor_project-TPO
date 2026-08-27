@@ -190,7 +190,7 @@ export default function StudentMockExecutionPage() {
                   {mockSession.job_role_context || "AI Assessment Report"}
                 </CardTitle>
                 <CardDescription className="text-xs text-zinc-500">
-                  Completed on {new Date(mockSession.completed_at || Date.now()).toLocaleDateString()}
+                  Completed on {mockSession.completed_at ? new Date(mockSession.completed_at).toLocaleDateString() : "N/A"}
                 </CardDescription>
               </div>
 

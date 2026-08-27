@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic"
 import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
 import { generateStructuredMockInterview } from "@/lib/ai/mock-interview"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import type { MockInterviewQuestion } from "@/types/mock-interview"
 
 export async function GET() {
@@ -35,6 +36,11 @@ export async function POST(request: Request) {
     const auth = await requireApprovedStudent()
     if (!auth.ok) {
       return NextResponse.json({ error: auth.error }, { status: auth.status })
+    }
+
+    const rateLimit = checkRateLimit(`ai-mock:${auth.user.id}`, { windowMs: 60 * 1000, maxRequests: 5 })
+    if (!rateLimit.success) {
+      return rateLimitResponse()
     }
 
     const { supabase, studentId } = auth
