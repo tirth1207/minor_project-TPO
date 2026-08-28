@@ -10,7 +10,10 @@ export async function GET() {
   try {
     const auth = await requireApprovedStudent()
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
+      return NextResponse.json(
+        { success: false, code: "UNAUTHORIZED", error: auth.error },
+        { status: auth.status }
+      )
     }
 
     const { supabase, studentId } = auth
@@ -22,12 +25,23 @@ export async function GET() {
       .order("completed_at", { ascending: false, nullsFirst: false })
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
+      return NextResponse.json(
+        { success: false, code: "DB_ERROR", error: error.message },
+        { status: 500 }
+      )
     }
 
-    return NextResponse.json({ mocks: mocks || [] })
+    const mockList = mocks || []
+    return NextResponse.json({
+      success: true,
+      data: { mocks: mockList },
+      mocks: mockList,
+    })
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { success: false, code: "SERVER_ERROR", error: err?.message || "Internal server error" },
+      { status: 500 }
+    )
   }
 }
 
@@ -35,18 +49,24 @@ export async function POST(request: Request) {
   try {
     const auth = await requireApprovedStudent()
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
+      return NextResponse.json(
+        { success: false, code: "UNAUTHORIZED", error: auth.error },
+        { status: auth.status }
+      )
     }
 
-    const rateLimit = checkRateLimit(`ai-mock:${auth.user.id}`, { windowMs: 60 * 1000, maxRequests: 5 })
+    const rateLimit = checkRateLimit(`mock-create:${auth.user.id}`, {
+      windowMs: 60 * 1000,
+      maxRequests: 5,
+    })
     if (!rateLimit.success) {
       return rateLimitResponse()
     }
 
     const { supabase, studentId } = auth
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
 
-    const role = body.role || "Full Stack Developer"
+    const role = (body.role || "Full Stack Developer").trim()
 
     // Fetch career profile for context
     const { data: careerProfile } = await supabase
@@ -66,7 +86,7 @@ export async function POST(request: Request) {
         careerProfile
       )
     } catch (genErr) {
-      console.warn("Direct generation failed, fallback to QUEUED mode:", genErr)
+      console.warn("[Mock Creation] Inline generation failed, setting state to QUEUED:", genErr)
       initialStatus = "QUEUED"
     }
 
@@ -83,11 +103,25 @@ export async function POST(request: Request) {
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json(
+        { success: false, code: "DB_ERROR", error: error.message },
+        { status: 400 }
+      )
     }
 
-    return NextResponse.json({ mock: mockRecord, message: "Practice mock interview created" }, { status: 201 })
+    return NextResponse.json(
+      {
+        success: true,
+        data: { mock: mockRecord },
+        mock: mockRecord,
+        message: "Practice mock interview session created",
+      },
+      { status: 201 }
+    )
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { success: false, code: "SERVER_ERROR", error: err?.message || "Internal server error" },
+      { status: 500 }
+    )
   }
 }

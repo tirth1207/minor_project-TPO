@@ -1,5 +1,44 @@
-import { callNvidiaChat } from './nvidia'
-import type { StudentCareerProfile, CareerRoadmapData } from '@/types/career'
+import crypto from "crypto"
+import { callNvidiaChat } from "./nvidia"
+import { cleanAndParseJson } from "./json-parser"
+import type { StudentCareerProfile, CareerRoadmapData } from "@/types/career"
+
+export function generateProfileHash(profile: any): string {
+  if (!profile) return "no-profile"
+  const canonicalStr = JSON.stringify({
+    dream_job: profile.dream_job || "",
+    dream_role: profile.dream_role || "",
+    dream_ctc: profile.dream_ctc || 0,
+    dream_skills: Array.isArray(profile.dream_skills) ? [...profile.dream_skills].sort() : [],
+    current_skills: Array.isArray(profile.current_skills) ? [...profile.current_skills].sort() : [],
+    skill_level: profile.skill_level || "",
+    target_job_type: profile.target_job_type || "",
+    preferred_work_mode: profile.preferred_work_mode || "",
+    target_timeline: profile.target_timeline || "",
+    target_companies: Array.isArray(profile.target_companies) ? [...profile.target_companies].sort() : [],
+    current_challenges: profile.current_challenges || "",
+  })
+  return crypto.createHash("sha256").update(canonicalStr).digest("hex")
+}
+
+export function generateJobsHash(jobs: any[]): string {
+  if (!Array.isArray(jobs) || jobs.length === 0) return "no-approved-jobs"
+  const canonicalJobs = jobs
+    .map((j) => {
+      const job = j.job || j
+      const mapping = j.mapping || j
+      return {
+        jobId: job.id || "",
+        mappingId: mapping.id || "",
+        title: job.title || "",
+        ctcMax: job.ctc_max || 0,
+        globalStatus: job.global_status || "",
+      }
+    })
+    .sort((a, b) => (a.jobId || "").localeCompare(b.jobId || ""))
+
+  return crypto.createHash("sha256").update(JSON.stringify(canonicalJobs)).digest("hex")
+}
 
 export async function generateGroundedCareerRoadmap(
   careerProfile: StudentCareerProfile,
@@ -8,7 +47,7 @@ export async function generateGroundedCareerRoadmap(
 ): Promise<CareerRoadmapData> {
   const model = process.env.NVIDIA_MODEL ?? "openai/gpt-oss-120b"
 
-  // Process available jobs into a structured, compact array with deterministic eligibility flags
+  // Compact portal jobs representation
   const compactJobs = portalJobs.map((j) => {
     const job = j.job || j
     const mapping = j.mapping || j
@@ -23,19 +62,13 @@ export async function generateGroundedCareerRoadmap(
       mockPassScore: job.mock_pass_score || 70,
       minCgpa: job.min_cgpa || 0,
       maxBacklogs: job.max_backlogs || 0,
-      eligibleBranches: job.branches?.map((b: any) => b.branch_name) || [],
-      requiredSkills: job.description
-        ? Array.from(new Set(job.description.match(/[A-Z][a-zA-Z0-9#+.]+/g) || []))
-            .filter((s: any) => s.length > 2)
-            .slice(0, 8)
-        : [],
     }
   })
 
   // Format student's historical mock performance by skill
   const mockSkillScores: Record<string, number> = {}
   mockResultsHistory.forEach((mock) => {
-    if (mock.skill_scores && typeof mock.skill_scores === 'object') {
+    if (mock.skill_scores && typeof mock.skill_scores === "object") {
       Object.entries(mock.skill_scores).forEach(([skill, score]) => {
         const numScore = Number(score)
         if (!isNaN(numScore)) {
@@ -49,10 +82,11 @@ export async function generateGroundedCareerRoadmap(
 Analyse candidate profile data, mock interview scores, and available placement jobs.
 
 STRICT RULE:
-You MUST ONLY recommend jobs from the provided "Available Portal Jobs" array.
-Do NOT invent or hallucinate companies or job titles not present in the input list.
+You MUST ONLY recommend jobs from the provided "Available Portal Jobs" list.
+If the list is empty, return an empty array [] for "recommendedJobs".
+Do NOT invent or hallucinate companies or job titles.
 
-Return ONLY a JSON object with this exact structure (no markdown fences):
+Return ONLY a JSON object with this exact structure:
 {
   "careerGoal": {
     "dreamJob": "Software Engineer",
@@ -101,8 +135,8 @@ Return ONLY a JSON object with this exact structure (no markdown fences):
 Dream Role: ${careerProfile.dream_role} (${careerProfile.dream_job})
 Target CTC: ₹${careerProfile.dream_ctc || 'N/A'} LPA
 Target Timeline: ${careerProfile.target_timeline}
-Current Skills: ${careerProfile.current_skills.join(', ') || 'None listed'}
-Target/Dream Skills: ${careerProfile.dream_skills.join(', ') || 'None listed'}
+Current Skills: ${careerProfile.current_skills?.join(', ') || 'None listed'}
+Target/Dream Skills: ${careerProfile.dream_skills?.join(', ') || 'None listed'}
 Self-reported Skill Level: ${careerProfile.skill_level}
 Current Challenges: ${careerProfile.current_challenges || 'None'}
 
@@ -117,41 +151,52 @@ ${JSON.stringify(compactJobs, null, 2)}`
     { role: 'user' as const, content: userPrompt },
   ]
 
-  const aiResponse = await callNvidiaChat(model, messages)
-  const raw = aiResponse?.choices?.[0]?.message?.content?.trim()
-  if (!raw) throw new Error("Failed to receive career roadmap AI response")
-
-  const cleaned = raw.replace(/^```(?:json)?\n/, "").replace(/```$/, "").trim()
-  const jsonMatch = cleaned.match(/(\{[\s\S]*\})|(\[[\s\S]*\])/)
-  if (!jsonMatch) {
-    console.error("Failed to parse AI Roadmap JSON", raw)
-    throw new Error("Malformed AI Roadmap response")
+  let raw = ""
+  try {
+    const aiResponse = await callNvidiaChat(model, messages)
+    raw = aiResponse?.choices?.[0]?.message?.content?.trim() || ""
+  } catch (err: any) {
+    console.error("AI Roadmap generation call failed:", err)
+    throw new Error(`AI Roadmap service failed: ${err?.message || "Service unavailable"}`)
   }
 
-  const parsed = JSON.parse(jsonMatch[0])
+  if (!raw) throw new Error("Empty response received from AI Roadmap generator")
 
-  // Enhance recommended jobs with full job details from compactJobs
-  const recommendedJobs = (parsed.recommendedJobs || []).map((rec: any) => {
-    const matchedJob = compactJobs.find(
-      (j) => j.jobId === rec.jobId || j.jobMappingId === rec.jobMappingId
-    ) || compactJobs[0]
+  const parsed = cleanAndParseJson(raw)
 
-    return {
-      jobId: matchedJob?.jobId || rec.jobId,
-      jobMappingId: matchedJob?.jobMappingId || rec.jobMappingId,
-      title: matchedJob?.title || "Job Opportunity",
-      companyName: matchedJob?.companyName || "Corporate Partner",
-      ctcMax: matchedJob?.ctcMax || 0,
-      location: matchedJob?.location || "Remote / Onsite",
-      matchScore: Math.min(100, Math.max(0, Number(rec.matchScore) || 75)),
-      isEligible: true,
-      requireMock: matchedJob?.requireMock || false,
-      mockPassScore: matchedJob?.mockPassScore || 70,
-      why: Array.isArray(rec.why) ? rec.why : ["Relevant role alignment"],
-      skillGaps: Array.isArray(rec.skillGaps) ? rec.skillGaps : [],
-      readiness: rec.readiness || "Ready to evaluate.",
-    }
-  })
+  // Strict matching of recommended jobs: only keep jobs present in compactJobs
+  const recommendedJobs: any[] = []
+  if (Array.isArray(parsed.recommendedJobs) && compactJobs.length > 0) {
+    parsed.recommendedJobs.forEach((rec: any) => {
+      const matchedJob = compactJobs.find(
+        (j) => j.jobId === rec.jobId || j.jobMappingId === rec.jobMappingId
+      )
+
+      if (matchedJob) {
+        recommendedJobs.push({
+          jobId: matchedJob.jobId,
+          jobMappingId: matchedJob.jobMappingId,
+          title: matchedJob.title,
+          companyName: matchedJob.companyName,
+          ctcMax: matchedJob.ctcMax,
+          location: matchedJob.location,
+          matchScore: Math.min(100, Math.max(0, Number(rec.matchScore) || 75)),
+          isEligible: true,
+          requireMock: matchedJob.requireMock,
+          mockPassScore: matchedJob.mockPassScore,
+          why: Array.isArray(rec.why) ? rec.why : ["Relevant role alignment"],
+          skillGaps: Array.isArray(rec.skillGaps) ? rec.skillGaps : [],
+          readiness: rec.readiness || "Ready to evaluate.",
+        })
+      }
+    })
+  }
+
+  const readinessScore = Math.min(100, Math.max(0, Number(parsed.readiness?.score) || 70))
+  let readinessSummary = parsed.readiness?.summary || "Good career alignment."
+  if (compactJobs.length === 0) {
+    readinessSummary += " Note: No active campus placement drives are currently mapped to your institute."
+  }
 
   return {
     careerGoal: {
@@ -161,26 +206,12 @@ ${JSON.stringify(compactJobs, null, 2)}`
       targetTimeline: parsed.careerGoal?.targetTimeline || careerProfile.target_timeline,
     },
     readiness: {
-      score: Math.min(100, Math.max(0, Number(parsed.readiness?.score) || 70)),
-      summary: parsed.readiness?.summary || "Good career alignment.",
+      score: readinessScore,
+      summary: readinessSummary,
     },
     strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
     skillGaps: Array.isArray(parsed.skillGaps) ? parsed.skillGaps : [],
     learningPlan: Array.isArray(parsed.learningPlan) ? parsed.learningPlan : [],
-    recommendedJobs: recommendedJobs.length > 0 ? recommendedJobs : compactJobs.slice(0, 3).map((j) => ({
-      jobId: j.jobId,
-      jobMappingId: j.jobMappingId,
-      title: j.title,
-      companyName: j.companyName,
-      ctcMax: j.ctcMax,
-      location: j.location,
-      matchScore: 80,
-      isEligible: true,
-      requireMock: j.requireMock,
-      mockPassScore: j.mockPassScore,
-      why: ["Direct campus placement drive match"],
-      skillGaps: [],
-      readiness: "Ready to apply",
-    })),
+    recommendedJobs,
   }
 }

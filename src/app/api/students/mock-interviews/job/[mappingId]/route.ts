@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic"
 import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
 import { generateStructuredMockInterview } from "@/lib/ai/mock-interview"
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
 import type { MockInterviewQuestion } from "@/types/mock-interview"
 
 export async function POST(
@@ -13,7 +14,18 @@ export async function POST(
     const { mappingId } = await params
     const auth = await requireApprovedStudent()
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
+      return NextResponse.json(
+        { success: false, code: "UNAUTHORIZED", error: auth.error },
+        { status: auth.status }
+      )
+    }
+
+    const rateLimit = checkRateLimit(`mock-create-job:${auth.user.id}`, {
+      windowMs: 60 * 1000,
+      maxRequests: 5,
+    })
+    if (!rateLimit.success) {
+      return rateLimitResponse()
     }
 
     const { supabase, studentId, orgId } = auth
@@ -44,18 +56,24 @@ export async function POST(
       .maybeSingle()
 
     if (mappingError || !mapping) {
-      return NextResponse.json({ error: "Job assessment mapping not found" }, { status: 404 })
+      return NextResponse.json(
+        { success: false, code: "NOT_FOUND", error: "Job assessment mapping not found" },
+        { status: 404 }
+      )
     }
 
     const job = mapping.job as any
 
     if (mapping.local_status !== "APPROVED" || job.global_status !== "APPROVED") {
-      return NextResponse.json({ error: "Job posting is not active" }, { status: 400 })
+      return NextResponse.json(
+        { success: false, code: "JOB_INACTIVE", error: "Job posting is not active for your institution" },
+        { status: 400 }
+      )
     }
 
     if (!job.require_mock) {
       return NextResponse.json(
-        { error: "This job drive does not require a mandatory mock assessment." },
+        { success: false, code: "MOCK_NOT_REQUIRED", error: "This job drive does not require a mandatory mock assessment." },
         { status: 400 }
       )
     }
@@ -85,7 +103,7 @@ export async function POST(
       .eq("job_college_mapping_id", mappingId)
       .order("attempt_number", { ascending: false })
 
-    const nextAttempt = (existingAttempts && existingAttempts.length > 0)
+    const nextAttempt = existingAttempts && existingAttempts.length > 0
       ? (existingAttempts[0].attempt_number || 1) + 1
       : 1
 
@@ -99,7 +117,7 @@ export async function POST(
         jobSpecSnapshot
       )
     } catch (genErr) {
-      console.warn("Direct job assessment generation queued:", genErr)
+      console.warn("[Job Mock Creation] Inline generation failed, setting state to QUEUED:", genErr)
       initialStatus = "QUEUED"
     }
 
@@ -120,11 +138,19 @@ export async function POST(
       .single()
 
     if (error) {
-      return NextResponse.json({ error: error.message }, { status: 400 })
+      return NextResponse.json(
+        { success: false, code: "DB_ERROR", error: error.message },
+        { status: 400 }
+      )
     }
 
     return NextResponse.json(
       {
+        success: true,
+        data: {
+          mock: mockRecord,
+          mapping,
+        },
         mock: mockRecord,
         mapping,
         message: "Job-required mock assessment created successfully",
@@ -132,6 +158,9 @@ export async function POST(
       { status: 201 }
     )
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { success: false, code: "SERVER_ERROR", error: err?.message || "Internal server error" },
+      { status: 500 }
+    )
   }
 }
