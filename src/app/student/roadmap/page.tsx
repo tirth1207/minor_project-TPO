@@ -13,16 +13,15 @@ import {
   IconBriefcase,
   IconRefresh,
   IconSparkles,
-  IconCheck,
   IconAlertTriangle,
   IconArrowRight,
   IconTarget,
   IconBook,
+  IconInfoCircle,
 } from "@tabler/icons-react"
 import type { CareerRoadmapData } from "@/types/career"
 
 export default function StudentCareerRoadmapPage() {
-  const { profile } = useStudent()
   const [roadmap, setRoadmap] = React.useState<CareerRoadmapData | null>(null)
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
@@ -34,19 +33,20 @@ export default function StudentCareerRoadmapPage() {
     setError(null)
     try {
       const res = await fetch("/api/students/career-roadmap")
-      const data = await res.json()
+      const json = await res.json()
 
       if (res.ok) {
-        if (data.onboardingRequired) {
+        const payload = json.data || json
+        if (payload.onboardingRequired) {
           setOnboardingOpen(true)
-        } else {
-          setRoadmap(data.roadmap)
+        } else if (payload.roadmap) {
+          setRoadmap(payload.roadmap)
         }
       } else {
-        setError(data.error || "Failed to load career roadmap.")
+        setError(json.error || "Failed to load career roadmap.")
       }
     } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred.")
+      setError(err?.message || "An unexpected network error occurred.")
     } finally {
       setLoading(false)
     }
@@ -58,15 +58,17 @@ export default function StudentCareerRoadmapPage() {
 
   const handleRefresh = async () => {
     setRefreshing(true)
+    setError(null)
     try {
       const res = await fetch("/api/students/career-roadmap/refresh", {
         method: "POST",
       })
-      const data = await res.json()
-      if (res.ok && data.roadmap) {
-        setRoadmap(data.roadmap)
+      const json = await res.json()
+      const payload = json.data || json
+      if (res.ok && payload.roadmap) {
+        setRoadmap(payload.roadmap)
       } else {
-        setError(data.error || "Failed to refresh roadmap.")
+        setError(json.error || "Failed to refresh roadmap.")
       }
     } catch (err: any) {
       setError(err?.message || "Failed to refresh roadmap.")
@@ -77,8 +79,9 @@ export default function StudentCareerRoadmapPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-xs text-zinc-500">Generating Grounded AI Career Trajectory...</p>
+      <div className="flex h-64 items-center justify-center space-y-2 flex-col">
+        <IconBrain className="h-8 w-8 animate-pulse text-primary" />
+        <p className="text-xs text-zinc-500 font-medium">Generating Grounded AI Career Trajectory...</p>
       </div>
     )
   }
@@ -131,14 +134,19 @@ export default function StudentCareerRoadmapPage() {
       </div>
 
       {error && (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 flex items-center justify-between">
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <IconAlertTriangle className="h-4 w-4 text-rose-500" />
+            <IconAlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
             <span>{error}</span>
           </div>
-          <Button size="sm" variant="outline" onClick={() => setOnboardingOpen(true)} className="h-7 text-xs">
-            Complete Onboarding
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button size="sm" variant="outline" onClick={fetchRoadmap} className="h-7 text-xs">
+              Retry
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setOnboardingOpen(true)} className="h-7 text-xs">
+              Complete Onboarding
+            </Button>
+          </div>
         </div>
       )}
 
@@ -208,31 +216,35 @@ export default function StudentCareerRoadmapPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                {roadmap.skillGaps.map((gap, i) => (
-                  <div key={i} className="rounded-xl border border-zinc-200 p-3.5 text-xs dark:border-zinc-800 space-y-1.5 bg-zinc-50/50 dark:bg-zinc-900/30">
-                    <div className="flex items-center justify-between font-semibold">
-                      <span>{gap.skill}</span>
-                      <Badge
-                        variant="outline"
-                        className={`text-[9px] ${
-                          gap.priority === "HIGH"
-                            ? "border-rose-300 text-rose-700 bg-rose-50 dark:bg-rose-950/40"
-                            : "border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/40"
-                        }`}
-                      >
-                        {gap.priority} PRIORITY
-                      </Badge>
+              {roadmap.skillGaps.length === 0 ? (
+                <p className="text-xs text-zinc-400 py-4 text-center">No skill gaps identified yet.</p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+                  {roadmap.skillGaps.map((gap, i) => (
+                    <div key={i} className="rounded-xl border border-zinc-200 p-3.5 text-xs dark:border-zinc-800 space-y-1.5 bg-zinc-50/50 dark:bg-zinc-900/30">
+                      <div className="flex items-center justify-between font-semibold">
+                        <span>{gap.skill}</span>
+                        <Badge
+                          variant="outline"
+                          className={`text-[9px] ${
+                            gap.priority === "HIGH"
+                              ? "border-rose-300 text-rose-700 bg-rose-50 dark:bg-rose-950/40"
+                              : "border-amber-300 text-amber-700 bg-amber-50 dark:bg-amber-950/40"
+                          }`}
+                        >
+                          {gap.priority} PRIORITY
+                        </Badge>
+                      </div>
+                      <div className="text-[11px] text-zinc-500">
+                        Level: <span className="font-medium text-zinc-700 dark:text-zinc-300">{gap.currentLevel}</span> → Target: <span className="font-medium text-zinc-700 dark:text-zinc-300">{gap.requiredLevel}</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-600 dark:text-zinc-400 pt-1 leading-snug">
+                        {gap.reason}
+                      </p>
                     </div>
-                    <div className="text-[11px] text-zinc-500">
-                      Level: <span className="font-medium text-zinc-700 dark:text-zinc-300">{gap.currentLevel}</span> → Target: <span className="font-medium text-zinc-700 dark:text-zinc-300">{gap.requiredLevel}</span>
-                    </div>
-                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400 pt-1 leading-snug">
-                      {gap.reason}
-                    </p>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -245,22 +257,26 @@ export default function StudentCareerRoadmapPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {roadmap.learningPlan.map((phase, idx) => (
-                <div key={idx} className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{phase.phase}</h4>
-                    <Badge variant="secondary" className="text-[10px]">{phase.duration}</Badge>
-                  </div>
+              {roadmap.learningPlan.length === 0 ? (
+                <p className="text-xs text-zinc-400 py-4 text-center">No learning phases currently configured.</p>
+              ) : (
+                roadmap.learningPlan.map((phase, idx) => (
+                  <div key={idx} className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{phase.phase}</h4>
+                      <Badge variant="secondary" className="text-[10px]">{phase.duration}</Badge>
+                    </div>
 
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {phase.topics.map((t, i) => (
-                      <span key={i} className="rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[10px] text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-                        • {t}
-                      </span>
-                    ))}
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {phase.topics.map((t, i) => (
+                        <span key={i} className="rounded border border-zinc-200 bg-zinc-50 px-2 py-0.5 text-[10px] text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+                          • {t}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
 
@@ -276,47 +292,59 @@ export default function StudentCareerRoadmapPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {roadmap.recommendedJobs.map((rec) => (
-                <div
-                  key={rec.jobMappingId}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors gap-3 text-xs"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm">{rec.title}</span>
-                      <Badge variant="outline" className="text-[10px] border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                        {rec.matchScore}% Match
-                      </Badge>
-                      {rec.requireMock && (
-                        <Badge variant="outline" className="text-[9px] border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-                          Mock Required
+              {roadmap.recommendedJobs.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-zinc-300 p-6 text-center dark:border-zinc-800 space-y-2">
+                  <IconInfoCircle className="mx-auto h-6 w-6 text-zinc-400" />
+                  <p className="text-xs text-zinc-500">
+                    No active campus placement drives currently match your target role or eligibility criteria.
+                  </p>
+                  <p className="text-[11px] text-zinc-400">
+                    Check back soon when new placement drives are announced by your TPO.
+                  </p>
+                </div>
+              ) : (
+                roadmap.recommendedJobs.map((rec) => (
+                  <div
+                    key={rec.jobMappingId}
+                    className="flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border border-zinc-200 p-4 dark:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/30 transition-colors gap-3 text-xs"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-zinc-900 dark:text-zinc-100 text-sm">{rec.title}</span>
+                        <Badge variant="outline" className="text-[10px] border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          {rec.matchScore}% Match
                         </Badge>
-                      )}
+                        {rec.requireMock && (
+                          <Badge variant="outline" className="text-[9px] border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                            Mock Required
+                          </Badge>
+                        )}
+                      </div>
+
+                      <p className="text-zinc-500">{rec.companyName} • ₹{rec.ctcMax} LPA • {rec.location}</p>
+                      <p className="text-[11px] text-zinc-600 dark:text-zinc-400 pt-1">{rec.readiness}</p>
                     </div>
 
-                    <p className="text-zinc-500">{rec.companyName} • ₹{rec.ctcMax} LPA • {rec.location}</p>
-                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400 pt-1">{rec.readiness}</p>
+                    <div className="shrink-0 flex items-center gap-2">
+                      {rec.requireMock ? (
+                        <Link href={`/student/mock/job/${rec.jobMappingId}`}>
+                          <Button size="sm" className="h-8 text-xs gap-1">
+                            Take Job Mock
+                            <IconArrowRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Link href="/student/jobs">
+                          <Button size="sm" variant="outline" className="h-8 text-xs gap-1">
+                            View Drive
+                            <IconArrowRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </Link>
+                      )}
+                    </div>
                   </div>
-
-                  <div className="shrink-0 flex items-center gap-2">
-                    {rec.requireMock ? (
-                      <Link href={`/student/mock/job/${rec.jobMappingId}`}>
-                        <Button size="sm" className="h-8 text-xs gap-1">
-                          Take Job Mock
-                          <IconArrowRight className="h-3.5 w-3.5" />
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Link href="/student/jobs">
-                        <Button size="sm" variant="outline" className="h-8 text-xs gap-1">
-                          View Drive
-                          <IconArrowRight className="h-3.5 w-3.5" />
-                        </Button>
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </CardContent>
           </Card>
         </div>

@@ -12,23 +12,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Progress } from "@/components/ui/progress"
 import {
   IconCheck,
-  IconX,
   IconArrowLeft,
   IconArrowRight,
   IconSparkles,
-  IconClock,
   IconAlertTriangle,
   IconCode,
   IconFileText,
+  IconRefresh,
+  IconBrain,
 } from "@tabler/icons-react"
 import type { MockInterviewQuestion, StudentAnswer, MockEvaluationResult } from "@/types/mock-interview"
 
 export default function StudentMockExecutionPage() {
   const params = useParams()
-  const router = useRouter()
   const mockId = params.id as string
 
   const [loading, setLoading] = React.useState(true)
+  const [processing, setProcessing] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
@@ -38,41 +38,105 @@ export default function StudentMockExecutionPage() {
   const [answers, setAnswers] = React.useState<Record<string, StudentAnswer>>({})
   const [evaluationResult, setEvaluationResult] = React.useState<MockEvaluationResult | null>(null)
 
-  React.useEffect(() => {
-    async function loadMockSession() {
-      try {
-        const res = await fetch(`/api/students/mock-interviews/${mockId}`)
-        const data = await res.json()
+  const processInterview = React.useCallback(async () => {
+    setProcessing(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/students/mock-interviews/${mockId}/process`, {
+        method: "POST",
+      })
+      const json = await res.json()
+      const mockData = json.data?.mock || json.mock
 
-        if (res.ok && data.mock) {
-          setMockSession(data.mock)
-          const qs = Array.isArray(data.mock.questions) ? data.mock.questions : []
-          setQuestions(qs)
-
-          if (data.mock.status === "EVALUATED" && data.mock.ai_results) {
-            setEvaluationResult(data.mock.ai_results)
-          }
-
-          // Initialize answers state from existing mock answers if present
-          if (Array.isArray(data.mock.answers)) {
-            const map: Record<string, StudentAnswer> = {}
-            data.mock.answers.forEach((ans: StudentAnswer) => {
-              if (ans.questionId) map[ans.questionId] = ans
-            })
-            setAnswers(map)
-          }
-        } else {
-          setError(data.error || "Failed to fetch mock interview session.")
+      if (res.ok && mockData) {
+        setMockSession(mockData)
+        if (Array.isArray(mockData.questions) && mockData.questions.length > 0) {
+          setQuestions(mockData.questions)
         }
-      } catch (err: any) {
-        setError(err?.message || "Failed to load session.")
-      } finally {
-        setLoading(false)
+        if (mockData.status === "FAILED") {
+          setError(json.error || "Question generation failed. Please try again.")
+        }
+      } else {
+        setError(json.error || "Failed to process interview generation.")
       }
+    } catch (err: any) {
+      setError(err?.message || "An unexpected error occurred during processing.")
+    } finally {
+      setProcessing(false)
     }
-
-    if (mockId) loadMockSession()
   }, [mockId])
+
+  const loadMockSession = React.useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`/api/students/mock-interviews/${mockId}`)
+      const json = await res.json()
+      const mockData = json.data?.mock || json.mock
+
+      if (res.ok && mockData) {
+        setMockSession(mockData)
+        const qs = Array.isArray(mockData.questions) ? mockData.questions : []
+        setQuestions(qs)
+
+        if (mockData.status === "EVALUATED" && mockData.ai_results) {
+          setEvaluationResult(mockData.ai_results)
+        }
+
+        if (Array.isArray(mockData.answers)) {
+          const map: Record<string, StudentAnswer> = {}
+          mockData.answers.forEach((ans: StudentAnswer) => {
+            if (ans?.questionId) map[ans.questionId] = ans
+          })
+          setAnswers(map)
+        }
+
+        // If interview is in QUEUED, REQUESTED, or FAILED status, trigger process automatically
+        if (["QUEUED", "REQUESTED"].includes(mockData.status)) {
+          processInterview()
+        }
+      } else {
+        setError(json.error || "Failed to fetch mock interview session.")
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to load session.")
+    } finally {
+      setLoading(false)
+    }
+  }, [mockId, processInterview])
+
+  React.useEffect(() => {
+    if (mockId) loadMockSession()
+  }, [mockId, loadMockSession])
+
+  // Polling mechanism while status is QUEUED or PROCESSING
+  React.useEffect(() => {
+    if (!mockSession) return
+    const status = mockSession.status
+
+    if (["QUEUED", "PROCESSING", "REQUESTED"].includes(status)) {
+      const timer = setInterval(async () => {
+        try {
+          const res = await fetch(`/api/students/mock-interviews/${mockId}`)
+          const json = await res.json()
+          const mockData = json.data?.mock || json.mock
+          if (res.ok && mockData) {
+            setMockSession(mockData)
+            if (Array.isArray(mockData.questions) && mockData.questions.length > 0) {
+              setQuestions(mockData.questions)
+            }
+            if (["ANSWERING", "EVALUATED", "FAILED"].includes(mockData.status)) {
+              clearInterval(timer)
+            }
+          }
+        } catch (err) {
+          console.error("Polling error:", err)
+        }
+      }, 2500)
+
+      return () => clearInterval(timer)
+    }
+  }, [mockId, mockSession?.status])
 
   const currentQ = questions[currentIdx]
 
@@ -109,6 +173,7 @@ export default function StudentMockExecutionPage() {
   }
 
   const handleSubmitAssessment = async () => {
+    if (submitting) return
     setSubmitting(true)
     setError(null)
     try {
@@ -119,12 +184,14 @@ export default function StudentMockExecutionPage() {
         body: JSON.stringify({ answers: answerList }),
       })
 
-      const data = await res.json()
-      if (res.ok && data.result) {
-        setEvaluationResult(data.result)
-        setMockSession(data.mock)
+      const json = await res.json()
+      const resData = json.data || json
+
+      if (res.ok && resData.result) {
+        setEvaluationResult(resData.result)
+        setMockSession(resData.mock)
       } else {
-        setError(data.error || "Submission and evaluation failed.")
+        setError(json.error || "Submission and evaluation failed.")
       }
     } catch (err: any) {
       setError(err?.message || "Failed to submit assessment.")
@@ -135,17 +202,18 @@ export default function StudentMockExecutionPage() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <p className="text-xs text-zinc-500">Initializing AI Mock Interview Assessment...</p>
+      <div className="flex h-64 items-center justify-center flex-col space-y-2">
+        <IconBrain className="h-8 w-8 animate-pulse text-primary" />
+        <p className="text-xs text-zinc-500 font-medium">Loading AI Assessment Environment...</p>
       </div>
     )
   }
 
-  if (error || !mockSession) {
+  if (error && !mockSession) {
     return (
       <div className="mx-auto max-w-xl py-12 text-center space-y-4">
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400">
-          {error || "Assessment session unavailable."}
+          {error || "Assessment session unavailable or access forbidden."}
         </div>
         <Link href="/student/mock">
           <Button variant="outline" size="sm" className="h-8 text-xs">
@@ -156,8 +224,70 @@ export default function StudentMockExecutionPage() {
     )
   }
 
-  // View: Evaluation Report view when test is evaluated
-  if (mockSession.status === "EVALUATED" || evaluationResult) {
+  // Preparation / Processing State
+  if (mockSession && ["QUEUED", "PROCESSING", "REQUESTED"].includes(mockSession.status)) {
+    return (
+      <div className="mx-auto max-w-xl py-16 text-center space-y-6">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-8 dark:border-zinc-800 dark:bg-zinc-950 shadow-sm space-y-4">
+          <IconSparkles className="mx-auto h-10 w-10 text-amber-500 animate-spin" />
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
+              Generating Technical Questions...
+            </h3>
+            <p className="text-xs text-zinc-500 max-w-md mx-auto">
+              Our AI engine is crafting custom MCQ, theory, and coding challenges tailored to{" "}
+              <strong className="text-zinc-800 dark:text-zinc-200">{mockSession.job_role_context || "your role"}</strong>.
+            </p>
+          </div>
+
+          <div className="pt-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={processInterview}
+              disabled={processing}
+              className="h-8 text-xs gap-1.5"
+            >
+              <IconRefresh className={`h-3.5 w-3.5 ${processing ? "animate-spin text-primary" : ""}`} />
+              {processing ? "Processing..." : "Force Generation"}
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Generation Failed State
+  if (mockSession && mockSession.status === "FAILED") {
+    return (
+      <div className="mx-auto max-w-xl py-12 text-center space-y-4">
+        <Card className="rounded-2xl border-rose-200 dark:border-rose-900/50 p-6 space-y-4">
+          <IconAlertTriangle className="mx-auto h-10 w-10 text-rose-500" />
+          <div className="space-y-1">
+            <h3 className="text-base font-bold text-rose-700 dark:text-rose-400">Question Generation Failed</h3>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400">
+              {error || "We encountered an issue generating your assessment questions. You can retry generation now."}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Button size="sm" onClick={processInterview} disabled={processing} className="h-8 text-xs gap-1.5">
+              <IconRefresh className={`h-3.5 w-3.5 ${processing ? "animate-spin" : ""}`} />
+              {processing ? "Retrying..." : "Retry Question Generation"}
+            </Button>
+            <Link href="/student/mock">
+              <Button size="sm" variant="outline" className="h-8 text-xs">
+                Back to Mock Hub
+              </Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
+  // Evaluation Report View (EVALUATED)
+  if (mockSession?.status === "EVALUATED" || evaluationResult) {
     const report = evaluationResult || mockSession.ai_results
     const passThreshold = mockSession.job_spec_snapshot?.mockPassScore || 70
     const isPassed = Boolean(mockSession.passed)
@@ -175,7 +305,7 @@ export default function StudentMockExecutionPage() {
           {mockSession.job_college_mapping_id && (
             <Link href="/student/jobs">
               <Button size="sm" variant="default" className="h-8 text-xs">
-                Back to Jobs
+                Back to Campus Jobs
               </Button>
             </Link>
           )}
@@ -202,7 +332,7 @@ export default function StudentMockExecutionPage() {
                     : "border-rose-300 bg-rose-50 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300"
                 }`}
               >
-                {isPassed ? "PASSED ✓" : "NEEDS IMPROVEMENT"}
+                {isPassed ? `PASSED (${mockSession.overall_score || 0}% ≥ ${passThreshold}%) ✓` : `NEEDS IMPROVEMENT (${mockSession.overall_score || 0}% < ${passThreshold}%)`}
               </Badge>
             </div>
           </CardHeader>
@@ -263,20 +393,27 @@ export default function StudentMockExecutionPage() {
     )
   }
 
-  // Active Test View
+  // Active Test View (ANSWERING)
   const answeredCount = Object.keys(answers).length
   const totalQuestions = questions.length
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 py-4">
+      {error && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 flex items-center gap-2">
+          <IconAlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* Top Test Navigation Header */}
       <div className="flex items-center justify-between rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
         <div className="space-y-0.5">
           <Badge variant="outline" className="text-[10px]">
-            {mockSession.mock_type || "PRACTICE"}
+            {mockSession?.mock_type || "PRACTICE"}
           </Badge>
           <h2 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-            {mockSession.job_role_context || "AI Mock Assessment"}
+            {mockSession?.job_role_context || "AI Mock Assessment"}
           </h2>
         </div>
 
@@ -333,7 +470,7 @@ export default function StudentMockExecutionPage() {
             />
           )}
 
-          {currentQ.type === "THEORY" || currentQ.type === "BEHAVIORAL" ? (
+          {(currentQ.type === "THEORY" || currentQ.type === "BEHAVIORAL") && (
             <Card className="rounded-xl border-zinc-200 dark:border-zinc-800 p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -355,11 +492,11 @@ export default function StudentMockExecutionPage() {
               <Textarea
                 value={answers[currentQ.id]?.answerText || ""}
                 onChange={(e) => handleTextChange(currentQ.id, e.target.value)}
-                placeholder="Type your explanation and reasoning in detail..."
+                placeholder="Type your explanation and technical reasoning in detail..."
                 className="min-h-[140px] text-xs resize-y"
               />
             </Card>
-          ) : null}
+          )}
 
           {currentQ.type === "CODE" && (
             <Card className="rounded-xl border-zinc-200 dark:border-zinc-800 p-5 space-y-4">

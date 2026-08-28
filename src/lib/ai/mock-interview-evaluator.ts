@@ -1,4 +1,5 @@
 import { callNvidiaChat } from "./nvidia"
+import { cleanAndParseJson } from "./json-parser"
 import type {
   MockInterviewQuestion,
   StudentAnswer,
@@ -13,10 +14,13 @@ export async function evaluateStructuredMockInterview(
   passScoreThreshold: number = 70
 ): Promise<MockEvaluationResult> {
   const answerMap = new Map<string, StudentAnswer>()
-  answers.forEach((ans) => answerMap.set(ans.questionId, ans))
+  answers.forEach((ans) => {
+    if (ans && ans.questionId) {
+      answerMap.set(ans.questionId, ans)
+    }
+  })
 
   const questionEvaluations: QuestionEvaluation[] = []
-
   const mcqQuestions: MCQQuestion[] = []
   const nonMcqQuestions: MockInterviewQuestion[] = []
 
@@ -49,8 +53,8 @@ export async function evaluateStructuredMockInterview(
         feedback: isCorrect
           ? `Correct answer! ${q.explanation || ""}`
           : `Incorrect. ${q.explanation || ""}`,
-        strengths: isCorrect ? [`Understands ${q.skill}`] : [],
-        improvements: !isCorrect ? [`Needs to revise ${q.skill}`] : [],
+        strengths: isCorrect ? [`Understands ${q.skill || "MCQ Concept"}`] : [],
+        improvements: !isCorrect ? [`Needs to revise ${q.skill || "MCQ Concept"}`] : [],
       })
     } else {
       nonMcqQuestions.push(q)
@@ -65,7 +69,7 @@ export async function evaluateStructuredMockInterview(
         id: q.id,
         type: q.type,
         question: q.question,
-        skill: q.skill,
+        skill: q.skill || "General Technical",
         pointsPossible: q.points || (q.type === "CODE" ? 15 : 10),
         studentResponse: studentAns?.answerText || "No answer provided",
         selectedLanguage: studentAns?.codeLanguage,
@@ -75,7 +79,7 @@ export async function evaluateStructuredMockInterview(
       }
     })
 
-    const systemPrompt = `You are an expert technical interviewer evaluating non-MCQ candidate answers (THEORY and CODE).
+    const systemPrompt = `You are an expert technical interviewer evaluating candidate answers (THEORY and CODE).
 Evaluate each question objectively based on correctness, technical reasoning, edge cases, and code quality.
 
 Return ONLY a JSON object formatted as follows without markdown or code fences:
@@ -84,15 +88,15 @@ Return ONLY a JSON object formatted as follows without markdown or code fences:
     {
       "questionId": "q2",
       "pointsEarned": 8,
-      "verdict": "strong" | "partial" | "needs-work",
+      "verdict": "strong",
       "feedback": "Concise feedback on accuracy and reasoning...",
-      "strengths": ["Clear explanation of locks"],
-      "improvements": ["Could mention lock escalation"]
+      "strengths": ["Clear explanation"],
+      "improvements": ["Mention performance trade-offs"]
     }
   ]
 }`
 
-    const userPrompt = `Evaluate the following responses:
+    const userPrompt = `Evaluate the following candidate responses:
 ${JSON.stringify(nonMcqPayload, null, 2)}`
 
     try {
@@ -103,37 +107,33 @@ ${JSON.stringify(nonMcqPayload, null, 2)}`
 
       const raw = aiData?.choices?.[0]?.message?.content?.trim()
       if (raw) {
-        const cleaned = raw.replace(/^```(?:json)?\n/, "").replace(/```$/, "").trim()
-        const jsonMatch = cleaned.match(/(\{[\s\S]*\})|(\[[\s\S]*\])/)
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0])
-          const evals = parsed.evaluations || parsed
-          if (Array.isArray(evals)) {
-            evals.forEach((ev: any) => {
-              const matchedQ = nonMcqQuestions.find((q) => q.id === String(ev.questionId))
-              if (matchedQ) {
-                const possible = matchedQ.points || (matchedQ.type === "CODE" ? 15 : 10)
-                const earned = Math.min(possible, Math.max(0, Number(ev.pointsEarned) || 0))
-                questionEvaluations.push({
-                  questionId: matchedQ.id,
-                  type: matchedQ.type,
-                  pointsPossible: possible,
-                  pointsEarned: earned,
-                  verdict: ev.verdict || (earned >= possible * 0.75 ? "strong" : earned >= possible * 0.4 ? "partial" : "needs-work"),
-                  feedback: ev.feedback || "Evaluated response.",
-                  strengths: Array.isArray(ev.strengths) ? ev.strengths : [],
-                  improvements: Array.isArray(ev.improvements) ? ev.improvements : [],
-                })
-              }
-            })
-          }
+        const parsed = cleanAndParseJson(raw)
+        const evals = parsed.evaluations || (Array.isArray(parsed) ? parsed : [])
+        if (Array.isArray(evals)) {
+          evals.forEach((ev: any) => {
+            const matchedQ = nonMcqQuestions.find((q) => q.id === String(ev.questionId))
+            if (matchedQ) {
+              const possible = matchedQ.points || (matchedQ.type === "CODE" ? 15 : 10)
+              const earned = Math.min(possible, Math.max(0, Number(ev.pointsEarned) || 0))
+              questionEvaluations.push({
+                questionId: matchedQ.id,
+                type: matchedQ.type,
+                pointsPossible: possible,
+                pointsEarned: earned,
+                verdict: ev.verdict || (earned >= possible * 0.75 ? "strong" : earned >= possible * 0.4 ? "partial" : "needs-work"),
+                feedback: ev.feedback || "Evaluated response.",
+                strengths: Array.isArray(ev.strengths) ? ev.strengths : [],
+                improvements: Array.isArray(ev.improvements) ? ev.improvements : [],
+              })
+            }
+          })
         }
       }
     } catch (err) {
-      console.error("AI Evaluation error, falling back for non-MCQ questions:", err)
+      console.error("[AI Evaluation] Non-MCQ evaluation error, applying fallback:", err)
     }
 
-    // Fallback for any non-MCQ question not evaluated by AI
+    // Fallback evaluation for any non-MCQ question missed by AI
     nonMcqQuestions.forEach((q) => {
       if (!questionEvaluations.some((ev) => ev.questionId === q.id)) {
         const studentAns = answerMap.get(q.id)
@@ -146,9 +146,9 @@ ${JSON.stringify(nonMcqPayload, null, 2)}`
           pointsPossible: possible,
           pointsEarned: earned,
           verdict: hasContent ? "partial" : "needs-work",
-          feedback: hasContent ? "Answer provided but detailed AI evaluation skipped." : "No answer provided.",
-          strengths: hasContent ? ["Submitted solution draft"] : [],
-          improvements: hasContent ? ["Provide more comprehensive depth"] : ["No answer submitted"],
+          feedback: hasContent ? "Answer submitted, basic technical review applied." : "No answer submitted.",
+          strengths: hasContent ? ["Submitted solution attempt"] : [],
+          improvements: hasContent ? ["Expand on implementation depth"] : ["No answer submitted"],
         })
       }
     })
@@ -168,7 +168,7 @@ ${JSON.stringify(nonMcqPayload, null, 2)}`
 
   questions.forEach((q) => {
     const ev = questionEvaluations.find((e) => e.questionId === q.id)
-    const possible = q.points || 10
+    const possible = q.points || (q.type === "CODE" ? 15 : 10)
     const earned = ev ? ev.pointsEarned : 0
 
     totalPossible += possible
@@ -203,15 +203,14 @@ ${JSON.stringify(nonMcqPayload, null, 2)}`
 
   const passed = overallScore >= passScoreThreshold
 
-  // Gather overall strengths and improvements
   const allStrengths = Array.from(new Set(questionEvaluations.flatMap((ev) => ev.strengths))).filter(Boolean)
   const allImprovements = Array.from(new Set(questionEvaluations.flatMap((ev) => ev.improvements))).filter(Boolean)
 
   const recommendedNextSteps = allImprovements.map((imp) => `Focus on improving: ${imp}`).slice(0, 4)
 
   const summary = passed
-    ? `Strong performance! You scored ${overallScore}% overall (MCQ: ${mcqScore}%, Theory: ${theoryScore}%, Coding: ${codingScore}%), meeting the target threshold of ${passScoreThreshold}%.`
-    : `Your overall score of ${overallScore}% is below the required passing threshold of ${passScoreThreshold}%. Review weak areas in ${Object.keys(skillScores).filter((s) => skillScores[s] < 65).join(", ") || "theory/coding"} and retry.`
+    ? `Strong performance! You scored ${overallScore}% overall (MCQ: ${mcqScore}%, Theory: ${theoryScore}%, Coding: ${codingScore}%), passing the required threshold of ${passScoreThreshold}%.`
+    : `Your overall score of ${overallScore}% is below the passing threshold of ${passScoreThreshold}%. Review weak areas in ${Object.keys(skillScores).filter((s) => skillScores[s] < 65).join(", ") || "theory/coding"} and retry.`
 
   return {
     overallScore,
@@ -221,7 +220,7 @@ ${JSON.stringify(nonMcqPayload, null, 2)}`
     passed,
     summary,
     skillScores,
-    strengths: allStrengths.length > 0 ? allStrengths : ["Attempted all sections"],
+    strengths: allStrengths.length > 0 ? allStrengths : ["Completed assessment attempt"],
     improvements: allImprovements.length > 0 ? allImprovements : ["Maintain core practice"],
     recommendedNextSteps: recommendedNextSteps.length > 0 ? recommendedNextSteps : ["Practice additional mock tests"],
     questionEvaluations,

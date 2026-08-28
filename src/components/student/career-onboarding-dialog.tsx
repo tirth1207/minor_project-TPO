@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import { Progress } from "@/components/ui/progress"
-import { IconSparkles, IconCheck, IconArrowRight, IconArrowLeft } from "@tabler/icons-react"
+import { IconSparkles, IconCheck, IconArrowRight, IconArrowLeft, IconAlertTriangle } from "@tabler/icons-react"
 
 interface StudentCareerOnboardingDialogProps {
   open: boolean
@@ -31,32 +31,102 @@ export function StudentCareerOnboardingDialog({
   const router = useRouter()
   const [step, setStep] = React.useState(1)
   const [loading, setLoading] = React.useState(false)
+  const [apiError, setApiError] = React.useState<string | null>(null)
+  const [errors, setErrors] = React.useState<Record<string, string>>({})
 
   // Form State
-  const [dreamJob, setDreamJob] = React.useState("Software Engineer")
-  const [dreamRole, setDreamRole] = React.useState("Full Stack Developer")
-  const [dreamCtc, setDreamCtc] = React.useState("12")
-  const [dreamSkillsInput, setDreamSkillsInput] = React.useState("React, TypeScript, System Design, Node.js")
-  const [currentSkillsInput, setCurrentSkillsInput] = React.useState("JavaScript, React, Git, HTML/CSS")
+  const [dreamJob, setDreamJob] = React.useState("")
+  const [dreamRole, setDreamRole] = React.useState("")
+  const [dreamCtc, setDreamCtc] = React.useState("")
+  const [dreamSkillsInput, setDreamSkillsInput] = React.useState("")
+  const [currentSkillsInput, setCurrentSkillsInput] = React.useState("")
   const [skillLevel, setSkillLevel] = React.useState<"Beginner" | "Intermediate" | "Advanced">("Intermediate")
   const [targetJobType, setTargetJobType] = React.useState("Full-time")
   const [preferredWorkMode, setPreferredWorkMode] = React.useState("Hybrid")
   const [targetTimeline, setTargetTimeline] = React.useState("3 months")
-  const [targetCompaniesInput, setTargetCompaniesInput] = React.useState("Google, Microsoft, Amazon, Atlassian")
-  const [currentChallenges, setCurrentChallenges] = React.useState("System design concepts and advanced SQL optimization")
+  const [targetCompaniesInput, setTargetCompaniesInput] = React.useState("")
+  const [currentChallenges, setCurrentChallenges] = React.useState("")
 
-  const totalSteps = 4
-  const progressPercent = (step / totalSteps) * 100
+  // Fetch existing profile data on dialog open
+  React.useEffect(() => {
+    if (!open) return
+    let isMounted = true
+
+    async function loadExistingProfile() {
+      try {
+        const res = await fetch("/api/students/career-profile")
+        const json = await res.json()
+        if (isMounted && res.ok && json.data?.profile) {
+          const p = json.data.profile
+          if (p.dream_job) setDreamJob(p.dream_job)
+          if (p.dream_role) setDreamRole(p.dream_role)
+          if (p.dream_ctc) setDreamCtc(String(p.dream_ctc))
+          if (Array.isArray(p.current_skills)) setCurrentSkillsInput(p.current_skills.join(", "))
+          if (Array.isArray(p.dream_skills)) setDreamSkillsInput(p.dream_skills.join(", "))
+          if (p.skill_level) setSkillLevel(p.skill_level)
+          if (p.target_job_type) setTargetJobType(p.target_job_type)
+          if (p.preferred_work_mode) setPreferredWorkMode(p.preferred_work_mode)
+          if (p.target_timeline) setTargetTimeline(p.target_timeline)
+          if (Array.isArray(p.target_companies)) setTargetCompaniesInput(p.target_companies.join(", "))
+          if (p.current_challenges) setCurrentChallenges(p.current_challenges)
+        }
+      } catch (err) {
+        console.error("Failed to load existing career profile:", err)
+      }
+    }
+
+    loadExistingProfile()
+
+    return () => {
+      isMounted = false
+    }
+  }, [open])
+
+  const validateStep = (currentStep: number): boolean => {
+    const newErrors: Record<string, string> = {}
+
+    if (currentStep === 1) {
+      if (!dreamJob.trim()) {
+        newErrors.dreamJob = "Dream job domain is required (e.g. Software Engineering)"
+      }
+      if (!dreamRole.trim()) {
+        newErrors.dreamRole = "Target role is required (e.g. Full Stack Developer)"
+      }
+    }
+
+    if (currentStep === 2) {
+      if (!currentSkillsInput.trim()) {
+        newErrors.currentSkills = "Please list at least one skill you currently possess"
+      }
+      if (!dreamSkillsInput.trim()) {
+        newErrors.dreamSkills = "Please list at least one target skill to learn"
+      }
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleNext = () => {
-    if (step < totalSteps) setStep(step + 1)
+    setApiError(null)
+    if (validateStep(step)) {
+      if (step < 4) setStep(step + 1)
+    }
   }
 
   const handlePrev = () => {
+    setApiError(null)
+    setErrors({})
     if (step > 1) setStep(step - 1)
   }
 
   const handleSubmit = async () => {
+    setApiError(null)
+    if (!validateStep(1) || !validateStep(2)) {
+      setStep(1)
+      return
+    }
+
     setLoading(true)
     try {
       const dreamSkills = dreamSkillsInput.split(",").map((s) => s.trim()).filter(Boolean)
@@ -64,9 +134,9 @@ export function StudentCareerOnboardingDialog({
       const targetCompanies = targetCompaniesInput.split(",").map((s) => s.trim()).filter(Boolean)
 
       const payload = {
-        dream_job: dreamJob,
-        dream_role: dreamRole,
-        dream_ctc: dreamCtc ? parseFloat(dreamCtc) : null,
+        dream_job: dreamJob.trim(),
+        dream_role: dreamRole.trim(),
+        dream_ctc: dreamCtc.trim() ? parseFloat(dreamCtc) : null,
         dream_skills: dreamSkills,
         current_skills: currentSkills,
         skill_level: skillLevel,
@@ -74,7 +144,7 @@ export function StudentCareerOnboardingDialog({
         preferred_work_mode: preferredWorkMode,
         target_timeline: targetTimeline,
         target_companies: targetCompanies,
-        current_challenges: currentChallenges,
+        current_challenges: currentChallenges.trim(),
       }
 
       const res = await fetch("/api/students/career-profile", {
@@ -83,17 +153,24 @@ export function StudentCareerOnboardingDialog({
         body: JSON.stringify(payload),
       })
 
-      if (res.ok) {
+      const json = await res.json()
+
+      if (res.ok && json.success) {
         onOpenChange(false)
         if (onCompleted) onCompleted()
         router.push("/student/roadmap")
+      } else {
+        setApiError(json.error || "Failed to save career profile. Please try again.")
       }
-    } catch (err) {
-      console.error("Failed to save career profile:", err)
+    } catch (err: any) {
+      setApiError(err?.message || "An unexpected network error occurred.")
     } finally {
       setLoading(false)
     }
   }
+
+  const totalSteps = 4
+  const progressPercent = (step / totalSteps) * 100
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -120,28 +197,44 @@ export function StudentCareerOnboardingDialog({
           <Progress value={progressPercent} className="h-1.5" />
         </div>
 
+        {/* Server / API Error Alert */}
+        {apiError && (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400 flex items-center gap-2">
+            <IconAlertTriangle className="h-4 w-4 shrink-0 text-rose-500" />
+            <span>{apiError}</span>
+          </div>
+        )}
+
         {/* Form Steps */}
         <div className="py-3">
           {step === 1 && (
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">What is your dream job domain?</Label>
+                <Label className="text-xs font-medium">What is your dream job domain? *</Label>
                 <Input
                   value={dreamJob}
-                  onChange={(e) => setDreamJob(e.target.value)}
-                  placeholder="e.g. Software Engineer, AI Research, Data Scientist"
+                  onChange={(e) => {
+                    setDreamJob(e.target.value)
+                    if (errors.dreamJob) setErrors((prev) => ({ ...prev, dreamJob: "" }))
+                  }}
+                  placeholder="e.g. Software Engineering, Data Science, Product Management"
                   className="h-9 text-xs"
                 />
+                {errors.dreamJob && <p className="text-[11px] font-medium text-rose-500">{errors.dreamJob}</p>}
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">What specific target role do you want?</Label>
+                <Label className="text-xs font-medium">What specific target role do you want? *</Label>
                 <Input
                   value={dreamRole}
-                  onChange={(e) => setDreamRole(e.target.value)}
+                  onChange={(e) => {
+                    setDreamRole(e.target.value)
+                    if (errors.dreamRole) setErrors((prev) => ({ ...prev, dreamRole: "" }))
+                  }}
                   placeholder="e.g. Full Stack Developer, Frontend Engineer, DevOps Engineer"
                   className="h-9 text-xs"
                 />
+                {errors.dreamRole && <p className="text-[11px] font-medium text-rose-500">{errors.dreamRole}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -160,24 +253,35 @@ export function StudentCareerOnboardingDialog({
           {step === 2 && (
             <div className="space-y-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Which skills do you currently possess?</Label>
+                <Label className="text-xs font-medium">Which skills do you currently possess? *</Label>
                 <Input
                   value={currentSkillsInput}
-                  onChange={(e) => setCurrentSkillsInput(e.target.value)}
+                  onChange={(e) => {
+                    setCurrentSkillsInput(e.target.value)
+                    if (errors.currentSkills) setErrors((prev) => ({ ...prev, currentSkills: "" }))
+                  }}
                   placeholder="Comma separated: React, JavaScript, SQL, Python"
                   className="h-9 text-xs"
                 />
-                <p className="text-[10px] text-zinc-400">Separate multiple skills with commas.</p>
+                {errors.currentSkills ? (
+                  <p className="text-[11px] font-medium text-rose-500">{errors.currentSkills}</p>
+                ) : (
+                  <p className="text-[10px] text-zinc-400">Separate multiple skills with commas.</p>
+                )}
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-medium">Which dream skills do you want to master next?</Label>
+                <Label className="text-xs font-medium">Which dream skills do you want to master next? *</Label>
                 <Input
                   value={dreamSkillsInput}
-                  onChange={(e) => setDreamSkillsInput(e.target.value)}
+                  onChange={(e) => {
+                    setDreamSkillsInput(e.target.value)
+                    if (errors.dreamSkills) setErrors((prev) => ({ ...prev, dreamSkills: "" }))
+                  }}
                   placeholder="Comma separated: System Design, Docker, Kubernetes, Next.js"
                   className="h-9 text-xs"
                 />
+                {errors.dreamSkills && <p className="text-[11px] font-medium text-rose-500">{errors.dreamSkills}</p>}
               </div>
 
               <div className="space-y-1.5">
@@ -278,7 +382,7 @@ export function StudentCareerOnboardingDialog({
             variant="ghost"
             size="sm"
             onClick={handlePrev}
-            disabled={step === 1}
+            disabled={step === 1 || loading}
             className="h-8 text-xs gap-1"
           >
             <IconArrowLeft className="h-3.5 w-3.5" />
@@ -290,6 +394,7 @@ export function StudentCareerOnboardingDialog({
               type="button"
               size="sm"
               onClick={handleNext}
+              disabled={loading}
               className="h-8 text-xs gap-1"
             >
               Next Step

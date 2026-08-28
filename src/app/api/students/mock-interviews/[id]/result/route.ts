@@ -11,7 +11,10 @@ export async function GET(
     const { id } = await params
     const auth = await requireApprovedStudent()
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
+      return NextResponse.json(
+        { success: false, code: "UNAUTHORIZED", error: auth.error },
+        { status: auth.status }
+      )
     }
 
     const { supabase, studentId } = auth
@@ -21,24 +24,40 @@ export async function GET(
       .select("*")
       .eq("id", id)
       .eq("student_id", studentId)
-      .single()
+      .maybeSingle()
 
     if (error || !mock) {
-      return NextResponse.json({ error: "Mock interview not found" }, { status: 404 })
+      return NextResponse.json(
+        { success: false, code: "NOT_FOUND", error: "Mock interview session not found" },
+        { status: 404 }
+      )
     }
 
     if (mock.status !== "EVALUATED") {
       return NextResponse.json(
-        { error: "Assessment has not been evaluated yet.", status: mock.status },
+        {
+          success: false,
+          code: "NOT_EVALUATED",
+          error: "Assessment has not been evaluated yet.",
+          data: { status: mock.status },
+        },
         { status: 400 }
       )
     }
 
     return NextResponse.json({
+      success: true,
+      data: {
+        mock,
+        result: mock.ai_results,
+      },
       mock,
       result: mock.ai_results,
     })
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      { success: false, code: "SERVER_ERROR", error: err?.message || "Internal server error" },
+      { status: 500 }
+    )
   }
 }

@@ -1,6 +1,5 @@
 export const dynamic = "force-dynamic"
 
-import { requireUser } from "@/lib/auth/require-user"
 import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
 
@@ -10,44 +9,38 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const auth = await requireUser()
+    const auth = await requireApprovedStudent()
     if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
+      return NextResponse.json(
+        { success: false, code: "UNAUTHORIZED", error: auth.error },
+        { status: auth.status }
+      )
     }
 
-    const { supabase, user } = auth
+    const { supabase, studentId } = auth
 
-    const role = user.app_metadata?.role
-    if (role !== "STUDENT") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const { data: student } = await supabase
-      .from("student_profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .maybeSingle()
-
-    if (!student) {
-      return NextResponse.json({ error: "Student profile not found" }, { status: 404 })
-    }
-
-    // Get the mock interview - read only, no status transitions
-    const { data: mock, error: fetchError } = await supabase
+    const { data: mock, error } = await supabase
       .from("mock_interviews")
-      .select("*, retry_count")
+      .select("*")
       .eq("id", id)
-      .eq("student_id", student.id)
+      .eq("student_id", studentId)
       .maybeSingle()
 
-    if (fetchError || !mock) {
-      return NextResponse.json({ error: "Mock interview not found" }, { status: 404 })
+    if (error || !mock) {
+      return NextResponse.json(
+        { success: false, code: "NOT_FOUND", error: "Mock interview not found" },
+        { status: 404 }
+      )
     }
 
-    return NextResponse.json({ mock })
+    return NextResponse.json({
+      success: true,
+      data: { mock },
+      mock,
+    })
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred" },
+      { success: false, code: "SERVER_ERROR", error: error?.message || "Internal server error" },
       { status: 500 }
     )
   }
@@ -57,24 +50,12 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const { id } = await params
-    const auth = await requireApprovedStudent()
-    if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
-    }
-
-    const { supabase, studentId } = auth
-
-    // Redirect to the proper submit endpoint
-    return NextResponse.json(
-      { error: "Use POST /api/students/mock-interviews/[id]/submit for answer submission" },
-      { status: 400 }
-    )
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred" },
-      { status: 500 }
-    )
-  }
+  return NextResponse.json(
+    {
+      success: false,
+      code: "INVALID_ENDPOINT",
+      error: "Use POST /api/students/mock-interviews/[id]/submit for answer submission",
+    },
+    { status: 400 }
+  )
 }
