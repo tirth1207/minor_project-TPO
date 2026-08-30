@@ -132,7 +132,7 @@ export async function GET() {
       },
       { onConflict: "student_id" }
     )
-
+    console.log("[Career Roadmap] Generated roadmap:", roadmapData)
     return NextResponse.json({
       success: true,
       data: {
