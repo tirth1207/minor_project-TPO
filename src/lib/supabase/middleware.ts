@@ -61,13 +61,13 @@ export async function updateSession(request: NextRequest) {
     if (role === "STUDENT") {
       url.pathname = "/student/profile"
     } else if (role === "COMPANY") {
-      url.pathname = "/company/jobs"
+      url.pathname = "/company"
     } else if (role === "COLLEGE_ADMIN") {
-      url.pathname = "/college-admin/departments"
+      url.pathname = "/college-admin"
     } else if (role === "MENTOR") {
-      url.pathname = "/mentor/overview"
+      url.pathname = "/mentor"
     } else if (role === "SA") {
-      url.pathname = "/super-admin/overview"
+      url.pathname = "/super-admin"
     } else {
       url.pathname = "/unauthorized"
     }
@@ -79,6 +79,24 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = "/unauthorized"
     return NextResponse.redirect(url)
+  }
+
+  if (
+    path.startsWith("/student") &&
+    path !== "/student/profile" &&
+    !path.startsWith("/student/profile/")
+  ) {
+    const { data: studentProfile } = await supabase
+      .from("student_profiles")
+      .select("profile_status")
+      .eq("user_id", user.id)
+      .maybeSingle()
+
+    if (studentProfile?.profile_status !== "APPROVED") {
+      const url = request.nextUrl.clone()
+      url.pathname = "/student/profile"
+      return NextResponse.redirect(url)
+    }
   }
 
   if (path.startsWith("/company") && role !== "COMPANY") {
