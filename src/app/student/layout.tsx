@@ -91,6 +91,17 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
     fetchUser()
   }, [])
 
+  React.useEffect(() => {
+    if (
+      !loading &&
+      profile &&
+      profile.profile_status !== "APPROVED" &&
+      pathname !== "/student/profile"
+    ) {
+      router.replace("/student/profile")
+    }
+  }, [loading, pathname, profile, router])
+
   const studentNavMains = React.useMemo(() => [
     {
       title: "Dashboard Overview",
@@ -197,12 +208,6 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
               title="Refresh Data"
             >
               <IconRefresh className={`h-4.5 w-4.5 ${refreshing ? "animate-spin" : ""}`} />
-            </button>
-            <button
-              onClick={handleLogout}
-              className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-zinc-200 hover:text-primary dark:bg-primary dark:text-zinc-950 dark:hover:bg-zinc-200 transition-all cursor-pointer"
-            >
-              Logout
             </button>
           </div>
         </header>
