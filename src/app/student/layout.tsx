@@ -133,18 +133,16 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
       url: "/student/settings",
       icon: <IconSettings className="size-4" />,
       isActive: pathname === "/student/settings",
-    },
-    {
-      title: "Support",
-      url: "/support",
-      icon: <IconLifebuoy className="size-4" />,
-      isActive: pathname === "/support",
-    },
-    {
-      title: "Feedback",
-      url: "/feedback",
-      icon: <IconSend className="size-4" />,
-      isActive: pathname === "/feedback",
+      items: [
+        {
+          title: "Support",
+          url: "/support",
+        },
+        {
+          title: "Feedback",
+          url: "/feedback",
+        },
+      ],
     },
   ], [pathname])
 
