@@ -225,14 +225,6 @@ function CompanyDashboardShell({
                 }`}
               />
             </button>
-
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="cursor-pointer rounded-lg bg-zinc-900 px-3 py-1.5 text-xs font-semibold text-zinc-50 transition-all hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200"
-            >
-              Logout
-            </button>
           </div>
         </header>
 
