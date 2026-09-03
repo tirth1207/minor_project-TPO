@@ -30,8 +30,8 @@ export default function StudentDashboardPage() {
       try {
         const res = await fetch("/api/students/career-profile")
         const data = await res.json()
-        if (res.ok && data.profile) {
-          setCareerProfile(data.profile)
+        if (res.ok && data.data?.profile) {
+          setCareerProfile(data.data.profile)
         }
       } catch (err) {
         console.error("Failed to fetch career profile:", err)
@@ -54,12 +54,12 @@ export default function StudentDashboardPage() {
         onCompleted={async () => {
           const res = await fetch("/api/students/career-profile")
           const data = await res.json()
-          if (data.profile) setCareerProfile(data.profile)
+          if (data.data?.profile) setCareerProfile(data.data.profile)
         }}
       />
 
       {/* Welcome Hero Card */}
-      <div className="rounded-2xl border border-zinc-200 bg-gradient-to-r from-zinc-900 to-zinc-800 p-6 text-white dark:border-zinc-800">
+      <div className="rounded-2xl bg-white p-6 text-black dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-800">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div className="space-y-1.5">
             <div className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-800/80 px-2.5 py-0.5 text-[10px] font-medium text-amber-400">
