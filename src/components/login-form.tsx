@@ -10,7 +10,6 @@ import {
     FieldDescription,
     FieldGroup,
     FieldLabel,
-    FieldSeparator,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { IconAlertCircle } from "@tabler/icons-react"
@@ -49,7 +48,7 @@ export function LoginForm({
             // Check role and redirect accordingly
             const role = data.role
             if (role === "STUDENT") {
-                router.push("/student/dashboard")
+                router.push("/student")
             } else if (role === "COMPANY") {
                 router.push("/company")
             } else if (role === "COLLEGE_ADMIN") {
@@ -64,8 +63,8 @@ export function LoginForm({
 
             // Refresh the page/router to ensure the middleware picks up the new cookies
             router.refresh()
-        } catch (err: any) {
-            setError(err?.message || "An unexpected error occurred.")
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "An unexpected error occurred.")
             setIsLoading(false)
         }
     }
@@ -80,7 +79,7 @@ export function LoginForm({
                             <div className="flex flex-col items-center gap-2 text-center">
                                 <h1 className="text-2xl font-bold">Welcome back</h1>
                                 <p className="text-balance text-muted-foreground">
-                                    Login to your Acme Inc account
+                                    Sign in to continue to your placement workspace
                                 </p>
                             </div>
                             {error && (
@@ -160,12 +159,29 @@ export function LoginForm({
                             </FieldDescription>
                         </FieldGroup>
                     </form>
-                    <div className="relative hidden bg-muted md:block">
-                        <img
-                            src="https://i.natgeofe.com/n/c9107b46-78b1-4394-988d-53927646c72b/1095.jpg"
-                            alt="Image"
-                            className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-                        />
+                    <div className="relative hidden overflow-hidden bg-zinc-950 p-8 text-zinc-50 md:flex md:flex-col md:justify-between">
+                        <div className="relative">
+                            <div className="mb-8 flex size-11 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg shadow-primary/20">
+                                <span className="text-lg font-black">T</span>
+                            </div>
+                            <p className="max-w-xs text-2xl font-semibold leading-tight tracking-tight">
+                                Every opportunity starts with a prepared candidate.
+                            </p>
+                        </div>
+                        <div className="relative space-y-3 text-sm text-zinc-400">
+                            <div className="flex items-center gap-3">
+                                <span className="size-2 rounded-full bg-emerald-400" />
+                                Secure role-based access
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="size-2 rounded-full bg-cyan-400" />
+                                AI-powered interview practice
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <span className="size-2 rounded-full bg-amber-300" />
+                                One place for the full hiring journey
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
