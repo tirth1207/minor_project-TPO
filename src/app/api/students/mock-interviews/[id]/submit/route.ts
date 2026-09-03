@@ -54,6 +54,28 @@ export async function POST(
       )
     }
 
+    if (mock.status !== "ANSWERING") {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "NOT_READY",
+          error: "Interview questions are not ready for submission yet",
+        },
+        { status: 409 }
+      )
+    }
+
+    if (!Array.isArray(mock.questions) || mock.questions.length < 3) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "QUESTIONS_UNAVAILABLE",
+          error: "This interview does not have enough questions to submit",
+        },
+        { status: 409 }
+      )
+    }
+
     // Step 1: GUARANTEE Candidate answers are persisted BEFORE evaluation is attempted
     const { error: saveAnswersError } = await supabase
       .from("mock_interviews")
