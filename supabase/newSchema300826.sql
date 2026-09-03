@@ -647,19 +647,12 @@ begin
   if
     old.name is distinct from new.name
     or old.enrollment_no is distinct from new.enrollment_no
-    or old.dob is distinct from new.dob
-    or old.address is distinct from new.address
-    or old.phone is distinct from new.phone
-    or old.bio is distinct from new.bio
     or old.cgpa is distinct from new.cgpa
     or old.active_backlogs is distinct from new.active_backlogs
     or old.semester is distinct from new.semester
     or old.branch is distinct from new.branch
     or old.skills is distinct from new.skills
-    or old.hobbies is distinct from new.hobbies
     or old.resume_url is distinct from new.resume_url
-    or old.marksheet_url is distinct from new.marksheet_url
-    or old.social_links is distinct from new.social_links
   then
     new.profile_status := 'PENDING';
   end if;
@@ -1850,7 +1843,7 @@ CREATE POLICY "Student can view assigned department" ON "public"."departments" F
 
 
 
-CREATE POLICY "Students can create own applications if eligible" ON "public"."applications" FOR INSERT TO "authenticated" WITH CHECK ((("public"."current_user_role"() = 'STUDENT'::"text") AND ("student_id" = "public"."get_student_id_by_user_id"("auth"."uid"())) AND "public"."check_student_eligibility"("student_id", "public"."get_job_id_by_mapping_id"("job_college_map_id"))));
+CREATE POLICY "Students can create own applications" ON "public"."applications" FOR INSERT TO "authenticated" WITH CHECK ((("public"."current_user_role"() = 'STUDENT'::"text") AND ("student_id" = "public"."get_student_id_by_user_id"("auth"."uid"()))));
 
 
 
