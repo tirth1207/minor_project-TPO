@@ -115,15 +115,17 @@ export interface Application {
   mock_score: number | null
   job_college_mapping?: {
     id: string
-    job?: {
-      id: string
-      title: string
-      location: string
-      work_mode: string
-      company?: {
+      job?: {
         id: string
-        company_name: string
-      }
+        title: string
+        location: string
+        work_mode: string
+        ctc_min?: number | null
+        ctc_max?: number | null
+        company?: {
+          id: string
+          company_name: string
+        }
     }
   }
   rounds?: {
@@ -171,6 +173,7 @@ export interface MockInterview {
   ai_summary: string | null
   ai_results: any
   completed_at: string | null
+  updated_at?: string | null
   status:
     | "REQUESTED"
     | "QUEUED"
@@ -237,7 +240,11 @@ interface StudentContextType {
   fetchData: (isRefresh?: boolean) => Promise<void>
   refreshMockInterviews: () => Promise<void>
   handleUpdateProfile: (e: React.FormEvent) => Promise<void>
-  handleApplyJob: (mappingId: string | null) => Promise<void>
+  handleApplyJob: (
+    mappingId: string | null,
+    isEligible?: boolean,
+    eligibilityReasons?: JobWithMapping["eligibility_reasons"]
+  ) => Promise<void>
   handleDecideOffer: (offerId: string, status: "ACCEPTED" | "REJECTED") => Promise<void>
   handleStartMock: () => Promise<void>
   handleCompleteMock: (answersOverride?: string[]) => Promise<void>
@@ -406,7 +413,11 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const handleApplyJob = async (mappingId: string | null) => {
+  const handleApplyJob = async (
+    mappingId: string | null,
+    isEligible = true,
+    eligibilityReasons?: JobWithMapping["eligibility_reasons"]
+  ) => {
     if (!profile) return
     if (profile.profile_status !== "APPROVED") {
       alert("Your student profile status is PENDING or REJECTED. You must be APPROVED by your mentor to apply for job drives.")
@@ -421,13 +432,31 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       return
     }
 
+    if (!isEligible) {
+      const reasons = eligibilityReasons
+        ? [
+            !eligibilityReasons.branch && "your branch does not match",
+            !eligibilityReasons.cgpa && "your CGPA is below the requirement",
+            !eligibilityReasons.backlogs && "your active backlogs exceed the limit",
+          ].filter(Boolean).join(", ")
+        : "the eligibility criteria are not met"
+
+      if (
+        !confirm(
+          `You are applying despite being ineligible because ${reasons}. Continue anyway?`
+        )
+      ) {
+        return
+      }
+    }
+
     try {
       const res = await fetch(`/api/students/jobs/${mappingId}/apply`, { method: "POST" })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Failed to apply for this job")
 
       alert("Application sent successfully! Good luck with your recruitment drive!")
-      fetchData(true)
+      await fetchData(true)
     } catch (err) {
       alert(err instanceof Error ? err.message : "An unexpected error occurred")
     }
@@ -448,7 +477,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       if (!res.ok) throw new Error(data.error || "Failed to submit decision")
 
       alert(`Job offer successfully ${status.toLowerCase()}!`)
-      fetchData(true)
+      await fetchData(true)
     } catch (err) {
       if (err instanceof Error) { alert(err.message) } else { alert("An unexpected error occurred") }
     }
