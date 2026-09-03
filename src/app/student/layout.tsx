@@ -129,25 +129,24 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
       isActive: pathname === "/student/profile",
     },
     {
-      title: "Settings & Preferences",
+      title: "Help",
       url: "/student/settings",
       icon: <IconSettings className="size-4" />,
       isActive: pathname === "/student/settings",
+      items: [
+        {
+          title: "Support",
+          url: "/support",
+        },
+        {
+          title: "Feedback",
+          url: "/feedback",
+        },
+      ],
     },
   ], [pathname])
 
-  const navSecondary = [
-    {
-      title: "Support",
-      url: "/support",
-      icon: <IconLifebuoy className="size-4" />,
-    },
-    {
-      title: "Feedback",
-      url: "/feedback",
-      icon: <IconSend className="size-4" />,
-    },
-  ]
+  const navSecondary = []
 
   return (
     <SidebarProvider>
