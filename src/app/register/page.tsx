@@ -379,14 +379,14 @@ function RegisterFormContent() {
           </p>
           <Button
             onClick={() => {
-if (successRole === "STUDENT") {
-                  router.push("/student/dashboard")
+                if (successRole === "STUDENT") {
+                  router.push("/student/profile")
                 } else if (successRole === "COMPANY") {
-                  router.push("/company/dashboard")
+                  router.push("/company")
                 } else if (successRole === "COLLEGE_ADMIN") {
-                  router.push("/college-admin/departments")
+                  router.push("/college-admin")
                 } else {
-                  router.push("/mentor/overview")
+                  router.push("/mentor")
                 }
               router.refresh()
             }}
@@ -1131,10 +1131,7 @@ if (successRole === "STUDENT") {
 
 export default function RegisterPage() {
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4 py-12 dark:bg-background font-sans">
-      {/* Decorative Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
-      
+    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 px-4 py-12 font-sans">
       <div className="relative z-10 w-full max-w-[440px]">
         {/* Branding */}
         <div className="mb-8 flex flex-col items-center text-center">
