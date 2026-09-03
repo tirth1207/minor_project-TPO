@@ -263,7 +263,7 @@ export async function generateStructuredMockInterview(
 ): Promise<MockInterviewQuestion[]> {
   const model =
     process.env.NVIDIA_MODEL ??
-    "openai/gpt-oss-120b";
+    "openai/gpt-oss-20b";
 
   /* ------------------------------------------------------------------------ */
   /* SYSTEM PROMPT                                                            */
