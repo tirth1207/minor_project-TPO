@@ -304,7 +304,7 @@ export default function StudentCareerRoadmapPage() {
             <IconAlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-500" />
             <div>
               <p className="text-sm font-medium text-rose-800 dark:text-rose-300">
-                Couldn't load your roadmap
+                Couldn&apos;t load your roadmap
               </p>
               <p className="mt-1 text-xs text-rose-700/80 dark:text-rose-400">
                 {error}
@@ -334,7 +334,7 @@ export default function StudentCareerRoadmapPage() {
             <IconBrain className="mx-auto h-10 w-10 text-muted-foreground" />
             <h2 className="mt-4 text-lg font-semibold">Set your target to get a roadmap</h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              Tell us the role and CTC you're aiming for, and we'll build a
+              Tell us the role and CTC you&apos;re aiming for, and we&apos;ll build a
               personalized plan from your skills and mock interview history.
             </p>
             <Button className="mt-5" onClick={() => setOnboardingOpen(true)}>
