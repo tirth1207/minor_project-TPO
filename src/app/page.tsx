@@ -26,11 +26,8 @@ export default async function Home() {
 
   return (
     <div className="relative flex min-h-screen flex-col justify-between bg-background font-sans text-foreground overflow-hidden">
-      {/* Grid background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:24px_24px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)]"></div>
-
       {/* Header */}
-      <header className="relative z-10 border-b border-primary/50 bg-background/50 backdrop-blur-md px-6 py-4 dark:border-primary/50 dark:bg-primary/50">
+      <header className="relative z-10 border-b border-border bg-background px-6 py-4">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-zinc-50 shadow-sm dark:bg-primary dark:text-zinc-950">
