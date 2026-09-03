@@ -113,7 +113,7 @@ export function cleanAndParseJson<T = any>(
     endIndex <= startIndex
   ) {
     throw new Error(
-      "AI response contains incomplete JSON"
+      "Malformed AI JSON response: AI response contains incomplete JSON"
     );
   }
 
