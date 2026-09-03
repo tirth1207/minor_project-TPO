@@ -90,3 +90,46 @@ export interface MockEvaluationResult {
   recommendedNextSteps: string[]
   questionEvaluations: QuestionEvaluation[]
 }
+
+export interface MockInterviewJobSnapshot {
+  jobId: string
+  mappingId: string
+  title: string
+  role: string
+  companyName: string
+  description: string
+  skills: string[]
+  ctcMax: number | null
+  minCgpa: number | null
+  maxBacklogs: number | null
+  mockPassScore: number
+}
+
+export interface MockInterviewSession {
+  id: string
+  student_id: string
+  job_id: string | null
+  job_college_mapping_id: string | null
+  mock_type: MockInterviewType
+  job_role_context: string
+  job_spec_snapshot: MockInterviewJobSnapshot | null
+  questions: MockInterviewQuestion[]
+  answers: StudentAnswer[]
+  ai_score: number | null
+  ai_feedback: string | null
+  overall_score: number | null
+  mcq_score: number | null
+  theory_score: number | null
+  coding_score: number | null
+  skill_scores: Record<string, number> | null
+  passed: boolean | null
+  ai_summary: string | null
+  ai_results: MockEvaluationResult | null
+  completed_at: string | null
+  status: MockInterviewStatus
+  retry_count: number
+  attempt_number: number
+  updated_at?: string | null
+}
+
+export type MockInterview = MockInterviewSession
