@@ -17,6 +17,7 @@ import {
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar"
 import { IconChevronRight } from "@tabler/icons-react"
+import { usePathname } from "next/navigation"
 
 export function NavMain({
   items,
@@ -32,18 +33,27 @@ export function NavMain({
     }[]
   }[]
 }) {
+  const pathname = usePathname()
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
+          (() => {
+            const isActive = item.url === "/"
+              ? pathname === "/"
+              : pathname === item.url || pathname.startsWith(`${item.url}/`)
+
+            return (
           <Collapsible
             key={item.title}
-            defaultOpen={item.isActive}
+            defaultOpen={item.isActive || isActive}
             render={<SidebarMenuItem />}
           >
             <SidebarMenuButton
               tooltip={item.title}
+              isActive={isActive}
               render={<a href={item.url} />}
             >
               {item.icon}
@@ -74,6 +84,8 @@ export function NavMain({
               </>
             ) : null}
           </Collapsible>
+            )
+          })()
         ))}
       </SidebarMenu>
     </SidebarGroup>
