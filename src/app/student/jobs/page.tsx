@@ -4,280 +4,219 @@ import * as React from "react"
 import Link from "next/link"
 import { useStudent } from "../student-context"
 import { StudentCareerOnboardingDialog } from "@/components/student/career-onboarding-dialog"
-import { IconAlertTriangle, IconCheck, IconSparkles, IconArrowRight, IconLock } from "@tabler/icons-react"
-
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-
+  IconAlertTriangle,
+  IconArrowRight,
+  IconBookmark,
+  IconCheck,
+  IconLock,
+  IconMapPin,
+  IconSparkles,
+  IconUsers,
+} from "@tabler/icons-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+
+function formatLpa(value: number | null | undefined) {
+  if (value === null || value === undefined) return "—"
+  const lpa = value >= 100000 ? value / 100000 : value
+  return Number.isInteger(lpa)
+    ? lpa.toString()
+    : lpa.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")
+}
+
+function getWebsiteIconUrl(website: string | null | undefined) {
+  if (!website) return null
+
+  try {
+    const normalizedWebsite = website.startsWith("http") ? website : `https://${website}`
+    const hostname = new URL(normalizedWebsite).hostname
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(hostname)}&sz=64`
+  } catch {
+    return null
+  }
+}
+
+function CompanyWebsiteIcon({ companyName, website }: { companyName: string; website: string | null }) {
+  const [iconFailed, setIconFailed] = React.useState(false)
+  const iconUrl = getWebsiteIconUrl(website)
+
+  if (!iconUrl || iconFailed) {
+    return <span>{companyName.charAt(0).toUpperCase() || "C"}</span>
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={iconUrl}
+      alt=""
+      className="size-6 rounded-md object-contain"
+      onError={() => setIconFailed(true)}
+    />
+  )
+}
+
+const BOOKMARKS_STORAGE_KEY = "tpo-student-bookmarked-jobs"
 
 export default function StudentJobsPage() {
-  const {
-    profile,
-    jobs,
-    applications,
-    mockInterviews,
-    handleApplyJob,
-  } = useStudent()
-
+  const { profile, jobs, applications, mockInterviews, handleApplyJob } = useStudent()
   const [onboardingOpen, setOnboardingOpen] = React.useState(false)
-
+  const [bookmarkedJobs, setBookmarkedJobs] = React.useState<Set<string>>(new Set())
   const isApproved = profile?.profile_status === "APPROVED"
+
+  React.useEffect(() => {
+    try {
+      const storedBookmarks = window.localStorage.getItem(BOOKMARKS_STORAGE_KEY)
+      if (!storedBookmarks) return
+
+      const parsedBookmarks: unknown = JSON.parse(storedBookmarks)
+      if (Array.isArray(parsedBookmarks)) {
+        setBookmarkedJobs(new Set(parsedBookmarks.filter((id): id is string => typeof id === "string")))
+      }
+    } catch {
+      window.localStorage.removeItem(BOOKMARKS_STORAGE_KEY)
+    }
+  }, [])
+
+  const toggleBookmark = (jobId: string) => {
+    setBookmarkedJobs((currentBookmarks) => {
+      const nextBookmarks = new Set(currentBookmarks)
+      if (nextBookmarks.has(jobId)) {
+        nextBookmarks.delete(jobId)
+      } else {
+        nextBookmarks.add(jobId)
+      }
+
+      window.localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify([...nextBookmarks]))
+      return nextBookmarks
+    })
+  }
 
   return (
     <div className="w-full space-y-5">
-      <StudentCareerOnboardingDialog
-        open={onboardingOpen}
-        onOpenChange={setOnboardingOpen}
-      />
+      <StudentCareerOnboardingDialog open={onboardingOpen} onOpenChange={setOnboardingOpen} />
 
-      {/* Header */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-            Campus Placement Drives
-          </h1>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            Explore active recruitment postings and complete mandatory AI assessments to unlock job applications.
+          <p className="text-xs font-medium uppercase tracking-[0.18em] text-primary">Campus opportunities</p>
+          <h1 className="mt-1 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Placement Drives</h1>
+          <p className="mt-1 max-w-2xl text-sm text-zinc-500 dark:text-zinc-400">
+            Review every active drive, see exactly where you stand, and apply with confidence.
           </p>
         </div>
-
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={() => setOnboardingOpen(true)}
-          className="h-8 text-xs gap-1.5 self-start sm:self-auto"
-        >
+        <Button size="sm" variant="outline" onClick={() => setOnboardingOpen(true)} className="h-9 gap-1.5 self-start text-xs sm:self-auto">
           <IconSparkles className="h-3.5 w-3.5 text-amber-500" />
           Update Career Goals
         </Button>
       </div>
 
-      {/* Table */}
       {jobs.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-zinc-200 py-12 text-center dark:border-zinc-800">
-          <p className="text-xs text-zinc-500">
-            No active job postings available in your college portal.
-          </p>
+        <div className="rounded-xl border border-dashed border-zinc-200 py-16 text-center dark:border-zinc-800">
+          <p className="text-sm text-zinc-500">No active job postings are available in your college portal.</p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="overflow-x-auto">
-            <Table className="text-xs">
-              <TableHeader>
-                <TableRow className="h-9 bg-zinc-50/70 hover:bg-zinc-50/70 dark:bg-zinc-900/40 dark:hover:bg-zinc-900/40">
-                  <TableHead className="h-9 px-3 font-medium">
-                    Company / Role
-                  </TableHead>
+        <div className="grid gap-4 md:grid-cols-2">
+          {jobs.map(({ job, mapping, applicant_count, is_eligible, eligibility_reasons }) => {
+            const alreadyApplied = mapping
+              ? applications.some((application) => application.job_college_mapping?.id === mapping.id)
+              : false
+            const isEligible = is_eligible !== false
+            const requireMock = Boolean(job.require_mock)
+            const mockPassScore = job.mock_pass_score || 70
+            const attempts = mockInterviews.filter(
+              (mock) => mock.job_college_mapping_id === mapping?.id && mock.mock_type === "JOB_REQUIRED" && mock.status === "EVALUATED"
+            )
+            const bestAttempt = [...attempts].sort((a, b) => (b.overall_score || 0) - (a.overall_score || 0))[0]
+            const bestScore = bestAttempt?.overall_score ?? bestAttempt?.ai_score ?? null
+            const hasPassedMock = Boolean(bestScore !== null && bestScore >= mockPassScore && bestAttempt?.passed !== false)
+            const isBookmarked = bookmarkedJobs.has(job.id)
+            const failedCriteria = eligibility_reasons
+              ? [
+                  !eligibility_reasons.branch && "Branch",
+                  !eligibility_reasons.cgpa && "CGPA",
+                  !eligibility_reasons.backlogs && "Backlogs",
+                ].filter(Boolean)
+              : []
 
-                  <TableHead className="h-9 px-3 whitespace-nowrap">
-                    Package
-                  </TableHead>
-
-                  <TableHead className="h-9 px-3 whitespace-nowrap">
-                    Location
-                  </TableHead>
-
-                  <TableHead className="h-9 px-3">
-                    Eligibility
-                  </TableHead>
-
-                  <TableHead className="h-9 px-3">
-                    AI Assessment Gate
-                  </TableHead>
-
-                  <TableHead className="h-9 px-3 text-center">
-                    Applicants
-                  </TableHead>
-
-                  <TableHead className="h-9 px-3 text-right">
-                    Action
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-
-              <TableBody>
-                {jobs.map((jobItem) => {
-                  const {
-                    job,
-                    mapping,
-                    applicant_count,
-                    is_eligible,
-                    eligibility_reasons,
-                  } = jobItem
-
-                  const alreadyApplied = mapping
-                    ? applications.some(
-                      (app) => app.job_college_mapping?.id === mapping.id
-                    )
-                    : false
-
-                  const isEligible = is_eligible !== false
-                  const requireMock = Boolean(job.require_mock)
-                  const mockPassScore = job.mock_pass_score || 70
-
-                  // Find best JOB_REQUIRED mock attempt for this exact mapping
-                  const attempts = mockInterviews.filter(
-                    (m) =>
-                      m.job_college_mapping_id === mapping?.id &&
-                      m.mock_type === "JOB_REQUIRED" &&
-                      m.status === "EVALUATED"
-                  )
-                  const bestAttempt = attempts.sort(
-                    (a, b) => (b.overall_score || 0) - (a.overall_score || 0)
-                  )[0]
-
-                  const bestScore = bestAttempt?.overall_score ?? bestAttempt?.ai_score ?? null
-                  const hasPassedMock = Boolean(
-                    bestScore !== null && bestScore >= mockPassScore && bestAttempt?.passed !== false
-                  )
-
-                  return (
-                    <TableRow
-                      key={job.id}
-                      className="h-14 transition-colors hover:bg-zinc-50/60 dark:hover:bg-zinc-900/40"
+            return (
+              <Card key={job.id} className="flex h-full flex-col overflow-hidden rounded-xl border-zinc-200 shadow-sm transition-shadow hover:shadow-md dark:border-zinc-800">
+                <CardHeader className="space-y-3 p-5 pb-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-zinc-950 text-sm font-bold text-white dark:bg-zinc-100 dark:text-zinc-950">
+                        <CompanyWebsiteIcon
+                          companyName={job.company?.company_name || "Corporate Partner"}
+                          website={job.company?.website || null}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <CardTitle className="truncate text-base">{job.title}</CardTitle>
+                        <p className="mt-1 truncate text-xs text-zinc-500">{job.company?.company_name || "Corporate Partner"}</p>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => toggleBookmark(job.id)}
+                      className={`size-8 shrink-0 rounded-lg hover:text-primary ${isBookmarked ? "text-primary" : "text-zinc-400"}`}
+                      title={isBookmarked ? "Remove saved job" : "Save job"}
+                      aria-label={isBookmarked ? `Remove ${job.title} from saved jobs` : `Save ${job.title}`}
+                      aria-pressed={isBookmarked}
                     >
-                      {/* Company / Role */}
-                      <TableCell className="px-3 py-2">
-                        <div className="min-w-45">
-                          <div className="flex items-center gap-1.5">
-                            <span className="font-medium text-zinc-900 dark:text-zinc-100">
-                              {job.title}
-                            </span>
-                          </div>
+                      <IconBookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} />
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+                    <span className="inline-flex items-center gap-1"><IconMapPin className="h-3.5 w-3.5" />{job.location || "Location not specified"}</span>
+                    <Badge variant="secondary" className="text-[10px]">{job.work_mode || "Flexible"}</Badge>
+                    <Badge variant="secondary" className="text-[10px]">Full-time</Badge>
+                  </div>
+                </CardHeader>
 
-                          <p className="mt-0.5 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-                            {job.company?.company_name || "Corporate Partner"}
-                          </p>
-                        </div>
-                      </TableCell>
+                <CardContent className="flex-1 space-y-3 px-5 pb-4 pt-1">
+                  <p className="line-clamp-2 text-xs leading-5 text-zinc-600 dark:text-zinc-400">{job.description || "Explore this campus recruitment opportunity."}</p>
 
-                      {/* Package */}
-                      <TableCell className="px-3 py-2">
-                        <span className="font-semibold text-primary">
-                          ₹{job.ctc_max} LPA
-                        </span>
-                      </TableCell>
+                  <div className={`rounded-lg border px-3 py-2 ${isEligible ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20" : "border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20"}`}>
+                    <div className="flex items-center gap-2 text-xs font-semibold">
+                      {isEligible ? <IconCheck className="h-3.5 w-3.5 text-emerald-600" /> : <IconAlertTriangle className="h-3.5 w-3.5 text-amber-600" />}
+                      <span>{isEligible ? "Eligible for this drive" : "Eligibility criteria not met"}</span>
+                    </div>
+                    {!isEligible && failedCriteria.length > 0 && <p className="mt-1 text-[11px] text-amber-800 dark:text-amber-300">Review: {failedCriteria.join(", ")}</p>}
+                  </div>
 
-                      {/* Location */}
-                      <TableCell className="px-3 py-2">
-                        <div className="whitespace-nowrap">
-                          <span className="text-zinc-700 dark:text-zinc-300">
-                            {job.location || "—"}
-                          </span>
-                          <span className="ml-1.5 text-[10px] text-zinc-400">
-                            {job.work_mode || ""}
-                          </span>
-                        </div>
-                      </TableCell>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium text-zinc-500">AI assessment</span>
+                    {!requireMock ? <span className="text-zinc-400">Not required</span> : hasPassedMock ? <Badge className="bg-emerald-600 text-[10px]">Passed {bestScore}%</Badge> : <span className="text-amber-600">Required: {mockPassScore}%</span>}
+                  </div>
+                </CardContent>
 
-                      {/* Eligibility */}
-                      <TableCell className="px-3 py-2">
-                        {isEligible ? (
-                          <Badge
-                            variant="outline"
-                            className="h-5 gap-1 rounded-md border-emerald-200 bg-emerald-50 px-1.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-400"
-                          >
-                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                            Eligible
-                          </Badge>
-                        ) : (
-                          <Badge
-                            variant="outline"
-                            className="h-5 gap-1 rounded-md border-rose-200 bg-rose-50 px-1.5 text-[10px] font-medium text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/30 dark:text-rose-400"
-                          >
-                            Ineligible
-                          </Badge>
-                        )}
-                      </TableCell>
+                <CardFooter className="flex items-end justify-between gap-3 border-t border-zinc-100 px-5 py-4 dark:border-zinc-800">
+                  <div className="space-y-1">
+                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">₹{formatLpa(job.ctc_max)} <span className="text-[11px] font-normal text-zinc-400">LPA</span></p>
+                    <p className="inline-flex items-center gap-1 text-[11px] text-zinc-400"><IconUsers className="h-3 w-3" />{applicant_count} applicants</p>
+                    {requireMock && !hasPassedMock && mapping && <Link href={`/student/mock/job/${mapping.id}`} className="flex items-center gap-1 text-[11px] font-semibold text-primary hover:underline">{bestScore !== null ? "Retake assessment" : "Take assessment"}<IconArrowRight className="h-3 w-3" /></Link>}
+                  </div>
 
-                      {/* AI Assessment Gate */}
-                      <TableCell className="px-3 py-2">
-                        {!requireMock ? (
-                          <span className="text-[11px] text-zinc-400">Not Required</span>
-                        ) : (
-                          <div className="space-y-0.5">
-                            <div className="flex items-center gap-1 text-[11px]">
-                              {hasPassedMock ? (
-                                <Badge variant="outline" className="h-5 text-[9px] border-emerald-300 bg-emerald-50 text-emerald-700">
-                                  Passed ({bestScore}%)
-                                </Badge>
-                              ) : bestScore !== null ? (
-                                <Badge variant="outline" className="h-5 text-[9px] border-rose-300 bg-rose-50 text-rose-700">
-                                  Score: {bestScore}% (Req: {mockPassScore}%)
-                                </Badge>
-                              ) : (
-                                <Badge variant="outline" className="h-5 text-[9px] border-amber-300 bg-amber-50 text-amber-800">
-                                  Required ({mockPassScore}%)
-                                </Badge>
-                              )}
-                            </div>
-                            {mapping && !hasPassedMock && (
-                              <Link href={`/student/mock/job/${mapping.id}`} className="block text-[10px] text-primary hover:underline font-medium">
-                                {bestScore !== null ? "Retake Job Assessment →" : "Take Required Assessment →"}
-                              </Link>
-                            )}
-                          </div>
-                        )}
-                      </TableCell>
-
-                      {/* Applicants */}
-                      <TableCell className="px-3 py-2 text-center">
-                        <span className="font-medium text-zinc-600 dark:text-zinc-300">
-                          {applicant_count}
-                        </span>
-                      </TableCell>
-
-                      {/* Action */}
-                      <TableCell className="px-3 py-2 text-right">
-                        {alreadyApplied ? (
-                          <Badge
-                            variant="outline"
-                            className="h-6 gap-1 rounded-md border-emerald-200 px-2 text-[10px] font-medium text-emerald-700 dark:border-emerald-900/50 dark:text-emerald-400"
-                          >
-                            <IconCheck className="h-3 w-3" />
-                            Applied
-                          </Badge>
-                        ) : requireMock && !hasPassedMock ? (
-                          <Link href={`/student/mock/job/${mapping?.id}`}>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 rounded-md px-2.5 text-[11px] border-amber-300 text-amber-800 dark:text-amber-300"
-                            >
-                              Take Job Mock
-                            </Button>
-                          </Link>
-                        ) : (
-                          <Button
-                            size="sm"
-                            onClick={() => handleApplyJob(mapping?.id ?? null)}
-                            disabled={!isApproved || !mapping || !isEligible}
-                            className="h-7 rounded-md px-2.5 text-[11px]"
-                          >
-                            {!mapping
-                              ? "Pending"
-                              : !isApproved
-                                ? "Profile Pending"
-                                : !isEligible
-                                  ? "Ineligible"
-                                  : "Apply Now"}
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
+                  {alreadyApplied ? (
+                    <Badge variant="outline" className="gap-1 border-emerald-300 px-2.5 py-1 text-emerald-700"><IconCheck className="h-3.5 w-3.5" />Applied</Badge>
+                  ) : requireMock && !hasPassedMock ? (
+                    <Button size="sm" variant="outline" disabled className="gap-1 text-xs"><IconLock className="h-3.5 w-3.5" />Assessment first</Button>
+                  ) : (
+                    <Button size="sm" onClick={() => handleApplyJob(mapping?.id ?? null, isEligible, eligibility_reasons)} disabled={!isApproved || !mapping} className="text-xs">
+                      {!mapping ? "Pending" : !isApproved ? "Profile Pending" : isEligible ? "Apply Now" : "Apply Anyway"}
+                    </Button>
+                  )}
+                </CardFooter>
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>
