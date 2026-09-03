@@ -22,7 +22,7 @@ export default function StudentSettingsPage() {
       const res = await fetch("/api/students/career-profile")
       const data = await res.json()
       if (res.ok) {
-        setCareerProfile(data.profile)
+        setCareerProfile(data.data?.profile ?? null)
       }
     } catch (err) {
       console.error("Failed to load career profile:", err)
