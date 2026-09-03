@@ -2,9 +2,7 @@ export const dynamic = "force-dynamic"
 
 import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
-import { generateStructuredMockInterview } from "@/lib/ai/mock-interview"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
-import type { MockInterviewQuestion } from "@/types/mock-interview"
 
 export async function POST(
   request: Request,
@@ -107,20 +105,6 @@ export async function POST(
       ? (existingAttempts[0].attempt_number || 1) + 1
       : 1
 
-    let generatedQuestions: MockInterviewQuestion[] = []
-    let initialStatus = "ANSWERING"
-
-    try {
-      generatedQuestions = await generateStructuredMockInterview(
-        "JOB_REQUIRED",
-        job.title,
-        jobSpecSnapshot
-      )
-    } catch (genErr) {
-      console.warn("[Job Mock Creation] Inline generation failed, setting state to QUEUED:", genErr)
-      initialStatus = "QUEUED"
-    }
-
     const { data: mockRecord, error } = await supabase
       .from("mock_interviews")
       .insert({
@@ -131,8 +115,8 @@ export async function POST(
         job_role_context: `${job.title} at ${jobSpecSnapshot.companyName}`,
         job_spec_snapshot: jobSpecSnapshot,
         attempt_number: nextAttempt,
-        questions: generatedQuestions,
-        status: initialStatus,
+        questions: [],
+        status: "QUEUED",
       })
       .select()
       .single()
