@@ -180,12 +180,6 @@ function CollegeAdminDashboardShell({ children }: { children: React.ReactNode })
             >
               <IconRefresh className={`h-4.5 w-4.5 ${refreshing ? "animate-spin" : ""}`} />
             </button>
-            <button
-              onClick={handleLogout}
-              className="px-3 py-1.5 rounded-lg bg-zinc-900 text-zinc-50 text-xs font-semibold hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-950 dark:hover:bg-zinc-200 transition-all cursor-pointer"
-            >
-              Logout
-            </button>
           </div>
         </header>
 
