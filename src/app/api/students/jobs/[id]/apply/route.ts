@@ -69,25 +69,7 @@ export async function POST(
       return NextResponse.json({ error: "This job mapping is not approved yet" }, { status: 400 })
     }
 
-    // Validate Branch, CGPA, and Backlogs eligibility explicitly on the backend
-    const eligibleBranches = (job.job_eligible_branches || []).map((b: any) => (b.branch_name || "").toLowerCase())
-    const isEligibleBranch = eligibleBranches.length === 0 || eligibleBranches.includes((student.branch || "").toLowerCase())
-    const isEligibleCgpa = student.cgpa >= job.min_cgpa
-    const isEligibleBacklogs = student.active_backlogs <= job.max_backlogs
-
-    if (!isEligibleBranch || !isEligibleCgpa || !isEligibleBacklogs) {
-      const reasons: string[] = []
-      if (!isEligibleBranch) reasons.push(`Branch not eligible (Your branch: ${student.branch})`)
-      if (!isEligibleCgpa) reasons.push(`Minimum CGPA requirement not met (Required: ${job.min_cgpa}, Yours: ${student.cgpa})`)
-      if (!isEligibleBacklogs) reasons.push(`Too many active backlogs (Maximum allowed: ${job.max_backlogs}, Yours: ${student.active_backlogs})`)
-      return NextResponse.json(
-        { error: `You are not eligible for this job posting: ${reasons.join(", ")}` },
-        { status: 400 }
-      )
-    }
-
     let jobSpecificMockScore: number | null = null
-    let passedMockId: string | null = null
 
     // Strictly enforce AI Mock Interview Gate for JOB_REQUIRED interviews
     if (job.require_mock) {
@@ -132,7 +114,6 @@ export async function POST(
       }
 
       jobSpecificMockScore = bestScore
-      passedMockId = bestAttempt.id
     }
 
     // Create Job Application
