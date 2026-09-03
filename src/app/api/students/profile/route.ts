@@ -154,12 +154,12 @@ export async function PUT(request: Request) {
       .from("student_profiles")
       .update({
         name: name.trim(),
-        enrollment_no: enrollment_no.trim(),
+        enrollment_no: String(enrollment_no ?? "").trim(),
 
         dob,
-        address: address.trim(),
-        phone: phone.trim(),
-        bio: bio.trim(),
+        address: String(address ?? "").trim() || null,
+        phone: String(phone ?? "").trim() || null,
+        bio: String(bio ?? "").trim() || null,
 
         cgpa: Number(cgpa),
         active_backlogs: Number(active_backlogs),
@@ -169,8 +169,8 @@ export async function PUT(request: Request) {
         skills,
         hobbies,
 
-        resume_url: resume_url.trim(),
-        marksheet_url: marksheet_url.trim(),
+        resume_url: String(resume_url ?? "").trim(),
+        marksheet_url: String(marksheet_url ?? "").trim() || null,
 
         social_links,
       })
