@@ -17,7 +17,6 @@ export async function GET(
 
     const { supabase, companyId } = auth
 
-    // Fetch the specific application and verify it belongs to this company
     const { data: application, error } = await supabase
       .from("applications")
       .select(`
@@ -75,16 +74,17 @@ export async function GET(
     if (error) {
       console.error("[COMPANY APPLICATION GET]", error)
       return NextResponse.json(
-        { error: error.message },
+        { error: "Unable to load application" },
         { status: 500 }
       )
     }
 
-    // Verify the application belongs to a job from this company
-    if (!application ||
-        !application.job_college_mapping ||
-        !application.job_college_mapping.job ||
-        application.job_college_mapping.job.company_profiles.id !== companyId) {
+    if (
+      !application ||
+      !application.job_college_mapping ||
+      !application.job_college_mapping.job ||
+      application.job_college_mapping.job.company_profiles.id !== companyId
+    ) {
       return NextResponse.json(
         { error: "Application not found or unauthorized access" },
         { status: 404 }
@@ -95,12 +95,7 @@ export async function GET(
   } catch (error: unknown) {
     console.error("[COMPANY APPLICATION GET]", error)
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-      },
+      { error: "Unable to load application" },
       { status: 500 }
     )
   }
