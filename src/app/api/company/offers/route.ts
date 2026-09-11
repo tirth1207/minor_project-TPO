@@ -3,13 +3,59 @@ export const dynamic = "force-dynamic"
 import { requireActiveCompany } from "@/lib/auth/require-active-company"
 import { NextResponse } from "next/server"
 
-export async function GET() {
+const DEFAULT_LIMIT = 50
+const MAX_LIMIT = 100
+const MAX_OFFSET = 10_000
+
+function parseBoundedInt(value: string | null, fallback: number, max: number) {
+  if (value === null || value === "") return fallback
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > max) return null
+  return parsed
+}
+
+type CompanyOfferRow = {
+  id: string
+  ctc_offered: number
+  status: string
+  extended_at: string
+  decided_at: string | null
+  application: {
+    id: string
+    status: string
+    applied_at: string
+    mock_score: number | null
+    job_college_mapping: {
+      id: string
+      job: { id: string; title: string; company_id: string }
+    }
+    student: {
+      id: string
+      name: string
+      enrollment_no: string
+      branch: string
+      cgpa: number
+      active_backlogs: number
+      resume_url: string
+    } | null
+  } | null
+}
+
+export async function GET(request: Request) {
   try {
     const auth = await requireActiveCompany()
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
+    const url = new URL(request.url)
+    const limit = parseBoundedInt(url.searchParams.get("limit"), DEFAULT_LIMIT, MAX_LIMIT)
+    const offset = parseBoundedInt(url.searchParams.get("offset"), 0, MAX_OFFSET)
+
+    if (limit === null || offset === null) {
+      return NextResponse.json({ error: "Invalid pagination parameters" }, { status: 400 })
+    }
+
     const { supabase, companyId } = auth
-    const { data: offers, error } = await supabase
+    const { data: offers, error, count } = await supabase
       .from("offers")
       .select(`
         id, ctc_offered, status, extended_at, decided_at,
@@ -22,19 +68,20 @@ export async function GET() {
             id, name, enrollment_no, branch, cgpa, active_backlogs, resume_url
           )
         )
-      `)
+      `, { count: "exact" })
       .eq("application.job_college_mapping.job.company_id", companyId)
       .order("extended_at", { ascending: false })
+      .range(offset, offset + limit - 1)
 
     if (error) {
       console.error("[COMPANY OFFERS API]", error)
       return NextResponse.json({ error: "Unable to load offers" }, { status: 500 })
     }
 
-    const applicants = (offers ?? [])
-      .filter((offer: any) => offer.application)
-      .map((offer: any) => {
-        const application = offer.application
+    const applicants = ((offers ?? []) as unknown as CompanyOfferRow[])
+      .filter((offer) => offer.application)
+      .map((offer) => {
+        const application = offer.application!
         return {
           id: application.id,
           status: application.status,
@@ -52,7 +99,13 @@ export async function GET() {
         }
       })
 
-    return NextResponse.json({ applicants, count: applicants.length })
+    const total = count ?? 0
+    return NextResponse.json({
+      applicants,
+      offers: applicants,
+      count: total,
+      hasMore: offset + applicants.length < total,
+    })
   } catch (error: unknown) {
     console.error("[COMPANY OFFERS API]", error)
     return NextResponse.json({ error: "Unable to load offers" }, { status: 500 })
