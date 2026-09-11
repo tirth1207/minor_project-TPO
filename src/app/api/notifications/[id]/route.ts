@@ -17,10 +17,8 @@ export async function PATCH(
 
     const { supabase, user } = auth
     const body = await request.json()
-
     const { isRead } = body
 
-    // Validate input
     if (isRead === undefined || typeof isRead !== "boolean") {
       return NextResponse.json(
         { error: "isRead boolean is required" },
@@ -28,26 +26,25 @@ export async function PATCH(
       )
     }
 
-    // Update the notification and verify it belongs to the user
     const { data: notification, error } = await supabase
       .from("notifications")
       .update({ is_read: isRead })
       .eq("id", id)
       .eq("user_id", user.id)
       .select()
-      .single()
+      .maybeSingle()
 
     if (error) {
       console.error("[NOTIFICATION PATCH]", error)
       return NextResponse.json(
-        { error: error.message },
+        { error: "Unable to update notification" },
         { status: 500 }
       )
     }
 
     if (!notification) {
       return NextResponse.json(
-        { error: "Notification not found or unauthorized" },
+        { error: "Notification not found" },
         { status: 404 }
       )
     }
@@ -59,12 +56,7 @@ export async function PATCH(
   } catch (error: unknown) {
     console.error("[NOTIFICATION PATCH]", error)
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-      },
+      { error: "Unable to update notification" },
       { status: 500 }
     )
   }
@@ -84,31 +76,25 @@ export async function DELETE(
 
     const { supabase, user } = auth
 
-    // Delete the notification and verify it belongs to the user
-    const { error } = await supabase
+    const { data: deletedNotification, error } = await supabase
       .from("notifications")
       .delete()
       .eq("id", id)
       .eq("user_id", user.id)
+      .select("id")
+      .maybeSingle()
 
     if (error) {
       console.error("[NOTIFICATION DELETE]", error)
       return NextResponse.json(
-        { error: error.message },
+        { error: "Unable to delete notification" },
         { status: 500 }
       )
     }
 
-    // Check if any row was actually deleted
-    const { count } = await supabase
-      .from("notifications")
-      .select("id", { count: "exact" })
-      .eq("id", id)
-      .eq("user_id", user.id)
-
-    if (count === 0) {
+    if (!deletedNotification) {
       return NextResponse.json(
-        { error: "Notification not found or unauthorized" },
+        { error: "Notification not found" },
         { status: 404 }
       )
     }
@@ -120,12 +106,7 @@ export async function DELETE(
   } catch (error: unknown) {
     console.error("[NOTIFICATION DELETE]", error)
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-      },
+      { error: "Unable to delete notification" },
       { status: 500 }
     )
   }
