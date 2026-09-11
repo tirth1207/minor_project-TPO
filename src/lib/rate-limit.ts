@@ -11,28 +11,69 @@ type RecordItem = {
 }
 
 const tracker = new Map<string, RecordItem>()
+const MAX_TRACKED_IDENTIFIERS = 10_000
+const CLEANUP_INTERVAL = 100
+let callsSinceCleanup = 0
+
+function pruneExpired(now: number) {
+  for (const [key, record] of tracker) {
+    if (now > record.resetTime) tracker.delete(key)
+  }
+}
+
+function enforceTrackerLimit(now: number) {
+  if (tracker.size < MAX_TRACKED_IDENTIFIERS) return
+
+  pruneExpired(now)
+  if (tracker.size < MAX_TRACKED_IDENTIFIERS) return
+
+  // Prefer evicting the record that expires soonest when the hard cap is hit.
+  let oldestKey: string | undefined
+  let oldestResetTime = Infinity
+
+  for (const [key, record] of tracker) {
+    if (record.resetTime < oldestResetTime) {
+      oldestKey = key
+      oldestResetTime = record.resetTime
+    }
+  }
+
+  if (oldestKey) tracker.delete(oldestKey)
+}
 
 /**
- * Basic in-memory sliding window rate limiter for API routes.
- * Prevents rapid abuse of sensitive endpoints like auth and AI models.
+ * Basic in-memory rate limiter for API routes.
+ * This is intentionally bounded so attacker-controlled identifiers cannot
+ * grow the process memory without limit. It remains process-local and is
+ * not a replacement for a distributed limiter in multi-instance deployments.
  */
 export function checkRateLimit(
   identifier: string,
   options: RateLimitOptions = { windowMs: 60 * 1000, maxRequests: 20 }
 ): { success: boolean; limit: number; remaining: number; resetTime: number } {
   const now = Date.now()
+
+  callsSinceCleanup += 1
+  if (callsSinceCleanup >= CLEANUP_INTERVAL) {
+    callsSinceCleanup = 0
+    pruneExpired(now)
+  }
+
   const record = tracker.get(identifier)
 
   if (!record || now > record.resetTime) {
+    enforceTrackerLimit(now)
+
     const newRecord: RecordItem = {
       count: 1,
       resetTime: now + options.windowMs,
     }
     tracker.set(identifier, newRecord)
+
     return {
       success: true,
       limit: options.maxRequests,
-      remaining: options.maxRequests - 1,
+      remaining: Math.max(0, options.maxRequests - 1),
       resetTime: newRecord.resetTime,
     }
   }
@@ -52,7 +93,7 @@ export function checkRateLimit(
   return {
     success: true,
     limit: options.maxRequests,
-    remaining: options.maxRequests - record.count,
+    remaining: Math.max(0, options.maxRequests - record.count),
     resetTime: record.resetTime,
   }
 }
