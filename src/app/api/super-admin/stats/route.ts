@@ -6,36 +6,27 @@ import { NextResponse } from "next/server"
 export async function GET() {
   try {
     const auth = await requireSuperAdmin()
-    if (!auth.ok) {
-      return NextResponse.json({ error: auth.error }, { status: auth.status })
-    }
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
     const { supabase } = auth
-
-    // Gather stats queries in parallel
-    const [
-      orgsRes,
-      companiesRes,
-      jobsRes,
-      studentsRes,
-    ] = await Promise.all([
+    const [orgsRes, companiesRes, jobsRes, studentsRes] = await Promise.all([
       supabase.from("organizations").select("status"),
       supabase.from("company_profiles").select("status"),
       supabase.from("job_postings").select("global_status"),
       supabase.from("student_profiles").select("is_placed"),
     ])
 
-    if (orgsRes.error) throw new Error(`Organizations: ${orgsRes.error.message}`)
-    if (companiesRes.error) throw new Error(`Companies: ${companiesRes.error.message}`)
-    if (jobsRes.error) throw new Error(`Jobs: ${jobsRes.error.message}`)
-    if (studentsRes.error) throw new Error(`Students: ${studentsRes.error.message}`)
+    if (orgsRes.error) throw new Error("Organizations query failed")
+    if (companiesRes.error) throw new Error("Companies query failed")
+    if (jobsRes.error) throw new Error("Jobs query failed")
+    if (studentsRes.error) throw new Error("Students query failed")
 
     const orgs = orgsRes.data || []
     const companies = companiesRes.data || []
     const jobs = jobsRes.data || []
     const students = studentsRes.data || []
 
-    const stats = {
+    return NextResponse.json({
       organizations: {
         total: orgs.length,
         active: orgs.filter((o: { status: string }) => o.status === "ACTIVE").length,
@@ -58,13 +49,10 @@ export async function GET() {
         total: students.length,
         placed: students.filter((s: { is_placed: boolean }) => s.is_placed).length,
         unplaced: students.filter((s: { is_placed: boolean }) => !s.is_placed).length,
-      }
-    }
-    return NextResponse.json(stats)
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : "An unexpected error occurred retrieving dashboard stats" },
-      { status: 500 }
-    )
+      },
+    })
+  } catch (error: unknown) {
+    console.error("GET /api/super-admin/stats failed:", error)
+    return NextResponse.json({ error: "Unable to load dashboard statistics" }, { status: 500 })
   }
 }
