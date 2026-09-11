@@ -9,46 +9,81 @@ export async function GET() {
     if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status })
 
     const { supabase } = auth
-    const [orgsRes, companiesRes, jobsRes, studentsRes] = await Promise.all([
-      supabase.from("organizations").select("status"),
-      supabase.from("company_profiles").select("status"),
-      supabase.from("job_postings").select("global_status"),
-      supabase.from("student_profiles").select("is_placed"),
+
+    const [
+      orgTotal,
+      orgActive,
+      orgPending,
+      orgRejected,
+      companyTotal,
+      companyActive,
+      companyPending,
+      companyRejected,
+      jobTotal,
+      jobApproved,
+      jobPending,
+      jobRejected,
+      studentTotal,
+      studentPlaced,
+    ] = await Promise.all([
+      supabase.from("organizations").select("id", { count: "exact", head: true }),
+      supabase.from("organizations").select("id", { count: "exact", head: true }).eq("status", "ACTIVE"),
+      supabase.from("organizations").select("id", { count: "exact", head: true }).eq("status", "PENDING"),
+      supabase.from("organizations").select("id", { count: "exact", head: true }).eq("status", "REJECTED"),
+      supabase.from("company_profiles").select("id", { count: "exact", head: true }),
+      supabase.from("company_profiles").select("id", { count: "exact", head: true }).eq("status", "ACTIVE"),
+      supabase.from("company_profiles").select("id", { count: "exact", head: true }).eq("status", "PENDING"),
+      supabase.from("company_profiles").select("id", { count: "exact", head: true }).eq("status", "REJECTED"),
+      supabase.from("job_postings").select("id", { count: "exact", head: true }),
+      supabase.from("job_postings").select("id", { count: "exact", head: true }).eq("global_status", "APPROVED"),
+      supabase.from("job_postings").select("id", { count: "exact", head: true }).eq("global_status", "PENDING"),
+      supabase.from("job_postings").select("id", { count: "exact", head: true }).eq("global_status", "REJECTED"),
+      supabase.from("student_profiles").select("id", { count: "exact", head: true }),
+      supabase.from("student_profiles").select("id", { count: "exact", head: true }).eq("is_placed", true),
     ])
 
-    if (orgsRes.error) throw new Error("Organizations query failed")
-    if (companiesRes.error) throw new Error("Companies query failed")
-    if (jobsRes.error) throw new Error("Jobs query failed")
-    if (studentsRes.error) throw new Error("Students query failed")
+    const results = [
+      orgTotal, orgActive, orgPending, orgRejected,
+      companyTotal, companyActive, companyPending, companyRejected,
+      jobTotal, jobApproved, jobPending, jobRejected,
+      studentTotal, studentPlaced,
+    ]
 
-    const orgs = orgsRes.data || []
-    const companies = companiesRes.data || []
-    const jobs = jobsRes.data || []
-    const students = studentsRes.data || []
+    const failed = results.find((result) => result.error)
+    if (failed) {
+      console.error("GET /api/super-admin/stats query failed:", failed.error)
+      return NextResponse.json({ error: "Unable to load dashboard statistics" }, { status: 500 })
+    }
+
+    const orgsTotal = orgTotal.count ?? 0
+    const companiesTotal = companyTotal.count ?? 0
+    const jobsTotal = jobTotal.count ?? 0
+    const studentsTotal = studentTotal.count ?? 0
+    const studentsPlaced = studentPlaced.count ?? 0
 
     return NextResponse.json({
       organizations: {
-        total: orgs.length,
-        active: orgs.filter((o: { status: string }) => o.status === "ACTIVE").length,
-        pending: orgs.filter((o: { status: string }) => o.status === "PENDING").length,
-        rejected: orgs.filter((o: { status: string }) => o.status === "REJECTED").length,
+        total: orgsTotal,
+        active: orgActive.count ?? 0,
+        pending: orgPending.count ?? 0,
+        rejected: orgRejected.count ?? 0,
       },
       companies: {
-        total: companies.length,
-        active: companies.filter((c: { status: string }) => c.status === "ACTIVE").length,
-        pending: companies.filter((c: { status: string }) => c.status === "PENDING").length,
-        rejected: companies.filter((c: { status: string }) => c.status === "REJECTED").length,
+        total: companiesTotal,
+        active: companyActive.count ?? 0,
+        pending: companyPending.count ?? 0,
+        rejected: companyRejected.count ?? 0,
       },
       jobs: {
-        total: jobs.length,
-        active: jobs.filter((j: { global_status: string }) => j.global_status === "APPROVED").length,
-        pending: jobs.filter((j: { global_status: string }) => j.global_status === "PENDING").length,
-        rejected: jobs.filter((j: { global_status: string }) => j.global_status === "REJECTED").length,
+        total: jobsTotal,
+        active: jobApproved.count ?? 0,
+        pending: jobPending.count ?? 0,
+        rejected: jobRejected.count ?? 0,
       },
       students: {
-        total: students.length,
-        placed: students.filter((s: { is_placed: boolean }) => s.is_placed).length,
-        unplaced: students.filter((s: { is_placed: boolean }) => !s.is_placed).length,
+        total: studentsTotal,
+        placed: studentsPlaced,
+        unplaced: Math.max(0, studentsTotal - studentsPlaced),
       },
     })
   } catch (error: unknown) {
