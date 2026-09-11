@@ -1,0 +1,11 @@
+-- Trigger functions are implementation details, not RPC APIs.
+REVOKE ALL ON FUNCTION public.sync_user_meta_to_auth() FROM public, anon, authenticated;
+REVOKE ALL ON FUNCTION public.handle_critical_profile_update() FROM public, anon, authenticated;
+REVOKE ALL ON FUNCTION public.check_company_active_before_job_post() FROM public, anon, authenticated;
+REVOKE ALL ON FUNCTION public.handle_offer_acceptance() FROM public, anon, authenticated;
+REVOKE ALL ON FUNCTION public.validate_student_mentor() FROM public, anon, authenticated;
+REVOKE ALL ON FUNCTION public.notify_student_profile_status_change() FROM public, anon, authenticated;
+REVOKE ALL ON FUNCTION public.notify_job_approval_status_change() FROM public, anon, authenticated;
+REVOKE ALL ON FUNCTION public.notify_application_status_change() FROM public, anon, authenticated;
+REVOKE ALL ON FUNCTION public.notify_offer_status_change() FROM public, anon, authenticated;
+REVOKE ALL ON FUNCTION public.notify_interview_scheduling() FROM public, anon, authenticated;
