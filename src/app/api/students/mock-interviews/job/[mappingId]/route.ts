@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic"
 import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit"
+import { checkStudentEligibility } from "@/lib/eligibility/check-student-eligibility"
 
 export async function POST(
   request: Request,
@@ -22,13 +23,10 @@ export async function POST(
       windowMs: 60 * 1000,
       maxRequests: 5,
     })
-    if (!rateLimit.success) {
-      return rateLimitResponse()
-    }
+    if (!rateLimit.success) return rateLimitResponse()
 
     const { supabase, studentId, orgId } = auth
 
-    // Verify student can access mapping and job posting
     const { data: mapping, error: mappingError } = await supabase
       .from("job_college_mappings")
       .select(`
@@ -76,7 +74,31 @@ export async function POST(
       )
     }
 
-    // Build job specification snapshot
+    // Eligibility is a deterministic placement rule and must be checked before
+    // an applicant is allowed to create a job-required assessment.
+    let eligible: boolean
+    try {
+      eligible = await checkStudentEligibility(supabase, studentId, job.id)
+    } catch (eligibilityError: any) {
+      return NextResponse.json(
+        { success: false, code: "ELIGIBILITY_CHECK_FAILED", error: eligibilityError?.message || "Unable to verify eligibility" },
+        { status: 503 }
+      )
+    }
+
+    if (!eligible) {
+      return NextResponse.json(
+        { success: false, code: "NOT_ELIGIBLE", error: "You do not meet this job drive's eligibility criteria." },
+        { status: 403 }
+      )
+    }
+
+    // Store structured job requirements rather than trying to infer skills from
+    // capitalization in the job description.
+    const structuredSkills = Array.isArray(job.job_eligible_branches)
+      ? job.job_eligible_branches.map((branch: any) => branch.branch_name).filter(Boolean)
+      : []
+
     const jobSpecSnapshot = {
       jobId: job.id,
       mappingId: mapping.id,
@@ -84,25 +106,23 @@ export async function POST(
       role: job.title,
       companyName: job.company?.company_name || "Corporate Partner",
       description: job.description,
-      skills: Array.isArray(job.description?.match(/[A-Z][a-zA-Z0-9#+.]+/g))
-        ? Array.from(new Set(job.description.match(/[A-Z][a-zA-Z0-9#+.]+/g))).slice(0, 8)
-        : [],
+      skills: structuredSkills,
       ctcMax: job.ctc_max,
       minCgpa: job.min_cgpa,
       maxBacklogs: job.max_backlogs,
       mockPassScore: job.mock_pass_score || 70,
     }
 
-    // Determine current attempt count
     const { data: existingAttempts } = await supabase
       .from("mock_interviews")
       .select("attempt_number")
       .eq("student_id", studentId)
       .eq("job_college_mapping_id", mappingId)
       .order("attempt_number", { ascending: false })
+      .limit(1)
 
-    const nextAttempt = existingAttempts && existingAttempts.length > 0
-      ? (existingAttempts[0].attempt_number || 1) + 1
+    const nextAttempt = existingAttempts?.[0]?.attempt_number
+      ? existingAttempts[0].attempt_number + 1
       : 1
 
     const { data: mockRecord, error } = await supabase
@@ -131,12 +151,7 @@ export async function POST(
     return NextResponse.json(
       {
         success: true,
-        data: {
-          mock: mockRecord,
-          mapping,
-        },
-        mock: mockRecord,
-        mapping,
+        data: { mock: mockRecord, mapping },
         message: "Job-required mock assessment created successfully",
       },
       { status: 201 }
