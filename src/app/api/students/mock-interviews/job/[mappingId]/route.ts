@@ -74,8 +74,6 @@ export async function POST(
       )
     }
 
-    // Eligibility is a deterministic placement rule and must be checked before
-    // an applicant is allowed to create a job-required assessment.
     let eligible: boolean
     try {
       eligible = await checkStudentEligibility(supabase, studentId, job.id)
@@ -93,10 +91,11 @@ export async function POST(
       )
     }
 
-    // Store structured job requirements rather than trying to infer skills from
-    // capitalization in the job description.
-    const structuredSkills = Array.isArray(job.job_eligible_branches)
-      ? job.job_eligible_branches.map((branch: any) => branch.branch_name).filter(Boolean)
+    // Keep the job snapshot factual. Skills must come from a structured job
+    // skills column when one exists; never infer skills from capitalization or
+    // from the eligible-branch relation.
+    const jobSkills = Array.isArray(job.skills)
+      ? job.skills.filter((skill: unknown): skill is string => typeof skill === "string" && skill.trim().length > 0)
       : []
 
     const jobSpecSnapshot = {
@@ -106,7 +105,7 @@ export async function POST(
       role: job.title,
       companyName: job.company?.company_name || "Corporate Partner",
       description: job.description,
-      skills: structuredSkills,
+      skills: jobSkills,
       ctcMax: job.ctc_max,
       minCgpa: job.min_cgpa,
       maxBacklogs: job.max_backlogs,
