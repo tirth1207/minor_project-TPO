@@ -39,7 +39,6 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --color-card: var(--card);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -106,7 +105,7 @@
   --chart-1: oklch(0.855 0.138 181.071);
   --chart-2: oklch(0.704 0.14 182.503);
   --chart-3: oklch(0.6 0.118 184.704);
-  --chart-4: oklch(0.511 0.096 186.391);
+  --chart-4: oklch(0.511 0.096 188.216);
   --chart-5: oklch(0.437 0.078 188.216);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
@@ -124,11 +123,7 @@
   ::selection { background: color-mix(in oklab, var(--primary) 22%, transparent); }
   :focus-visible { outline: 2px solid color-mix(in oklab, var(--ring) 85%, transparent); outline-offset: 3px; }
   button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
-  button, a, input, textarea, select {
-    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
-    transition-duration: 180ms;
-    transition-timing-function: ease-out;
-  }
+  button, a, input, textarea, select { transition-property: color, background-color, border-color, box-shadow, opacity, transform; transition-duration: 180ms; transition-timing-function: ease-out; }
   html { @apply font-sans; scroll-behavior: smooth; }
 }
 
