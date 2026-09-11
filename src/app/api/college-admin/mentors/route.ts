@@ -10,6 +10,24 @@ type MentorUser = {
   organization: { id: string; name: string } | null
 }
 
+type MentorProfile = {
+  id: string
+  user_id: string
+  name: string | null
+  employee_id: string | null
+  designation: string | null
+  qualification: string | null
+  specialization: string | null
+  phone: string | null
+  bio: string | null
+  skills: unknown
+  social_links: unknown
+  profile_status: string | null
+  created_at: string
+  updated_at: string
+  user: MentorUser | MentorUser[] | null
+}
+
 export async function GET() {
   try {
     const auth = await requireActiveCollegeAdmin()
@@ -37,7 +55,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unable to load mentors" }, { status: 500 })
     }
 
-    const mentors = (data ?? []).map((mentor) => {
+    const mentors = (data ?? []).map((mentor: MentorProfile) => {
       const user = (Array.isArray(mentor.user) ? mentor.user[0] : mentor.user) as MentorUser | undefined
 
       return {
