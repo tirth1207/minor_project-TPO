@@ -79,6 +79,10 @@ export async function GET() {
    CREATE JOB
 ========================================================= */
 
+type ActiveCollege = {
+  id: string
+}
+
 export async function POST(request: Request) {
   try {
     const auth = await requireActiveCompany()
@@ -215,7 +219,7 @@ export async function POST(request: Request) {
     }
 
     if (activeColleges && activeColleges.length > 0) {
-      const mappings = activeColleges.map((college) => ({
+      const mappings = (activeColleges as ActiveCollege[]).map((college) => ({
         job_id: job.id,
         org_id: college.id,
         local_status: "PENDING",
@@ -243,7 +247,6 @@ export async function POST(request: Request) {
           ...job,
           branches: branchList,
         },
-        message: "Job posting submitted for approval.",
       },
       { status: 201 }
     )
