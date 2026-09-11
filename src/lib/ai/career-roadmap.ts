@@ -1,7 +1,47 @@
 import crypto from "crypto"
+import { z } from "zod"
 import { callNvidiaChat } from "./nvidia"
 import { cleanAndParseJson } from "./json-parser"
 import type { StudentCareerProfile, CareerRoadmapData } from "@/types/career"
+
+const CareerRoadmapAIResponseSchema = z.object({
+  careerGoal: z.object({
+    dreamJob: z.string().min(1),
+    dreamRole: z.string().min(1),
+    targetCtc: z.number().nonnegative().nullable(),
+    targetTimeline: z.string().min(1).nullable(),
+  }),
+  readiness: z.object({
+    score: z.number().finite().min(0).max(100),
+    summary: z.string().min(1),
+  }),
+  strengths: z.array(z.object({
+    skill: z.string().min(1),
+    reason: z.string().min(1),
+  })),
+  skillGaps: z.array(z.object({
+    skill: z.string().min(1),
+    currentLevel: z.string().min(1),
+    requiredLevel: z.string().min(1),
+    priority: z.enum(["HIGH", "MEDIUM", "LOW"]),
+    reason: z.string().min(1),
+  })),
+  learningPlan: z.array(z.object({
+    phase: z.string().min(1),
+    duration: z.string().min(1),
+    skills: z.array(z.string()),
+    topics: z.array(z.string()),
+    practiceTasks: z.array(z.string()),
+  })),
+  recommendedJobs: z.array(z.object({
+    jobId: z.string().min(1),
+    jobMappingId: z.string().min(1),
+    matchScore: z.number().finite().min(0).max(100),
+    why: z.array(z.string()),
+    skillGaps: z.array(z.string()),
+    readiness: z.string().min(1),
+  })),
+}).strict()
 
 export function generateProfileHash(profile: any): string {
   if (!profile) return "no-profile"
@@ -75,8 +115,6 @@ export async function generateGroundedCareerRoadmap(
 ): Promise<CareerRoadmapData> {
   const model = process.env.NVIDIA_MODEL ?? "openai/gpt-oss-120b"
 
-  // portalJobs must already be deterministically eligible. AI only ranks and
-  // explains these jobs; it never decides eligibility.
   const compactJobs = portalJobs.map((j) => {
     const job = j.job || j
     const mapping = j.mapping || j
@@ -117,7 +155,16 @@ GROUNDING RULES:
 4. matchScore is a relevance score among the supplied eligible jobs, not an eligibility score.
 5. If the list is empty, recommendedJobs MUST be [].
 
-Return ONLY a JSON object with the required careerGoal, readiness, strengths, skillGaps, learningPlan and recommendedJobs structure.`
+Return ONLY a JSON object matching this exact structure:
+{
+  "careerGoal": { "dreamJob": string, "dreamRole": string, "targetCtc": number|null, "targetTimeline": string|null },
+  "readiness": { "score": number, "summary": string },
+  "strengths": [{ "skill": string, "reason": string }],
+  "skillGaps": [{ "skill": string, "currentLevel": string, "requiredLevel": string, "priority": "HIGH"|"MEDIUM"|"LOW", "reason": string }],
+  "learningPlan": [{ "phase": string, "duration": string, "skills": string[], "topics": string[], "practiceTasks": string[] }],
+  "recommendedJobs": [{ "jobId": string, "jobMappingId": string, "matchScore": number, "why": string[], "skillGaps": string[], "readiness": string }]
+}
+Do not add extra top-level or nested fields.`
 
   const userPrompt = `Candidate Career Profile:
 Dream Role: ${careerProfile.dream_role} (${careerProfile.dream_job})
@@ -148,56 +195,52 @@ ${JSON.stringify(compactJobs, null, 2)}`
 
   if (!raw) throw new Error("Empty response received from AI Roadmap generator")
 
-  const parsed = cleanAndParseJson(raw)
-  const recommendedJobs: any[] = []
-
-  if (Array.isArray(parsed.recommendedJobs)) {
-    const seen = new Set<string>()
-    for (const rec of parsed.recommendedJobs) {
-      const matchedJob = compactJobs.find(
-        (j) => j.jobId === rec?.jobId || j.jobMappingId === rec?.jobMappingId
-      )
-      if (!matchedJob || seen.has(matchedJob.jobId)) continue
-      seen.add(matchedJob.jobId)
-
-      const numericMatch = Number(rec?.matchScore)
-      recommendedJobs.push({
-        jobId: matchedJob.jobId,
-        jobMappingId: matchedJob.jobMappingId,
-        title: matchedJob.title,
-        companyName: matchedJob.companyName,
-        ctcMax: matchedJob.ctcMax,
-        location: matchedJob.location,
-        matchScore: Number.isFinite(numericMatch) ? Math.min(100, Math.max(0, Math.round(numericMatch))) : 0,
-        isEligible: true,
-        requireMock: matchedJob.requireMock,
-        mockPassScore: matchedJob.mockPassScore,
-        why: Array.isArray(rec?.why) ? rec.why.slice(0, 5) : ["Relevant role alignment"],
-        skillGaps: Array.isArray(rec?.skillGaps) ? rec.skillGaps.slice(0, 10) : [],
-        readiness: typeof rec?.readiness === "string" ? rec.readiness : "Ready for eligibility-qualified opportunities.",
-      })
-    }
+  const parsedJson = cleanAndParseJson(raw)
+  const parsed = CareerRoadmapAIResponseSchema.safeParse(parsedJson)
+  if (!parsed.success) {
+    console.error("AI Roadmap response validation failed:", parsed.error.flatten())
+    throw new Error("AI Roadmap returned an invalid response")
   }
 
-  const readinessScore = Math.min(100, Math.max(0, Number(parsed.readiness?.score) || 70))
-  let readinessSummary = typeof parsed.readiness?.summary === "string"
-    ? parsed.readiness.summary
-    : "Good career alignment."
+  const recommendedJobs: CareerRoadmapData["recommendedJobs"] = []
+  const seen = new Set<string>()
+
+  for (const rec of parsed.data.recommendedJobs) {
+    const matchedJob = compactJobs.find(
+      (j) => j.jobId === rec.jobId || j.jobMappingId === rec.jobMappingId
+    )
+    if (!matchedJob || seen.has(matchedJob.jobId)) continue
+    seen.add(matchedJob.jobId)
+
+    recommendedJobs.push({
+      jobId: matchedJob.jobId,
+      jobMappingId: matchedJob.jobMappingId,
+      title: matchedJob.title,
+      companyName: matchedJob.companyName,
+      ctcMax: matchedJob.ctcMax,
+      location: matchedJob.location,
+      matchScore: Math.min(100, Math.max(0, Math.round(rec.matchScore))),
+      isEligible: true,
+      requireMock: matchedJob.requireMock,
+      mockPassScore: matchedJob.mockPassScore,
+      why: rec.why.slice(0, 5),
+      skillGaps: rec.skillGaps.slice(0, 10),
+      readiness: rec.readiness,
+    })
+  }
+
+  const readinessScore = Math.min(100, Math.max(0, parsed.data.readiness.score))
+  let readinessSummary = parsed.data.readiness.summary
   if (compactJobs.length === 0) {
     readinessSummary += " Note: No eligible active campus placement drives are currently mapped to your institute."
   }
 
   return {
-    careerGoal: {
-      dreamJob: parsed.careerGoal?.dreamJob || careerProfile.dream_job,
-      dreamRole: parsed.careerGoal?.dreamRole || careerProfile.dream_role,
-      targetCtc: Number(parsed.careerGoal?.targetCtc) || careerProfile.dream_ctc,
-      targetTimeline: parsed.careerGoal?.targetTimeline || careerProfile.target_timeline,
-    },
+    careerGoal: parsed.data.careerGoal,
     readiness: { score: readinessScore, summary: readinessSummary },
-    strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
-    skillGaps: Array.isArray(parsed.skillGaps) ? parsed.skillGaps : [],
-    learningPlan: Array.isArray(parsed.learningPlan) ? parsed.learningPlan : [],
+    strengths: parsed.data.strengths,
+    skillGaps: parsed.data.skillGaps,
+    learningPlan: parsed.data.learningPlan,
     recommendedJobs,
   }
 }
