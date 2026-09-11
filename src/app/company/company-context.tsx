@@ -71,24 +71,16 @@ export interface Applicant {
   }
 }
 
-
 export interface Offer {
   id: string
   application_id: string
-
   ctc_offered: number
-
   status: OfferStatus
-
   extended_at: string
   decided_at: string | null
 }
 
-export type OfferStatus =
-  | "EXTENDED"
-  | "ACCEPTED"
-  | "REJECTED"
-
+export type OfferStatus = "EXTENDED" | "ACCEPTED" | "REJECTED"
 
 export interface OfferWithApplication extends Offer {
   application: {
@@ -96,17 +88,10 @@ export interface OfferWithApplication extends Offer {
     status: string
     applied_at: string
     mock_score: number | null
-
     job_college_mapping: {
       id: string
-
-      job: {
-        id: string
-        title: string
-        company_id: string
-      }
+      job: { id: string; title: string; company_id: string }
     }
-
     student: {
       id: string
       name: string
@@ -119,8 +104,6 @@ export interface OfferWithApplication extends Offer {
   }
 }
 
-
-
 interface CompanyContextType {
   loading: boolean
   refreshing: boolean
@@ -131,8 +114,6 @@ interface CompanyContextType {
   setSelectedJob: (job: JobPosting | null) => void
   applicants: Applicant[]
   offers: Offer[]
-
-  // New Job Form fields
   jobTitle: string
   setJobTitle: (v: string) => void
   jobDesc: string
@@ -154,15 +135,10 @@ interface CompanyContextType {
   branches: string[]
   setBranches: (v: string[]) => void
   postingJob: boolean
-
-  // Bulk selection state
   selectedApplicantIds: Record<string, boolean>
   setSelectedApplicantIds: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
-
-  // Offer extend field
   extendCtcValues: Record<string, string>
   setExtendCtcValues: React.Dispatch<React.SetStateAction<Record<string, string>>>
-
   fetchData: (isRefresh?: boolean) => Promise<void>
   fetchApplicants: () => Promise<void>
   handleCreateJob: (e: React.FormEvent) => Promise<void>
@@ -183,16 +159,12 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-
-  // Data state
   const [jobs, setJobs] = React.useState<JobPosting[]>([])
   const [companyStatus, setCompanyStatus] = React.useState<string>("PENDING")
   const [selectedJob, setSelectedJob] = React.useState<JobPosting | null>(null)
   const [applicants, setApplicants] = React.useState<Applicant[]>([])
   const [allApplicants, setAllApplicants] = React.useState<Applicant[]>([])
   const [offers, setOffers] = React.useState<Offer[]>([])
-
-  // New Job Form fields
   const [jobTitle, setJobTitle] = React.useState("")
   const [jobDesc, setJobDesc] = React.useState("")
   const [jobLocation, setJobLocation] = React.useState("")
@@ -204,11 +176,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [mockPassScore, setMockPassScore] = React.useState("50")
   const [branches, setBranches] = React.useState<string[]>([])
   const [postingJob, setPostingJob] = React.useState(false)
-
-  // Bulk selection state
   const [selectedApplicantIds, setSelectedApplicantIds] = React.useState<Record<string, boolean>>({})
-
-  // Offer extend field
   const [extendCtcValues, setExtendCtcValues] = React.useState<Record<string, string>>({})
 
   const fetchData = React.useCallback(async (isRefresh = false) => {
@@ -217,14 +185,12 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     setError(null)
 
     try {
-      // Verify session
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
         router.push("/login")
         return
       }
 
-      // Verify Company role
       const { data: dbUser } = await supabase
         .from("users")
         .select("role")
@@ -237,21 +203,15 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      // Fetch company posted jobs
       const jobsRes = await fetch("/api/company/jobs")
-      console.log("Jobs API response:", jobsRes)
       if (!jobsRes.ok) throw new Error("Failed to retrieve jobs")
       const jobsData = await jobsRes.json()
       setJobs(jobsData.jobs || [])
       setCompanyStatus(jobsData.company_status || "PENDING")
 
-      // Keep selected job ID updated or pick first if empty
-      if (jobsData.jobs && jobsData.jobs.length > 0) {
-        if (!selectedJob) {
-          setSelectedJob(jobsData.jobs[0])
-        }
+      if (jobsData.jobs && jobsData.jobs.length > 0 && !selectedJob) {
+        setSelectedJob(jobsData.jobs[0])
       }
-
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong loading dashboard data")
     } finally {
@@ -260,14 +220,13 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     }
   }, [router, supabase, selectedJob])
 
-  // Fetch applicants whenever selectedJobId changes
   const fetchApplicants = React.useCallback(async () => {
     if (!selectedJob) {
       setApplicants([])
       return
     }
     try {
-      const res = await fetch(`/api/company/jobs/${selectedJob?.id}/applicants`)
+      const res = await fetch(`/api/company/jobs/${selectedJob.id}/applicants`)
       if (res.ok) {
         const data = await res.json()
         setApplicants(data.applicants || [])
@@ -280,87 +239,37 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
 
   const fetchAllApplicants = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/company/applications", {
-        method: "GET",
-        cache: "no-store",
-      })
-
+      const res = await fetch("/api/company/applications", { method: "GET", cache: "no-store" })
       const data = await res.json()
-
       if (!res.ok) {
-        console.error(
-          "Company applications API failed:",
-          data?.error || "Unknown error"
-        )
-
         setAllApplicants([])
         return
       }
-
-      setAllApplicants(
-        Array.isArray(data?.applicants)
-          ? data.applicants
-          : []
-      )
-    } catch (err) {
-      console.error(
-        "Error fetching company applications:",
-        err
-      )
-
+      setAllApplicants(Array.isArray(data?.applicants) ? data.applicants : [])
+    } catch {
       setAllApplicants([])
     }
   }, [])
 
   const fetchOffers = React.useCallback(async () => {
     try {
-      const res = await fetch("/api/company/offers", {
-        method: "GET",
-        cache: "no-store",
-      })
-
+      const res = await fetch("/api/company/offers?limit=50&offset=0", { method: "GET", cache: "no-store" })
       const data = await res.json()
-
       if (!res.ok) {
-        console.error(
-          "Company offers API failed:",
-          data?.error || "Unknown error"
-        )
-
         setOffers([])
         return
       }
-
-      setOffers(
-        Array.isArray(data?.offers)
-          ? data.offers
-          : []
-      )
-    } catch (err) {
-      console.error(
-        "Error fetching company offers:",
-        err
-      )
-
+      const rows = Array.isArray(data?.offers) ? data.offers : data?.applicants
+      setOffers(Array.isArray(rows) ? rows : [])
+    } catch {
       setOffers([])
     }
   }, [])
 
-  React.useEffect(() => {
-    fetchData()
-  }, [fetchData])
-
-  React.useEffect(() => {
-    fetchApplicants()
-  }, [fetchApplicants])
-
-  React.useEffect(() => {
-    fetchAllApplicants()
-  }, [fetchAllApplicants])
-
-  React.useEffect(() => {
-    fetchOffers()
-  }, [fetchOffers])
+  React.useEffect(() => { fetchData() }, [fetchData])
+  React.useEffect(() => { fetchApplicants() }, [fetchApplicants])
+  React.useEffect(() => { fetchAllApplicants() }, [fetchAllApplicants])
+  React.useEffect(() => { fetchOffers() }, [fetchOffers])
 
   const handleCreateJob = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -373,161 +282,58 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/company/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: jobTitle,
-          description: jobDesc,
-          location: jobLocation,
-          workMode,
-          package: ctc,
-          minCgpa,
-          maxBacklogs,
-          requireMock,
-          mockPassScore,
-          branches: branches.length > 0 ? branches : ["Computer Science", "Information Technology", "Electronics"]
-        })
+        body: JSON.stringify({ title: jobTitle, description: jobDesc, location: jobLocation, workMode, package: ctc, minCgpa, maxBacklogs, requireMock, mockPassScore, branches: branches.length > 0 ? branches : ["Computer Science", "Information Technology", "Electronics"] })
       })
-
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to post job")
-
-      alert("Job posted successfully! It has been submitted to Super Admin & College Admins for verification/approval.")
+      if (!res.ok) throw new Error(data?.error || "Failed to create job")
       setJobTitle("")
       setJobDesc("")
       setJobLocation("")
       setCtc("")
-      setBranches([])
+      setMinCgpa("6.00")
+      setMaxBacklogs("0")
       setRequireMock(false)
-      router.push("/company/jobs")
-      fetchData(true)
+      setMockPassScore("50")
+      setBranches([])
+      await fetchData(true)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "An unexpected error occurred")
+      alert(err instanceof Error ? err.message : "Failed to create job")
     } finally {
       setPostingJob(false)
     }
   }
 
   const handleShortlistApplicant = async (appId: string) => {
-    try {
-      const res = await fetch("/api/company/applications/shortlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationIds: [appId] })
-      })
-      if (!res.ok) throw new Error("Failed to shortlist candidate")
-
-      alert("Candidate shortlisted successfully!")
-      fetchApplicants()
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "An unexpected error occurred")
-    }
+    const res = await fetch("/api/company/applications/shortlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationIds: [appId] }) })
+    if (!res.ok) throw new Error("Failed to shortlist applicant")
+    await Promise.all([fetchApplicants(), fetchAllApplicants()])
   }
 
   const handleBulkShortlist = async () => {
-    const appIds = Object.keys(selectedApplicantIds).filter(id => selectedApplicantIds[id])
-    if (appIds.length === 0) return
-    try {
-      const res = await fetch("/api/company/applications/shortlist", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationIds: appIds })
-      })
-      if (!res.ok) throw new Error("Failed to shortlist candidates")
-
-      alert(`Successfully shortlisted ${appIds.length} candidate(s)!`)
-      fetchApplicants()
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "An unexpected error occurred")
-    }
+    const ids = Object.entries(selectedApplicantIds).filter(([, selected]) => selected).map(([id]) => id)
+    if (ids.length === 0) return
+    const res = await fetch("/api/company/applications/shortlist", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ applicationIds: ids }) })
+    if (!res.ok) throw new Error("Failed to shortlist applicants")
+    setSelectedApplicantIds({})
+    await Promise.all([fetchApplicants(), fetchAllApplicants()])
   }
 
   const handleExtendOffer = async (appId: string) => {
-    const value = extendCtcValues[appId]
-    if (!value || isNaN(parseFloat(value))) {
-      alert("Please specify a valid CTC package offered in LPA.")
-      return
-    }
-    try {
-      const res = await fetch(`/api/company/applications/${appId}/offer`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ctcOffered: value })
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to extend job offer")
-
-      alert("Job offer extended successfully!")
-      fetchApplicants()
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "An unexpected error occurred")
-    }
+    const ctcOffered = extendCtcValues[appId]
+    if (!ctcOffered) return
+    const res = await fetch(`/api/company/applications/${appId}/offer`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ctcOffered: Number(ctcOffered) }) })
+    if (!res.ok) throw new Error("Failed to extend offer")
+    setExtendCtcValues((current) => ({ ...current, [appId]: "" }))
+    await fetchOffers()
   }
 
   const handleRevokeOffer = async (offerId: string) => {
-    if (!confirm("Are you sure you want to revoke this job offer? This action cannot be undone.")) return
-    try {
-      const res = await fetch(`/api/company/offers/${offerId}/revoke`, {
-        method: "PATCH"
-      })
-      if (!res.ok) throw new Error("Failed to revoke offer")
-
-      alert("Job offer revoked successfully.")
-      fetchApplicants()
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "An unexpected error occurred")
-    }
+    const res = await fetch(`/api/company/offers/${offerId}/revoke`, { method: "PATCH" })
+    if (!res.ok) throw new Error("Failed to revoke offer")
+    await fetchOffers()
   }
 
-  return (
-    <CompanyContext.Provider
-      value={{
-        loading,
-        refreshing,
-        error,
-        jobs,
-        companyStatus,
-        offers,
-        selectedJob,
-        setSelectedJob,
-        applicants,
-        jobTitle,
-        setJobTitle,
-        jobDesc,
-        setJobDesc,
-        jobLocation,
-        setJobLocation,
-        workMode,
-        setWorkMode,
-        ctc,
-        setCtc,
-        minCgpa,
-        setMinCgpa,
-        maxBacklogs,
-        setMaxBacklogs,
-        requireMock,
-        setRequireMock,
-        mockPassScore,
-        setMockPassScore,
-        branches,
-        setBranches,
-        postingJob,
-        selectedApplicantIds,
-        setSelectedApplicantIds,
-        extendCtcValues,
-        setExtendCtcValues,
-        fetchData,
-        fetchApplicants,
-        handleCreateJob,
-        handleShortlistApplicant,
-        handleBulkShortlist,
-        handleExtendOffer,
-        handleRevokeOffer,
-        allApplicants,
-        fetchAllApplicants
-      }}
-    >
-      {children}
-    </CompanyContext.Provider>
-  )
+  return <CompanyContext.Provider value={{ loading, refreshing, error, jobs, companyStatus, selectedJob, setSelectedJob, applicants, offers, jobTitle, setJobTitle, jobDesc, setJobDesc, jobLocation, setJobLocation, workMode, setWorkMode, ctc, setCtc, minCgpa, setMinCgpa, maxBacklogs, setMaxBacklogs, requireMock, setRequireMock, mockPassScore, setMockPassScore, branches, setBranches, postingJob, selectedApplicantIds, setSelectedApplicantIds, extendCtcValues, setExtendCtcValues, fetchData, fetchApplicants, handleCreateJob, handleShortlistApplicant, handleBulkShortlist, handleExtendOffer, handleRevokeOffer, allApplicants, fetchAllApplicants }}>{children}</CompanyContext.Provider>
 }
 
 export function useCompany() {
