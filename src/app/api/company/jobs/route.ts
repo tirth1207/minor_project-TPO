@@ -22,10 +22,6 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden: Corporate access only" }, { status: 403 })
     }
 
-    /* -----------------------------------------------------
-       Company profile
-    ----------------------------------------------------- */
-
     const { data: companyProfile, error: companyError } = await supabase
       .from("company_profiles")
       .select("id, status")
@@ -33,16 +29,13 @@ export async function GET() {
       .maybeSingle()
 
     if (companyError) {
-      return NextResponse.json({ error: companyError.message }, { status: 400 })
+      console.error("Failed to load company profile:", companyError)
+      return NextResponse.json({ error: "Failed to load company profile" }, { status: 500 })
     }
 
     if (!companyProfile) {
       return NextResponse.json({ error: "Company profile not found" }, { status: 404 })
     }
-
-    /* -----------------------------------------------------
-       Jobs
-    ----------------------------------------------------- */
 
     const { data: jobs, error: jobsError } = await supabase
       .from("job_postings")
@@ -56,12 +49,9 @@ export async function GET() {
       .order("id", { ascending: false })
 
     if (jobsError) {
-      return NextResponse.json({ error: jobsError.message }, { status: 400 })
+      console.error("Failed to load company jobs:", jobsError)
+      return NextResponse.json({ error: "Failed to load jobs" }, { status: 500 })
     }
-
-    /* -----------------------------------------------------
-       Normalize branch relation
-    ----------------------------------------------------- */
 
     const normalizedJobs =
       jobs?.map((job: any) => ({
@@ -79,12 +69,7 @@ export async function GET() {
   } catch (error: unknown) {
     console.error("GET /api/company/jobs:", error)
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-      },
+      { error: "An unexpected error occurred" },
       { status: 500 }
     )
   }
@@ -102,19 +87,14 @@ export async function POST(request: Request) {
     }
 
     const { supabase, companyId } = auth
-
-    /* -----------------------------------------------------
-       Request
-    ----------------------------------------------------- */
-
     const body = await request.json()
 
     const {
       title,
       description,
       location,
-      workMode, // Match what the UI sends or handle both workMode and work_mode
-      package: ctc, // UI sends 'package'
+      workMode,
+      package: ctc,
       minCgpa,
       maxBacklogs,
       requireMock,
@@ -123,10 +103,6 @@ export async function POST(request: Request) {
     } = body
 
     const actualWorkMode = workMode || body.work_mode
-
-    /* -----------------------------------------------------
-       Validation
-    ----------------------------------------------------- */
 
     if (typeof title !== "string" || !title.trim()) {
       return NextResponse.json({ error: "Job title is required" }, { status: 400 })
@@ -145,19 +121,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid work mode" }, { status: 400 })
     }
 
-    /* -----------------------------------------------------
-       Numeric values
-    ----------------------------------------------------- */
-
-    // CTC min/max parsing
     const parsedCtc = ctc ? Number(ctc) : null
     const parsedMinCgpa = minCgpa === null || minCgpa === undefined || minCgpa === "" ? 0 : Number(minCgpa)
     const parsedMaxBacklogs = maxBacklogs === null || maxBacklogs === undefined || maxBacklogs === "" ? 0 : Number(maxBacklogs)
     const parsedMockScore = requireMock ? Number(mockPassScore ?? 50) : 50
-
-    /* -----------------------------------------------------
-       Validate numbers
-    ----------------------------------------------------- */
 
     if (parsedCtc !== null && (!Number.isFinite(parsedCtc) || parsedCtc < 0)) {
       return NextResponse.json({ error: "Invalid CTC" }, { status: 400 })
@@ -174,10 +141,6 @@ export async function POST(request: Request) {
     if (requireMock && (!Number.isFinite(parsedMockScore) || parsedMockScore < 0 || parsedMockScore > 100)) {
       return NextResponse.json({ error: "Mock pass score must be between 0 and 100" }, { status: 400 })
     }
-
-    /* -----------------------------------------------------
-       Branches
-    ----------------------------------------------------- */
 
     if (!Array.isArray(branches) || branches.length === 0) {
       return NextResponse.json({ error: "At least one eligible branch is required" }, { status: 400 })
@@ -196,22 +159,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "At least one valid eligible branch is required" }, { status: 400 })
     }
 
-    /* -----------------------------------------------------
-       Active colleges
-    ----------------------------------------------------- */
-
     const { data: activeColleges, error: collegesError } = await supabase
       .from("organizations")
       .select("id")
       .eq("status", "ACTIVE")
 
     if (collegesError) {
-      return NextResponse.json({ error: collegesError.message }, { status: 400 })
+      console.error("Failed to load active colleges:", collegesError)
+      return NextResponse.json({ error: "Failed to configure college eligibility" }, { status: 500 })
     }
-
-    /* -----------------------------------------------------
-       Create job
-    ----------------------------------------------------- */
 
     const { data: job, error: jobError } = await supabase
       .from("job_postings")
@@ -233,12 +189,9 @@ export async function POST(request: Request) {
       .single()
 
     if (jobError) {
-      return NextResponse.json({ error: jobError.message }, { status: 400 })
+      console.error("Failed to create job posting:", jobError)
+      return NextResponse.json({ error: "Failed to create job posting" }, { status: 500 })
     }
-
-    /* -----------------------------------------------------
-       Eligible branches
-    ----------------------------------------------------- */
 
     const branchInserts = branchList.map((branchName) => ({
       job_id: job.id,
@@ -250,27 +203,37 @@ export async function POST(request: Request) {
       .insert(branchInserts)
 
     if (branchError) {
-      await supabase.from("job_postings").delete().eq("id", job.id)
-      return NextResponse.json({ error: `Failed to configure eligibility: ${branchError.message}` }, { status: 400 })
+      console.error("Failed to create eligible branches:", branchError)
+      const { error: rollbackError } = await supabase
+        .from("job_postings")
+        .delete()
+        .eq("id", job.id)
+      if (rollbackError) {
+        console.error("Failed to rollback job after branch creation failure:", rollbackError)
+      }
+      return NextResponse.json({ error: "Failed to configure job eligibility" }, { status: 500 })
     }
 
-    /* -----------------------------------------------------
-       College mappings
-    ----------------------------------------------------- */
-
     if (activeColleges && activeColleges.length > 0) {
-      const mappings = activeColleges.map((college: any) => ({
+      const mappings = activeColleges.map((college) => ({
         job_id: job.id,
         org_id: college.id,
         local_status: "PENDING",
       }))
-      console.log("Creating college mappings:", mappings)
       const { error: mappingError } = await supabase
         .from("job_college_mappings")
         .insert(mappings)
 
       if (mappingError) {
         console.error("Failed to create college mappings:", mappingError)
+        const { error: rollbackError } = await supabase
+          .from("job_postings")
+          .delete()
+          .eq("id", job.id)
+        if (rollbackError) {
+          console.error("Failed to rollback job after mapping creation failure:", rollbackError)
+        }
+        return NextResponse.json({ error: "Failed to configure college eligibility" }, { status: 500 })
       }
     }
 
@@ -287,12 +250,7 @@ export async function POST(request: Request) {
   } catch (error: unknown) {
     console.error("POST /api/company/jobs:", error)
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-      },
+      { error: "An unexpected error occurred" },
       { status: 500 }
     )
   }
