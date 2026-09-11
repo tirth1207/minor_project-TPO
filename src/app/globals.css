@@ -39,6 +39,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-card: var(--card);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -72,7 +73,7 @@
   --chart-3: oklch(0.6 0.118 184.704);
   --chart-4: oklch(0.511 0.096 186.391);
   --chart-5: oklch(0.437 0.078 188.216);
-  --radius: 0.45rem;
+  --radius: 0.55rem;
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.6 0.118 184.704);
@@ -118,39 +119,24 @@
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  ::selection {
-    background: color-mix(in oklab, var(--primary) 22%, transparent);
-  }
-  :focus-visible {
-    outline: 2px solid color-mix(in oklab, var(--ring) 85%, transparent);
-    outline-offset: 3px;
-  }
-  button:not(:disabled), [role="button"]:not(:disabled) {
-    cursor: pointer;
-  }
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground; }
+  ::selection { background: color-mix(in oklab, var(--primary) 22%, transparent); }
+  :focus-visible { outline: 2px solid color-mix(in oklab, var(--ring) 85%, transparent); outline-offset: 3px; }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
   button, a, input, textarea, select {
     transition-property: color, background-color, border-color, box-shadow, opacity, transform;
     transition-duration: 180ms;
     transition-timing-function: ease-out;
   }
-  html {
-    @apply font-sans;
-    scroll-behavior: smooth;
-  }
+  html { @apply font-sans; scroll-behavior: smooth; }
 }
 
 @layer utilities {
-  .portal-surface {
-    @apply border border-border/70 bg-card/80 shadow-sm backdrop-blur-xl;
-  }
-
-  .portal-page {
-    @apply mx-auto w-full max-w-[1480px];
-  }
+  .portal-surface { @apply border border-border/70 bg-card/80 shadow-sm backdrop-blur-xl; }
+  .portal-page { @apply mx-auto w-full max-w-[1480px]; }
+  .portal-section-title { @apply text-sm font-semibold tracking-tight text-foreground; }
+  .portal-section-description { @apply text-xs leading-5 text-muted-foreground; }
+  .portal-interactive { @apply transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-md; }
+  .portal-muted-panel { @apply rounded-xl border border-border/60 bg-muted/40; }
 }
