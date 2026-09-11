@@ -22,7 +22,7 @@ export function generateProfileHash(profile: any): string {
 }
 
 export function generateJobsHash(jobs: any[]): string {
-  if (!Array.isArray(jobs) || jobs.length === 0) return "no-approved-jobs"
+  if (!Array.isArray(jobs) || jobs.length === 0) return "no-eligible-jobs"
   const canonicalJobs = jobs
     .map((j) => {
       const job = j.job || j
@@ -31,13 +31,41 @@ export function generateJobsHash(jobs: any[]): string {
         jobId: job.id || "",
         mappingId: mapping.id || "",
         title: job.title || "",
+        description: job.description || "",
+        skills: Array.isArray(job.skills) ? [...job.skills].sort() : [],
+        ctcMin: job.ctc_min || 0,
         ctcMax: job.ctc_max || 0,
+        location: job.location || "",
+        workMode: job.work_mode || "",
+        minCgpa: job.min_cgpa || 0,
+        maxBacklogs: job.max_backlogs ?? 0,
+        requireMock: Boolean(job.require_mock),
+        mockPassScore: job.mock_pass_score || 0,
         globalStatus: job.global_status || "",
+        localStatus: mapping.local_status || "",
+        branches: Array.isArray(job.job_eligible_branches)
+          ? job.job_eligible_branches.map((b: any) => b.branch_name).sort()
+          : [],
       }
     })
-    .sort((a, b) => (a.jobId || "").localeCompare(b.jobId || ""))
+    .sort((a, b) => a.jobId.localeCompare(b.jobId))
 
   return crypto.createHash("sha256").update(JSON.stringify(canonicalJobs)).digest("hex")
+}
+
+export function generateMocksHash(mocks: any[]): string {
+  const canonicalMocks = (Array.isArray(mocks) ? mocks : [])
+    .map((mock) => ({
+      id: mock.id || "",
+      mockType: mock.mock_type || "",
+      overallScore: mock.overall_score ?? null,
+      passed: mock.passed ?? null,
+      completedAt: mock.completed_at || "",
+      skillScores: mock.skill_scores || {},
+    }))
+    .sort((a, b) => a.id.localeCompare(b.id))
+
+  return crypto.createHash("sha256").update(JSON.stringify(canonicalMocks)).digest("hex")
 }
 
 export async function generateGroundedCareerRoadmap(
@@ -47,7 +75,8 @@ export async function generateGroundedCareerRoadmap(
 ): Promise<CareerRoadmapData> {
   const model = process.env.NVIDIA_MODEL ?? "openai/gpt-oss-120b"
 
-  // Compact portal jobs representation
+  // portalJobs must already be deterministically eligible. AI only ranks and
+  // explains these jobs; it never decides eligibility.
   const compactJobs = portalJobs.map((j) => {
     const job = j.job || j
     const mapping = j.mapping || j
@@ -58,144 +87,104 @@ export async function generateGroundedCareerRoadmap(
       companyName: job.company?.company_name || "Corporate Partner",
       ctcMax: job.ctc_max || 0,
       location: job.location || "Remote / Hybrid",
+      workMode: job.work_mode || "",
+      skills: Array.isArray(job.skills) ? job.skills : [],
       requireMock: Boolean(job.require_mock),
       mockPassScore: job.mock_pass_score || 70,
       minCgpa: job.min_cgpa || 0,
-      maxBacklogs: job.max_backlogs || 0,
+      maxBacklogs: job.max_backlogs ?? 0,
+      eligible: true,
     }
   })
 
-  // Format student's historical mock performance by skill
   const mockSkillScores: Record<string, number> = {}
   mockResultsHistory.forEach((mock) => {
     if (mock.skill_scores && typeof mock.skill_scores === "object") {
       Object.entries(mock.skill_scores).forEach(([skill, score]) => {
         const numScore = Number(score)
-        if (!isNaN(numScore)) {
-          mockSkillScores[skill] = Math.max(mockSkillScores[skill] || 0, numScore)
-        }
+        if (!isNaN(numScore)) mockSkillScores[skill] = Math.max(mockSkillScores[skill] || 0, numScore)
       })
     }
   })
 
   const systemPrompt = `You are a Senior Placement Intelligence Advisor.
-Analyse candidate profile data, mock interview scores, and available placement jobs.
+Analyse candidate profile data, mock interview scores, and AVAILABLE ELIGIBLE placement jobs.
 
-STRICT RULE:
-You MUST ONLY recommend jobs from the provided "Available Portal Jobs" list.
-If the list is empty, return an empty array [] for "recommendedJobs".
-Do NOT invent or hallucinate companies or job titles.
+GROUNDING RULES:
+1. Every recommended job MUST come from the supplied Available Eligible Portal Jobs list.
+2. The supplied jobs have already passed the platform's deterministic eligibility check. Never change that eligibility state.
+3. Never invent job IDs, companies, job titles, requirements, scores, or facts.
+4. matchScore is a relevance score among the supplied eligible jobs, not an eligibility score.
+5. If the list is empty, recommendedJobs MUST be [].
 
-Return ONLY a JSON object with this exact structure:
-{
-  "careerGoal": {
-    "dreamJob": "Software Engineer",
-    "dreamRole": "Full Stack Developer",
-    "targetCtc": 12,
-    "targetTimeline": "6 months"
-  },
-  "readiness": {
-    "score": 75,
-    "summary": "Concise summary of readiness..."
-  },
-  "strengths": [
-    { "skill": "React", "reason": "Demonstrated high proficiency in mock interview." }
-  ],
-  "skillGaps": [
-    {
-      "skill": "System Design",
-      "currentLevel": "Beginner",
-      "requiredLevel": "Intermediate",
-      "priority": "HIGH",
-      "reason": "Required for target senior developer roles."
-    }
-  ],
-  "learningPlan": [
-    {
-      "phase": "Phase 1 - Core Foundations",
-      "duration": "Weeks 1-3",
-      "skills": ["SQL", "Node.js"],
-      "topics": ["Index optimization", "Middleware error handling"],
-      "practiceTasks": ["Build REST API with Postgres indexing"]
-    }
-  ],
-  "recommendedJobs": [
-    {
-      "jobId": "exact-uuid-from-input",
-      "jobMappingId": "exact-mapping-uuid-from-input",
-      "matchScore": 85,
-      "why": ["Branch matches", "CGPA meets requirements", "React skill overlap"],
-      "skillGaps": ["System Design"],
-      "readiness": "High readiness - complete required job mock interview."
-    }
-  ]
-}`
+Return ONLY a JSON object with the required careerGoal, readiness, strengths, skillGaps, learningPlan and recommendedJobs structure.`
 
   const userPrompt = `Candidate Career Profile:
 Dream Role: ${careerProfile.dream_role} (${careerProfile.dream_job})
-Target CTC: ₹${careerProfile.dream_ctc || 'N/A'} LPA
+Target CTC: ₹${careerProfile.dream_ctc || "N/A"} LPA
 Target Timeline: ${careerProfile.target_timeline}
-Current Skills: ${careerProfile.current_skills?.join(', ') || 'None listed'}
-Target/Dream Skills: ${careerProfile.dream_skills?.join(', ') || 'None listed'}
+Current Skills: ${careerProfile.current_skills?.join(", ") || "None listed"}
+Target/Dream Skills: ${careerProfile.dream_skills?.join(", ") || "None listed"}
 Self-reported Skill Level: ${careerProfile.skill_level}
-Current Challenges: ${careerProfile.current_challenges || 'None'}
+Current Challenges: ${careerProfile.current_challenges || "None"}
 
 Mock Performance History:
 ${JSON.stringify(mockSkillScores, null, 2)}
 
-Available Portal Jobs (${compactJobs.length} drive postings):
+Available Eligible Portal Jobs (${compactJobs.length} drive postings):
 ${JSON.stringify(compactJobs, null, 2)}`
-
-  const messages = [
-    { role: 'system' as const, content: systemPrompt },
-    { role: 'user' as const, content: userPrompt },
-  ]
 
   let raw = ""
   try {
-    const aiResponse = await callNvidiaChat(model, messages)
+    const aiResponse = await callNvidiaChat(model, [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt },
+    ])
     raw = aiResponse?.choices?.[0]?.message?.content?.trim() || ""
   } catch (err: any) {
     console.error("AI Roadmap generation call failed:", err)
-    throw new Error(`AI Roadmap service failed: ${err?.message || "Service unavailable"}`)
+    throw new Error("AI Roadmap service failed")
   }
 
   if (!raw) throw new Error("Empty response received from AI Roadmap generator")
 
   const parsed = cleanAndParseJson(raw)
-
-  // Strict matching of recommended jobs: only keep jobs present in compactJobs
   const recommendedJobs: any[] = []
-  if (Array.isArray(parsed.recommendedJobs) && compactJobs.length > 0) {
-    parsed.recommendedJobs.forEach((rec: any) => {
-      const matchedJob = compactJobs.find(
-        (j) => j.jobId === rec.jobId || j.jobMappingId === rec.jobMappingId
-      )
 
-      if (matchedJob) {
-        recommendedJobs.push({
-          jobId: matchedJob.jobId,
-          jobMappingId: matchedJob.jobMappingId,
-          title: matchedJob.title,
-          companyName: matchedJob.companyName,
-          ctcMax: matchedJob.ctcMax,
-          location: matchedJob.location,
-          matchScore: Math.min(100, Math.max(0, Number(rec.matchScore) || 75)),
-          isEligible: true,
-          requireMock: matchedJob.requireMock,
-          mockPassScore: matchedJob.mockPassScore,
-          why: Array.isArray(rec.why) ? rec.why : ["Relevant role alignment"],
-          skillGaps: Array.isArray(rec.skillGaps) ? rec.skillGaps : [],
-          readiness: rec.readiness || "Ready to evaluate.",
-        })
-      }
-    })
+  if (Array.isArray(parsed.recommendedJobs)) {
+    const seen = new Set<string>()
+    for (const rec of parsed.recommendedJobs) {
+      const matchedJob = compactJobs.find(
+        (j) => j.jobId === rec?.jobId || j.jobMappingId === rec?.jobMappingId
+      )
+      if (!matchedJob || seen.has(matchedJob.jobId)) continue
+      seen.add(matchedJob.jobId)
+
+      const numericMatch = Number(rec?.matchScore)
+      recommendedJobs.push({
+        jobId: matchedJob.jobId,
+        jobMappingId: matchedJob.jobMappingId,
+        title: matchedJob.title,
+        companyName: matchedJob.companyName,
+        ctcMax: matchedJob.ctcMax,
+        location: matchedJob.location,
+        matchScore: Number.isFinite(numericMatch) ? Math.min(100, Math.max(0, Math.round(numericMatch))) : 0,
+        isEligible: true,
+        requireMock: matchedJob.requireMock,
+        mockPassScore: matchedJob.mockPassScore,
+        why: Array.isArray(rec?.why) ? rec.why.slice(0, 5) : ["Relevant role alignment"],
+        skillGaps: Array.isArray(rec?.skillGaps) ? rec.skillGaps.slice(0, 10) : [],
+        readiness: typeof rec?.readiness === "string" ? rec.readiness : "Ready for eligibility-qualified opportunities.",
+      })
+    }
   }
 
   const readinessScore = Math.min(100, Math.max(0, Number(parsed.readiness?.score) || 70))
-  let readinessSummary = parsed.readiness?.summary || "Good career alignment."
+  let readinessSummary = typeof parsed.readiness?.summary === "string"
+    ? parsed.readiness.summary
+    : "Good career alignment."
   if (compactJobs.length === 0) {
-    readinessSummary += " Note: No active campus placement drives are currently mapped to your institute."
+    readinessSummary += " Note: No eligible active campus placement drives are currently mapped to your institute."
   }
 
   return {
@@ -205,10 +194,7 @@ ${JSON.stringify(compactJobs, null, 2)}`
       targetCtc: Number(parsed.careerGoal?.targetCtc) || careerProfile.dream_ctc,
       targetTimeline: parsed.careerGoal?.targetTimeline || careerProfile.target_timeline,
     },
-    readiness: {
-      score: readinessScore,
-      summary: readinessSummary,
-    },
+    readiness: { score: readinessScore, summary: readinessSummary },
     strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
     skillGaps: Array.isArray(parsed.skillGaps) ? parsed.skillGaps : [],
     learningPlan: Array.isArray(parsed.learningPlan) ? parsed.learningPlan : [],
