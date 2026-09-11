@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic"
 
 import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
+import { checkStudentEligibility } from "@/lib/eligibility/check-student-eligibility"
 
 export async function POST(
   request: Request,
@@ -16,7 +17,6 @@ export async function POST(
 
     const { supabase, studentId, orgId } = auth
 
-    // Fetch student's profile details
     const { data: student, error: studentError } = await supabase
       .from("student_profiles")
       .select("is_placed, cgpa, active_backlogs, branch, profile_status")
@@ -27,7 +27,6 @@ export async function POST(
       return NextResponse.json({ error: "Student profile not found" }, { status: 404 })
     }
 
-    // Validate Student Placement State
     if (student.is_placed) {
       return NextResponse.json(
         { error: "You are already placed and cannot apply for additional jobs." },
@@ -35,7 +34,6 @@ export async function POST(
       )
     }
 
-    // Retrieve job mapping and posting details, verifying it belongs to student's org
     const { data: mapping, error: mappingError } = await supabase
       .from("job_college_mappings")
       .select(`
@@ -51,9 +49,7 @@ export async function POST(
           rounds,
           min_cgpa,
           max_backlogs,
-          job_eligible_branches (
-            branch_name
-          )
+          job_eligible_branches (branch_name)
         )
       `)
       .eq("id", id)
@@ -69,13 +65,30 @@ export async function POST(
       return NextResponse.json({ error: "This job mapping is not approved yet" }, { status: 400 })
     }
 
+    // Never trust client-side eligibility flags. Re-run the database eligibility
+    // rule immediately before creating the application.
+    let eligible: boolean
+    try {
+      eligible = await checkStudentEligibility(supabase, studentId, job.id)
+    } catch (eligibilityError: any) {
+      return NextResponse.json(
+        { code: "ELIGIBILITY_CHECK_FAILED", error: eligibilityError?.message || "Unable to verify eligibility" },
+        { status: 503 }
+      )
+    }
+
+    if (!eligible) {
+      return NextResponse.json(
+        { code: "NOT_ELIGIBLE", error: "You do not meet this job drive's eligibility criteria." },
+        { status: 403 }
+      )
+    }
+
     let jobSpecificMockScore: number | null = null
 
-    // Strictly enforce AI Mock Interview Gate for JOB_REQUIRED interviews
     if (job.require_mock) {
       const requiredPassScore = job.mock_pass_score || 70
 
-      // Search for evaluated JOB_REQUIRED mock for this exact job mapping
       const { data: jobMocks, error: mockError } = await supabase
         .from("mock_interviews")
         .select("id, overall_score, ai_score, passed, status, mock_type")
@@ -89,7 +102,7 @@ export async function POST(
         return NextResponse.json(
           {
             code: "MOCK_INTERVIEW_REQUIRED",
-            error: `This job requires you to complete and pass a job-specific AI mock assessment before applying.`,
+            error: "This job requires you to complete and pass a job-specific AI mock assessment before applying.",
             jobMappingId: id,
             requiredScore: requiredPassScore,
           },
@@ -116,7 +129,6 @@ export async function POST(
       jobSpecificMockScore = bestScore
     }
 
-    // Create Job Application
     const { data: application, error: appError } = await supabase
       .from("applications")
       .insert({
@@ -135,7 +147,6 @@ export async function POST(
       return NextResponse.json({ error: appError.message }, { status: 400 })
     }
 
-    // Seed initial application rounds if specified in the job drive
     let jobRounds = []
     try {
       jobRounds = typeof job.rounds === "string" ? JSON.parse(job.rounds) : job.rounds
@@ -150,21 +161,9 @@ export async function POST(
           status: "PENDING",
         }))
       : [
-          {
-            application_id: application.id,
-            round_name: "Resume Screening",
-            status: "PENDING",
-          },
-          {
-            application_id: application.id,
-            round_name: "Technical Interview",
-            status: "PENDING",
-          },
-          {
-            application_id: application.id,
-            round_name: "HR Round",
-            status: "PENDING",
-          }
+          { application_id: application.id, round_name: "Resume Screening", status: "PENDING" },
+          { application_id: application.id, round_name: "Technical Interview", status: "PENDING" },
+          { application_id: application.id, round_name: "HR Round", status: "PENDING" },
         ]
 
     await supabase.from("application_rounds").insert(roundsToInsert)
