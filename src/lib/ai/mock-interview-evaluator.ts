@@ -15,9 +15,7 @@ export async function evaluateStructuredMockInterview(
 ): Promise<MockEvaluationResult> {
   const answerMap = new Map<string, StudentAnswer>()
   answers.forEach((ans) => {
-    if (ans && ans.questionId) {
-      answerMap.set(ans.questionId, ans)
-    }
+    if (ans && ans.questionId) answerMap.set(ans.questionId, ans)
   })
 
   const questionEvaluations: QuestionEvaluation[] = []
@@ -27,7 +25,6 @@ export async function evaluateStructuredMockInterview(
   let totalMcqPossible = 0
   let totalMcqEarned = 0
 
-  // 1. Process MCQs deterministically
   for (const q of questions) {
     if (q.type === "MCQ") {
       mcqQuestions.push(q)
@@ -36,10 +33,8 @@ export async function evaluateStructuredMockInterview(
 
       const studentAns = answerMap.get(q.id)
       const isCorrect = Boolean(
-        studentAns?.selectedOptionId &&
-          studentAns.selectedOptionId === q.correctOptionId
+        studentAns?.selectedOptionId && studentAns.selectedOptionId === q.correctOptionId
       )
-
       const earned = isCorrect ? points : 0
       totalMcqEarned += earned
 
@@ -61,7 +56,6 @@ export async function evaluateStructuredMockInterview(
     }
   }
 
-  // 2. Evaluate Non-MCQ questions (Theory and Coding) using NVIDIA NIM if any exist
   if (nonMcqQuestions.length > 0) {
     const nonMcqPayload = nonMcqQuestions.map((q) => {
       const studentAns = answerMap.get(q.id)
@@ -81,6 +75,8 @@ export async function evaluateStructuredMockInterview(
 
     const systemPrompt = `You are an expert technical interviewer evaluating candidate answers (THEORY and CODE).
 Evaluate each question objectively based on correctness, technical reasoning, edge cases, and code quality.
+Do not award points merely because an answer contains text. An unanswered or invalid response must receive 0 points.
+For CODE questions, do not claim that code executes successfully unless the supplied response itself provides sufficient evidence; evaluate the submitted code conservatively for correctness, syntax, logic and edge cases.
 
 Return ONLY a JSON object formatted as follows without markdown or code fences:
 {
@@ -96,9 +92,9 @@ Return ONLY a JSON object formatted as follows without markdown or code fences:
   ]
 }`
 
-    const userPrompt = `Evaluate the following candidate responses:
-${JSON.stringify(nonMcqPayload, null, 2)}`
+    const userPrompt = `Evaluate the following candidate responses. You MUST return exactly one evaluation for every supplied question ID, and no other IDs:\n${JSON.stringify(nonMcqPayload, null, 2)}`
 
+    let evals: any[] = []
     try {
       const aiData = await callNvidiaChat("openai/gpt-oss-120b", [
         { role: "system", content: systemPrompt },
@@ -106,64 +102,59 @@ ${JSON.stringify(nonMcqPayload, null, 2)}`
       ])
 
       const raw = aiData?.choices?.[0]?.message?.content?.trim()
-      if (raw) {
-        const parsed = cleanAndParseJson(raw)
-        const evals = parsed.evaluations || (Array.isArray(parsed) ? parsed : [])
-        if (Array.isArray(evals)) {
-          evals.forEach((ev: any) => {
-            const matchedQ = nonMcqQuestions.find((q) => q.id === String(ev.questionId))
-            if (matchedQ) {
-              const possible = matchedQ.points || (matchedQ.type === "CODE" ? 15 : 10)
-              const earned = Math.min(possible, Math.max(0, Number(ev.pointsEarned) || 0))
-              questionEvaluations.push({
-                questionId: matchedQ.id,
-                type: matchedQ.type,
-                pointsPossible: possible,
-                pointsEarned: earned,
-                verdict: ev.verdict || (earned >= possible * 0.75 ? "strong" : earned >= possible * 0.4 ? "partial" : "needs-work"),
-                feedback: ev.feedback || "Evaluated response.",
-                strengths: Array.isArray(ev.strengths) ? ev.strengths : [],
-                improvements: Array.isArray(ev.improvements) ? ev.improvements : [],
-              })
-            }
-          })
-        }
-      }
-    } catch (err) {
-      console.error("[AI Evaluation] Non-MCQ evaluation error, applying fallback:", err)
+      if (!raw) throw new Error("AI evaluator returned an empty response")
+
+      const parsed = cleanAndParseJson(raw)
+      evals = parsed.evaluations || (Array.isArray(parsed) ? parsed : [])
+      if (!Array.isArray(evals)) throw new Error("AI evaluator returned an invalid evaluations array")
+    } catch (err: any) {
+      console.error("[AI Evaluation] Non-MCQ evaluation failed:", err)
+      throw new Error(`AI evaluation failed: ${err?.message || "Evaluator unavailable"}`)
     }
 
-    // Fallback evaluation for any non-MCQ question missed by AI
-    nonMcqQuestions.forEach((q) => {
-      if (!questionEvaluations.some((ev) => ev.questionId === q.id)) {
-        const studentAns = answerMap.get(q.id)
-        const hasContent = Boolean(studentAns?.answerText && studentAns.answerText.trim().length > 10)
-        const possible = q.points || (q.type === "CODE" ? 15 : 10)
-        const earned = hasContent ? Math.round(possible * 0.6) : 0
-        questionEvaluations.push({
-          questionId: q.id,
-          type: q.type,
-          pointsPossible: possible,
-          pointsEarned: earned,
-          verdict: hasContent ? "partial" : "needs-work",
-          feedback: hasContent ? "Answer submitted, basic technical review applied." : "No answer submitted.",
-          strengths: hasContent ? ["Submitted solution attempt"] : [],
-          improvements: hasContent ? ["Expand on implementation depth"] : ["No answer submitted"],
-        })
-      }
-    })
+    const seen = new Set<string>()
+    for (const ev of evals) {
+      const questionId = String(ev?.questionId || "")
+      const matchedQ = nonMcqQuestions.find((q) => q.id === questionId)
+      if (!matchedQ || seen.has(questionId)) continue
+      seen.add(questionId)
+
+      const possible = matchedQ.points || (matchedQ.type === "CODE" ? 15 : 10)
+      const numericEarned = Number(ev.pointsEarned)
+      const earned = Number.isFinite(numericEarned)
+        ? Math.min(possible, Math.max(0, Math.round(numericEarned)))
+        : 0
+
+      questionEvaluations.push({
+        questionId: matchedQ.id,
+        type: matchedQ.type,
+        pointsPossible: possible,
+        pointsEarned: earned,
+        verdict: ev.verdict || (earned >= possible * 0.75 ? "strong" : earned >= possible * 0.4 ? "partial" : "needs-work"),
+        feedback: typeof ev.feedback === "string" ? ev.feedback : "Response evaluated.",
+        strengths: Array.isArray(ev.strengths) ? ev.strengths.filter(Boolean) : [],
+        improvements: Array.isArray(ev.improvements) ? ev.improvements.filter(Boolean) : [],
+      })
+    }
+
+    // Never invent a score when the evaluator omitted a question. A partial AI
+    // response is a failed evaluation and must be retried rather than silently
+    // turning into a passing score.
+    const missingQuestionIds = nonMcqQuestions
+      .map((q) => q.id)
+      .filter((id) => !seen.has(id))
+
+    if (missingQuestionIds.length > 0) {
+      throw new Error(`AI evaluator omitted question evaluations: ${missingQuestionIds.join(", ")}`)
+    }
   }
 
-  // 3. Compute Section and Total Scores
   let totalPossible = 0
   let totalEarned = 0
-
   let theoryPossible = 0
   let theoryEarned = 0
-
   let codingPossible = 0
   let codingEarned = 0
-
   const skillTotals: Record<string, { possible: number; earned: number }> = {}
 
   questions.forEach((q) => {
@@ -174,12 +165,10 @@ ${JSON.stringify(nonMcqPayload, null, 2)}`
     totalPossible += possible
     totalEarned += earned
 
-    if (q.type === "MCQ") {
-      // handled in totalMcq
-    } else if (q.type === "CODE") {
+    if (q.type === "CODE") {
       codingPossible += possible
       codingEarned += earned
-    } else {
+    } else if (q.type !== "MCQ") {
       theoryPossible += possible
       theoryEarned += earned
     }
@@ -202,10 +191,8 @@ ${JSON.stringify(nonMcqPayload, null, 2)}`
   })
 
   const passed = overallScore >= passScoreThreshold
-
   const allStrengths = Array.from(new Set(questionEvaluations.flatMap((ev) => ev.strengths))).filter(Boolean)
   const allImprovements = Array.from(new Set(questionEvaluations.flatMap((ev) => ev.improvements))).filter(Boolean)
-
   const recommendedNextSteps = allImprovements.map((imp) => `Focus on improving: ${imp}`).slice(0, 4)
 
   const summary = passed
