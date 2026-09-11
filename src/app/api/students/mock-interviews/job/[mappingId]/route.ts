@@ -37,6 +37,7 @@ export async function POST(
           id,
           title,
           description,
+          skills,
           require_mock,
           mock_pass_score,
           global_status,
@@ -91,9 +92,6 @@ export async function POST(
       )
     }
 
-    // Keep the job snapshot factual. Skills must come from a structured job
-    // skills column when one exists; never infer skills from capitalization or
-    // from the eligible-branch relation.
     const jobSkills = Array.isArray(job.skills)
       ? job.skills.filter((skill: unknown): skill is string => typeof skill === "string" && skill.trim().length > 0)
       : []
