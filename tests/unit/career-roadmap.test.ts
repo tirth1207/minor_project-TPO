@@ -14,7 +14,7 @@ describe("Career Roadmap Hashing and Invalidation Logic", () => {
 
   const sampleProfile2 = {
     ...sampleProfile1,
-    dream_role: "Frontend Engineer", // profile change
+    dream_role: "Frontend Engineer",
   }
 
   const sampleJobs1 = [
@@ -59,6 +59,6 @@ describe("Career Roadmap Hashing and Invalidation Logic", () => {
 
   it("should return stable string for zero-job scenario", () => {
     const hashEmpty = generateJobsHash([])
-    expect(hashEmpty).toBe("no-approved-jobs")
+    expect(hashEmpty).toBe("no-eligible-jobs")
   })
 })
