@@ -21,7 +21,6 @@ export async function evaluateStructuredMockInterview(
   const questionEvaluations: QuestionEvaluation[] = []
   const mcqQuestions: MCQQuestion[] = []
   const nonMcqQuestions: MockInterviewQuestion[] = []
-
   let totalMcqPossible = 0
   let totalMcqEarned = 0
 
@@ -30,14 +29,10 @@ export async function evaluateStructuredMockInterview(
       mcqQuestions.push(q)
       const points = q.points || 10
       totalMcqPossible += points
-
       const studentAns = answerMap.get(q.id)
-      const isCorrect = Boolean(
-        studentAns?.selectedOptionId && studentAns.selectedOptionId === q.correctOptionId
-      )
+      const isCorrect = Boolean(studentAns?.selectedOptionId && studentAns.selectedOptionId === q.correctOptionId)
       const earned = isCorrect ? points : 0
       totalMcqEarned += earned
-
       questionEvaluations.push({
         questionId: q.id,
         type: "MCQ",
@@ -45,9 +40,7 @@ export async function evaluateStructuredMockInterview(
         pointsEarned: earned,
         isCorrect,
         verdict: isCorrect ? "strong" : "needs-work",
-        feedback: isCorrect
-          ? `Correct answer! ${q.explanation || ""}`
-          : `Incorrect. ${q.explanation || ""}`,
+        feedback: isCorrect ? `Correct answer! ${q.explanation || ""}` : `Incorrect. ${q.explanation || ""}`,
         strengths: isCorrect ? [`Understands ${q.skill || "MCQ Concept"}`] : [],
         improvements: !isCorrect ? [`Needs to revise ${q.skill || "MCQ Concept"}`] : [],
       })
@@ -74,36 +67,21 @@ export async function evaluateStructuredMockInterview(
     })
 
     const systemPrompt = `You are an expert technical interviewer evaluating candidate answers (THEORY and CODE).
-Evaluate each question objectively based on correctness, technical reasoning, edge cases, and code quality.
+Evaluate objectively using correctness, technical reasoning, edge cases, and code quality.
 Do not award points merely because an answer contains text. An unanswered or invalid response must receive 0 points.
-For CODE questions, do not claim that code executes successfully unless the supplied response itself provides sufficient evidence; evaluate the submitted code conservatively for correctness, syntax, logic and edge cases.
+For CODE questions, do not claim runtime execution or test results that were not actually provided. Evaluate conservatively for syntax, logic, correctness and edge cases.
+Return ONLY JSON with an evaluations array. Return exactly one evaluation for every supplied question ID and no other IDs.`
+    const userPrompt = `Evaluate these candidate responses:\n${JSON.stringify(nonMcqPayload, null, 2)}`
 
-Return ONLY a JSON object formatted as follows without markdown or code fences:
-{
-  "evaluations": [
-    {
-      "questionId": "q2",
-      "pointsEarned": 8,
-      "verdict": "strong",
-      "feedback": "Concise feedback on accuracy and reasoning...",
-      "strengths": ["Clear explanation"],
-      "improvements": ["Mention performance trade-offs"]
-    }
-  ]
-}`
-
-    const userPrompt = `Evaluate the following candidate responses. You MUST return exactly one evaluation for every supplied question ID, and no other IDs:\n${JSON.stringify(nonMcqPayload, null, 2)}`
-
-    let evals: any[] = []
+    const seen = new Set<string>()
+    let evals: any[]
     try {
       const aiData = await callNvidiaChat("openai/gpt-oss-120b", [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ])
-
       const raw = aiData?.choices?.[0]?.message?.content?.trim()
       if (!raw) throw new Error("AI evaluator returned an empty response")
-
       const parsed = cleanAndParseJson(raw)
       evals = parsed.evaluations || (Array.isArray(parsed) ? parsed : [])
       if (!Array.isArray(evals)) throw new Error("AI evaluator returned an invalid evaluations array")
@@ -112,19 +90,14 @@ Return ONLY a JSON object formatted as follows without markdown or code fences:
       throw new Error(`AI evaluation failed: ${err?.message || "Evaluator unavailable"}`)
     }
 
-    const seen = new Set<string>()
     for (const ev of evals) {
       const questionId = String(ev?.questionId || "")
       const matchedQ = nonMcqQuestions.find((q) => q.id === questionId)
       if (!matchedQ || seen.has(questionId)) continue
       seen.add(questionId)
-
       const possible = matchedQ.points || (matchedQ.type === "CODE" ? 15 : 10)
       const numericEarned = Number(ev.pointsEarned)
-      const earned = Number.isFinite(numericEarned)
-        ? Math.min(possible, Math.max(0, Math.round(numericEarned)))
-        : 0
-
+      const earned = Number.isFinite(numericEarned) ? Math.min(possible, Math.max(0, Math.round(numericEarned))) : 0
       questionEvaluations.push({
         questionId: matchedQ.id,
         type: matchedQ.type,
@@ -137,13 +110,7 @@ Return ONLY a JSON object formatted as follows without markdown or code fences:
       })
     }
 
-    // Never invent a score when the evaluator omitted a question. A partial AI
-    // response is a failed evaluation and must be retried rather than silently
-    // turning into a passing score.
-    const missingQuestionIds = nonMcqQuestions
-      .map((q) => q.id)
-      .filter((id) => !seen.has(id))
-
+    const missingQuestionIds = nonMcqQuestions.map((q) => q.id).filter((id) => !seen.has(id))
     if (missingQuestionIds.length > 0) {
       throw new Error(`AI evaluator omitted question evaluations: ${missingQuestionIds.join(", ")}`)
     }
@@ -161,10 +128,8 @@ Return ONLY a JSON object formatted as follows without markdown or code fences:
     const ev = questionEvaluations.find((e) => e.questionId === q.id)
     const possible = q.points || (q.type === "CODE" ? 15 : 10)
     const earned = ev ? ev.pointsEarned : 0
-
     totalPossible += possible
     totalEarned += earned
-
     if (q.type === "CODE") {
       codingPossible += possible
       codingEarned += earned
@@ -172,7 +137,6 @@ Return ONLY a JSON object formatted as follows without markdown or code fences:
       theoryPossible += possible
       theoryEarned += earned
     }
-
     const skill = q.skill || "General Technical"
     if (!skillTotals[skill]) skillTotals[skill] = { possible: 0, earned: 0 }
     skillTotals[skill].possible += possible
@@ -183,7 +147,6 @@ Return ONLY a JSON object formatted as follows without markdown or code fences:
   const mcqScore = totalMcqPossible > 0 ? Math.round((totalMcqEarned / totalMcqPossible) * 100) : 0
   const theoryScore = theoryPossible > 0 ? Math.round((theoryEarned / theoryPossible) * 100) : 0
   const codingScore = codingPossible > 0 ? Math.round((codingEarned / codingPossible) * 100) : 0
-
   const skillScores: Record<string, number> = {}
   Object.keys(skillTotals).forEach((skill) => {
     const item = skillTotals[skill]
@@ -194,7 +157,6 @@ Return ONLY a JSON object formatted as follows without markdown or code fences:
   const allStrengths = Array.from(new Set(questionEvaluations.flatMap((ev) => ev.strengths))).filter(Boolean)
   const allImprovements = Array.from(new Set(questionEvaluations.flatMap((ev) => ev.improvements))).filter(Boolean)
   const recommendedNextSteps = allImprovements.map((imp) => `Focus on improving: ${imp}`).slice(0, 4)
-
   const summary = passed
     ? `Strong performance! You scored ${overallScore}% overall (MCQ: ${mcqScore}%, Theory: ${theoryScore}%, Coding: ${codingScore}%), passing the required threshold of ${passScoreThreshold}%.`
     : `Your overall score of ${overallScore}% is below the passing threshold of ${passScoreThreshold}%. Review weak areas in ${Object.keys(skillScores).filter((s) => skillScores[s] < 65).join(", ") || "theory/coding"} and retry.`
