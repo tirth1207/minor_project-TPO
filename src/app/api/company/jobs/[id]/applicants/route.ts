@@ -3,6 +3,17 @@ export const dynamic = "force-dynamic"
 import { requireActiveCompany } from "@/lib/auth/require-active-company"
 import { NextResponse } from "next/server"
 
+const DEFAULT_LIMIT = 50
+const MAX_LIMIT = 100
+const MAX_OFFSET = 10_000
+
+function parseBoundedInt(value: string | null, fallback: number, max: number) {
+  if (value === null || value === "") return fallback
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > max) return null
+  return parsed
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -15,9 +26,16 @@ export async function GET(
       return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
+    const url = new URL(request.url)
+    const limit = parseBoundedInt(url.searchParams.get("limit"), DEFAULT_LIMIT, MAX_LIMIT)
+    const offset = parseBoundedInt(url.searchParams.get("offset"), 0, MAX_OFFSET)
+
+    if (limit === null || offset === null) {
+      return NextResponse.json({ error: "Invalid pagination parameters" }, { status: 400 })
+    }
+
     const { supabase, companyId } = auth
 
-    // Validate company owns this job posting
     const { data: job, error: jobError } = await supabase
       .from("job_postings")
       .select("id")
@@ -29,10 +47,10 @@ export async function GET(
       return NextResponse.json({ error: "Job posting not found or unauthorized access" }, { status: 404 })
     }
 
-    // Fetch all applicants for this job posting
-    const { data: applicants, error: applicantsError } = await supabase
+    const { data: applicants, error: applicantsError, count } = await supabase
       .from("applications")
-      .select(`
+      .select(
+        `
         id,
         status,
         applied_at,
@@ -60,19 +78,26 @@ export async function GET(
           status,
           company_feedback
         )
-      `)
+      `,
+        { count: "exact" }
+      )
       .eq("job_college_mapping.job_id", id)
       .order("applied_at", { ascending: false })
+      .range(offset, offset + limit - 1)
 
     if (applicantsError) {
-      return NextResponse.json({ error: applicantsError.message }, { status: 400 })
+      console.error("[COMPANY JOB APPLICANTS]", applicantsError)
+      return NextResponse.json({ error: "Unable to load applicants" }, { status: 500 })
     }
 
-    return NextResponse.json({ applicants })
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred" },
-      { status: 500 }
-    )
+    const total = count ?? 0
+    return NextResponse.json({
+      applicants: applicants ?? [],
+      count: total,
+      hasMore: offset + (applicants?.length ?? 0) < total,
+    })
+  } catch (error: unknown) {
+    console.error("[COMPANY JOB APPLICANTS]", error)
+    return NextResponse.json({ error: "Unable to load applicants" }, { status: 500 })
   }
 }
