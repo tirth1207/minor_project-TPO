@@ -107,7 +107,10 @@ export async function callGeminiChat(
     "gemini-3.5-flash"
 
   const timeoutMs = Math.max(1000, options?.timeoutMs ?? 30000)
-  const maxOutputTokens = Math.max(1000, options?.maxTokens ?? 6000)
+  // Gemini 3.x can spend part of the generation budget on reasoning. Keep a
+  // generous output budget because callers such as mock-interview generate
+  // large JSON arrays that must be returned completely.
+  const maxOutputTokens = Math.max(12000, options?.maxTokens ?? 12000)
 
   const systemMessages = messages
     .filter((message) => message.role === "system")
@@ -150,6 +153,7 @@ export async function callGeminiChat(
             temperature: 0.2,
             topP: 0.7,
             maxOutputTokens,
+            responseMimeType: "application/json",
           },
         }),
         signal: controller.signal,
@@ -171,6 +175,7 @@ export async function callGeminiChat(
 
     const completion = toOpenAICompletion(model, payload, durationMs)
     const text = completion.choices?.[0]?.message?.content?.trim() || ""
+    const finishReason = completion.choices?.[0]?.finish_reason
 
     if (!text) {
       const error = new Error("Gemini returned an empty completion") as GeminiApiError
@@ -178,9 +183,17 @@ export async function callGeminiChat(
       throw error
     }
 
+    if (finishReason === "length") {
+      const error = new Error(
+        `Gemini response was truncated because maxOutputTokens (${maxOutputTokens}) was reached`
+      ) as GeminiApiError
+      error.code = "MAX_TOKENS_EXCEEDED"
+      throw error
+    }
+
     console.log(
       `[Gemini AI] Model: ${model} | Duration: ${durationMs}ms | ` +
-        `Finish: ${completion.choices?.[0]?.finish_reason ?? "unknown"} | ` +
+        `Finish: ${finishReason ?? "unknown"} | ` +
         `Completion tokens: ${completion.usage?.completion_tokens ?? "unknown"}`
     )
 
