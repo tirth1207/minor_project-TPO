@@ -15,6 +15,7 @@ import {
   IconRobot,
   IconSparkles,
   IconTarget,
+  IconArrowUpRight,
 } from "@tabler/icons-react"
 
 export default function StudentDashboardPage() {
@@ -91,10 +92,10 @@ export default function StudentDashboardPage() {
           return (
             <Link href={metric.href} key={metric.label} className="group">
               <Card className="portal-interactive h-full rounded-xl border-border/70">
-                <CardContent className="p-4">
+                <CardContent className="mt-8">
                   <div className="flex items-start justify-between">
                     <span className="rounded-lg bg-primary/10 p-2 text-primary"><Icon className="size-4" /></span>
-                    <IconArrowRight className="size-4 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
+                    <IconArrowUpRight className="size-4 text-muted-foreground/50 transition-transform group-hover:translate-x-0.5 group-hover:text-muted-foreground" />
                   </div>
                   <p className="mt-4 text-xs font-medium text-muted-foreground">{metric.label}</p>
                   <p className="mt-0.5 text-2xl font-semibold tracking-tight">{metric.value}</p>

@@ -64,7 +64,8 @@ export async function GET() {
       `)
       .eq("org_id", orgId)
       .eq("local_status", "APPROVED")
-
+    console.log("[Career Roadmap] Eligible job mappings fetched:", mappings)
+    console.log("[Career Roadmap] Eligible job mappings fetch error:", jobsError)
     if (jobsError) {
       return NextResponse.json({ success: false, code: "JOBS_FETCH_FAILED", error: "Unable to load placement opportunities" }, { status: 500 })
     }

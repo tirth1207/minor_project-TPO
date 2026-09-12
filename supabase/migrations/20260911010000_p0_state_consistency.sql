@@ -151,12 +151,12 @@ ALTER FUNCTION public.handle_critical_profile_update() SET search_path = '';
 ALTER FUNCTION public.check_company_active_before_job_post() SET search_path = '';
 ALTER FUNCTION public.handle_offer_acceptance() SET search_path = '';
 ALTER FUNCTION public.validate_student_mentor() SET search_path = '';
-ALTER FUNCTION public.notify_student_profile_status_change() SET search_path = '';
-ALTER FUNCTION public.notify_job_approval_status_change() SET search_path = '';
-ALTER FUNCTION public.notify_application_status_change() SET search_path = '';
-ALTER FUNCTION public.notify_offer_status_change() SET search_path = '';
-ALTER FUNCTION public.notify_interview_scheduling() SET search_path = '';
-ALTER FUNCTION public.create_notification(uuid, varchar, text) SET search_path = '';
+-- ALTER FUNCTION public.notify_student_profile_status_change() SET search_path = '';
+-- ALTER FUNCTION public.notify_job_approval_status_change() SET search_path = '';
+-- ALTER FUNCTION public.notify_application_status_change() SET search_path = '';
+-- ALTER FUNCTION public.notify_offer_status_change() SET search_path = '';
+-- ALTER FUNCTION public.notify_interview_scheduling() SET search_path = '';
+-- ALTER FUNCTION public.create_notification(uuid, varchar, text) SET search_path = '';
 
 -- These helpers are used by RLS and authenticated application code. They must
 -- not be callable by unauthenticated clients.
