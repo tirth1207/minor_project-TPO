@@ -157,7 +157,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
     },
   ], [pathname])
 
-  const navSecondary = []
+  // const navSecondary = []
 
   return (
     <SidebarProvider>
@@ -165,7 +165,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
         title="Student Portal"
         subtitle="Placement System"
         navMain={studentNavMains}
-        navSecondary={navSecondary}
+        // navSecondary={navSecondary}
         user={user}
         func={handleLogout}
       />
