@@ -17,7 +17,7 @@ type MockQuestion = {
 }
 
 function validateSubmittedAnswers(questions: MockQuestion[], answers: unknown): answers is StudentAnswer[] {
-  if (!Array.isArray(answers)) return false
+  if (!Array.isArray(answers) || answers.length !== questions.length) return false
   const questionMap = new Map(questions.map((q) => [String(q.id), q]))
   const seen = new Set<string>()
 
@@ -38,7 +38,8 @@ function validateSubmittedAnswers(questions: MockQuestion[], answers: unknown): 
       if (!optionIds.includes(String(item.selectedOptionId))) return false
     }
   }
-  return true
+
+  return seen.size === questions.length
 }
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -63,8 +64,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     if (mock.status === "EVALUATED") return NextResponse.json({ success: false, code: "ALREADY_EVALUATED", error: "Mock interview has already been evaluated" }, { status: 400 })
 
-    // Recover a worker crash that left the evaluation lease behind. The
-    // conditional update makes recovery safe when another evaluator is active.
     if (mock.status === "EVALUATING") {
       const updatedAt = mock.updated_at ? new Date(mock.updated_at).getTime() : 0
       if (updatedAt && Date.now() - updatedAt <= EVALUATION_LEASE_MS) {
@@ -97,7 +96,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
     const submittedAnswers = body.answers
     if (!validateSubmittedAnswers(readyMock.questions as MockQuestion[], submittedAnswers)) {
-      return NextResponse.json({ success: false, code: "INVALID_ANSWERS", error: "Submitted answers do not match this interview's questions or contain invalid data." }, { status: 400 })
+      return NextResponse.json({ success: false, code: "INVALID_ANSWERS", error: "Submit exactly one answer for every interview question." }, { status: 400 })
     }
 
     const { data: claimedMock, error: claimError } = await supabase
