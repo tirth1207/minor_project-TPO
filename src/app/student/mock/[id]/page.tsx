@@ -5,35 +5,25 @@ import { useParams } from "next/navigation"
 import Link from "next/link"
 
 import { QuestionnaireMCQ } from "@/components/mock-interview/questionnaire-mcq"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Progress } from "@/components/ui/progress"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card"
-import { Progress } from "@/components/ui/progress"
-import {
+  IconAlertTriangle,
   IconArrowLeft,
   IconArrowRight,
-  IconAlertTriangle,
   IconBrain,
-  IconCheck,
+  IconCircleCheck,
   IconClock,
   IconCode,
   IconFileText,
   IconRefresh,
   IconSparkles,
+  IconTarget,
 } from "@tabler/icons-react"
 import type {
   MCQQuestion,
@@ -49,10 +39,7 @@ function isMCQQuestion(question: MockInterviewQuestion): question is MCQQuestion
 
 function formatDateTime(value: string | null | undefined) {
   if (!value) return "Not yet available"
-  return new Date(value).toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  })
+  return new Date(value).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })
 }
 
 function formatScore(value: number | null | undefined) {
@@ -63,79 +50,73 @@ function formatThreshold(value: number | null | undefined) {
   return `${Math.max(0, Math.round(value ?? 0))}%`
 }
 
-function getStatusCopy(status?: string) {
-  switch (status) {
-    case "REQUESTED":
-      return { label: "Requested", tone: "amber" }
-    case "QUEUED":
-      return { label: "Queued", tone: "amber" }
-    case "PROCESSING":
-      return { label: "Building questions", tone: "amber" }
-    case "ANSWERING":
-      return { label: "Ready to answer", tone: "slate" }
-    case "EVALUATING":
-      return { label: "Evaluating", tone: "amber" }
-    case "EVALUATED":
-      return { label: "Completed", tone: "emerald" }
-    case "FAILED":
-      return { label: "Failed", tone: "rose" }
-    default:
-      return { label: status || "Unknown", tone: "slate" }
-  }
-}
-
-function toneClasses(tone: string) {
-  switch (tone) {
-    case "emerald":
-      return "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900/70 dark:bg-emerald-950/35 dark:text-emerald-300"
-    case "rose":
-      return "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-900/70 dark:bg-rose-950/35 dark:text-rose-300"
-    case "amber":
-      return "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/35 dark:text-amber-300"
-    default:
-      return "border-zinc-200 bg-zinc-50 text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-300"
-  }
-}
-
 function scoreTone(score: number) {
   if (score >= 80) return "text-emerald-600 dark:text-emerald-400"
   if (score >= 60) return "text-amber-600 dark:text-amber-400"
   return "text-zinc-900 dark:text-zinc-100"
 }
 
-function StatCard({
-  label,
-  value,
-  helper,
-}: {
-  label: string
-  value: string
-  helper: string
-}) {
+function scoreSurface(score: number) {
+  if (score >= 80) return "border-emerald-200 bg-emerald-50/70 dark:border-emerald-900/60 dark:bg-emerald-950/20"
+  if (score >= 60) return "border-amber-200 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/20"
+  return "border-zinc-200 bg-zinc-50/70 dark:border-zinc-800 dark:bg-zinc-900/30"
+}
+
+function statusClasses(passed: boolean) {
+  return passed
+    ? "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-300"
+    : "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-300"
+}
+
+function verdictClasses(verdict?: string) {
+  if (verdict === "strong") return "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/60 dark:bg-emerald-950/25 dark:text-emerald-300"
+  if (verdict === "partial") return "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-300"
+  return "border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/60 dark:bg-rose-950/25 dark:text-rose-300"
+}
+
+function getStatusCopy(status?: string) {
+  switch (status) {
+    case "REQUESTED": return "Requested"
+    case "QUEUED": return "Queued"
+    case "PROCESSING": return "Building questions"
+    case "ANSWERING": return "Ready to answer"
+    case "EVALUATING": return "Evaluating"
+    case "EVALUATED": return "Completed"
+    case "FAILED": return "Failed"
+    default: return status || "Unknown"
+  }
+}
+
+function StatCard({ label, value, helper }: { label: string; value: string; helper: string }) {
   return (
-    <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-      <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">{label}</p>
+    <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500">{label}</p>
       <p className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">{value}</p>
-      <p className="mt-1 text-xs text-zinc-500">{helper}</p>
+      <p className="mt-1 text-xs leading-5 text-zinc-500">{helper}</p>
     </div>
   )
 }
 
+function BulletList({ items, empty }: { items: string[]; empty: string }) {
+  if (!items.length) return <p className="text-xs text-zinc-500">{empty}</p>
+  return (
+    <ul className="space-y-2 text-xs leading-5 text-zinc-600 dark:text-zinc-400">
+      {items.map((item) => (
+        <li key={item} className="flex gap-2">
+          <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-current opacity-50" />
+          <span>{item}</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
 function AnswerPreview({ answer }: { answer?: StudentAnswer }) {
-  if (!answer) {
-    return <span className="text-zinc-400">Not answered</span>
-  }
-
-  if (answer.selectedOptionId) {
-    return <span className="font-medium text-zinc-700 dark:text-zinc-300">Selected option: {answer.selectedOptionId}</span>
-  }
-
+  if (!answer) return <span className="text-zinc-400">Not answered</span>
+  if (answer.selectedOptionId) return <span>{answer.selectedOptionId}</span>
   const text = answer.answerText?.trim()
-  if (!text) {
-    return <span className="text-zinc-400">Not answered</span>
-  }
-
-  return <span className="text-zinc-600 dark:text-zinc-400">{text.length > 120 ? `${text.slice(0, 120)}...` : text}</span>
+  if (!text) return <span className="text-zinc-400">Not answered</span>
+  return <span>{text}</span>
 }
 
 export default function StudentMockExecutionPage() {
@@ -154,33 +135,23 @@ export default function StudentMockExecutionPage() {
 
   const processInterview = React.useCallback(async () => {
     if (!mockId) return
-
     setProcessing(true)
     setError(null)
-
     try {
-      const res = await fetch(`/api/students/mock-interviews/${mockId}/process`, {
-        method: "POST",
-      })
+      const res = await fetch(`/api/students/mock-interviews/${mockId}/process`, { method: "POST" })
       const json = await res.json()
       const mockData = json.data?.mock || json.mock
-
       if (!res.ok || !mockData) {
         setError(json.error || "Failed to process interview generation.")
         return
       }
-
       const session = mockData as MockInterviewSession
       setMockSession(session)
-
-      if (Array.isArray(session.questions) && session.questions.length > 0) {
+      if (Array.isArray(session.questions) && session.questions.length) {
         setQuestions(session.questions)
         setCurrentIdx((previous) => (previous < session.questions.length ? previous : 0))
       }
-
-      if (session.status === "FAILED") {
-        setError(json.error || "Question generation failed. Please retry.")
-      }
+      if (session.status === "FAILED") setError(json.error || "Question generation failed. Please retry.")
     } catch (processError) {
       console.error("[Mock Page] Processing error:", processError)
       setError(processError instanceof Error ? processError.message : "An unexpected error occurred during processing.")
@@ -191,44 +162,30 @@ export default function StudentMockExecutionPage() {
 
   const loadMockSession = React.useCallback(async () => {
     if (!mockId) return
-
     setLoading(true)
     setError(null)
-
     try {
       const res = await fetch(`/api/students/mock-interviews/${mockId}`)
       const json = await res.json()
       const mockData = json.data?.mock || json.mock
-
       if (!res.ok || !mockData) {
         setError(json.error || "Failed to fetch mock interview session.")
         return
       }
-
       const session = mockData as MockInterviewSession
       setMockSession(session)
-
       const qs = Array.isArray(session.questions) ? session.questions : []
       setQuestions(qs)
       setCurrentIdx((previous) => (qs.length > 0 && previous < qs.length ? previous : 0))
-
-      if (session.status === "EVALUATED" && session.ai_results) {
-        setEvaluationResult(session.ai_results)
-      }
-
+      if (session.status === "EVALUATED" && session.ai_results) setEvaluationResult(session.ai_results)
       if (Array.isArray(session.answers)) {
         const mapped: Record<string, StudentAnswer> = {}
         session.answers.forEach((answer) => {
-          if (answer?.questionId) {
-            mapped[answer.questionId] = answer
-          }
+          if (answer?.questionId) mapped[answer.questionId] = answer
         })
         setAnswers(mapped)
       }
-
-      if (["QUEUED", "REQUESTED"].includes(session.status)) {
-        void processInterview()
-      }
+      if (["QUEUED", "REQUESTED"].includes(session.status)) void processInterview()
     } catch (loadError) {
       console.error("[Mock Page] Session loading error:", loadError)
       setError(loadError instanceof Error ? loadError.message : "Failed to load session.")
@@ -238,80 +195,56 @@ export default function StudentMockExecutionPage() {
   }, [mockId, processInterview])
 
   React.useEffect(() => {
-    if (mockId) {
-      void loadMockSession()
-    }
+    if (mockId) void loadMockSession()
   }, [mockId, loadMockSession])
 
   React.useEffect(() => {
     const status = mockSession?.status
     if (!status || !["QUEUED", "PROCESSING", "REQUESTED"].includes(status)) return
-
     const timer = window.setInterval(async () => {
       try {
         const res = await fetch(`/api/students/mock-interviews/${mockId}`)
         const json = await res.json()
         const mockData = json.data?.mock || json.mock
-
         if (!res.ok || !mockData) return
-
         const session = mockData as MockInterviewSession
         setMockSession(session)
-
-        if (Array.isArray(session.questions) && session.questions.length > 0) {
-          setQuestions(session.questions)
-          setCurrentIdx((previous) => (previous < session.questions.length ? previous : 0))
-        }
-
-        if (["ANSWERING", "EVALUATED", "FAILED"].includes(session.status)) {
-          window.clearInterval(timer)
-        }
+        if (Array.isArray(session.questions) && session.questions.length) setQuestions(session.questions)
+        if (["ANSWERING", "EVALUATED", "FAILED"].includes(session.status)) window.clearInterval(timer)
       } catch (pollError) {
         console.error("[Mock Page] Polling error:", pollError)
       }
     }, 2500)
-
     return () => window.clearInterval(timer)
   }, [mockId, mockSession?.status])
 
-  const currentQ = React.useMemo(() => {
-    if (!questions.length) return undefined
-    return questions[Math.min(currentIdx, questions.length - 1)]
-  }, [currentIdx, questions])
-
-  const answeredCount = React.useMemo(() => Object.keys(answers).length, [answers])
+  const currentQ = React.useMemo(() => questions.length ? questions[Math.min(currentIdx, questions.length - 1)] : undefined, [currentIdx, questions])
+  const answeredCount = Object.keys(answers).length
   const totalQuestions = questions.length
-  const progressValue = totalQuestions > 0 ? (answeredCount / totalQuestions) * 100 : 0
-
+  const progressValue = totalQuestions ? (answeredCount / totalQuestions) * 100 : 0
   const currentAnswer = currentQ ? answers[currentQ.id] : undefined
-  const sessionStatus = getStatusCopy(mockSession?.status)
   const report = evaluationResult || mockSession?.ai_results || null
-  const isJobRequired = mockSession?.mock_type === "JOB_REQUIRED"
   const passThreshold = mockSession?.job_spec_snapshot?.mockPassScore || 70
   const isPassed = Boolean(mockSession?.passed ?? report?.passed)
   const questionEvaluations = report?.questionEvaluations || []
+  const sessionStatus = getStatusCopy(mockSession?.status)
 
   const submitAssessment = async () => {
     if (submitting || !mockId) return
-
     setSubmitting(true)
     setError(null)
-
     try {
-      const answerList = Object.values(answers)
       const res = await fetch(`/api/students/mock-interviews/${mockId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers: answerList }),
+        body: JSON.stringify({ answers: Object.values(answers) }),
       })
       const json = await res.json()
       const nextMock = json.data?.mock || json.mock
-
       if (!res.ok || !nextMock) {
         setError(json.error || "Submission and evaluation failed.")
         return
       }
-
       setMockSession(nextMock as MockInterviewSession)
       setEvaluationResult((json.data?.result || json.result || (nextMock as MockInterviewSession).ai_results) as MockEvaluationResult)
     } catch (submitError) {
@@ -324,15 +257,11 @@ export default function StudentMockExecutionPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[420px] w-full items-center justify-center">
+      <div className="flex min-h-[420px] w-full items-center justify-center px-4">
         <div className="rounded-3xl border border-zinc-200 bg-white px-8 py-10 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <IconBrain className="mx-auto h-10 w-10 animate-pulse text-primary" />
-          <p className="mt-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            Loading your mock interview studio...
-          </p>
-          <p className="mt-1 text-xs text-zinc-500">
-            We are restoring your session, questions, and score state.
-          </p>
+          <IconBrain className="mx-auto h-9 w-9 animate-pulse text-primary" />
+          <p className="mt-4 text-sm font-medium">Loading your mock interview...</p>
+          <p className="mt-1 text-xs text-zinc-500">Restoring your questions, answers, and score.</p>
         </div>
       </div>
     )
@@ -341,141 +270,46 @@ export default function StudentMockExecutionPage() {
   if (error && !mockSession) {
     return (
       <div className="w-full px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-xl space-y-4 text-center">
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/25 dark:text-rose-300">
-            {error || "Assessment session unavailable or access forbidden."}
-          </div>
-          <Link href="/student/mock">
-            <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs">
-              Return to Mock Hub
-            </Button>
-          </Link>
+        <div className="mx-auto max-w-xl space-y-4 text-center">
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/25 dark:text-rose-300">{error}</div>
+          <Link href="/student/mock"><Button variant="outline" className="rounded-xl">Return to Mock Hub</Button></Link>
         </div>
       </div>
     )
   }
 
   if (mockSession && ["QUEUED", "PROCESSING", "REQUESTED"].includes(mockSession.status)) {
-    const generationActive = processing || mockSession.status === "PROCESSING"
-
     return (
       <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto grid max-w-5xl gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-          <Card className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800">
-            <CardHeader className="space-y-3 border-b border-zinc-100 pb-5 dark:border-zinc-800">
+        <div className="mx-auto grid max-w-5xl gap-5 lg:grid-cols-[1.1fr_0.9fr]">
+          <Card className="rounded-3xl">
+            <CardHeader className="border-b pb-5">
               <div className="flex items-center justify-between gap-3">
-                <Badge variant="outline" className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${toneClasses(sessionStatus.tone)}`}>
-                  {sessionStatus.label}
-                </Badge>
-                <Link href="/student/mock">
-                  <Button variant="ghost" size="sm" className="h-8 rounded-xl px-3 text-xs text-zinc-500">
-                    <IconArrowLeft className="mr-1 h-3.5 w-3.5" />
-                    Back
-                  </Button>
-                </Link>
+                <Badge variant="outline" className="rounded-full">{sessionStatus}</Badge>
+                <Link href="/student/mock"><Button variant="ghost" size="sm" className="rounded-xl"><IconArrowLeft className="mr-1 size-3.5" />Back</Button></Link>
               </div>
-              <div className="space-y-1">
-                <CardTitle className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-                  {mockSession.job_role_context || "AI Mock Assessment"}
-                </CardTitle>
-                <CardDescription className="text-xs leading-6">
-                  Your assessment is being prepared. The AI will generate a balanced mix of MCQ, theory, and coding prompts tailored to the target role.
-                </CardDescription>
-              </div>
+              <CardTitle className="text-2xl">{mockSession.job_role_context || "AI Mock Assessment"}</CardTitle>
+              <CardDescription className="leading-6">Your assessment is being prepared. The AI is generating a balanced set of interview questions for this role.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-5 pt-6">
               <div className="grid gap-3 sm:grid-cols-3">
-                <StatCard label="Mock type" value={isJobRequired ? "Job-required" : "Practice"} helper="Session category" />
-                <StatCard label="Questions" value={String(mockSession.questions?.length || 0)} helper="Will appear once generation completes" />
-                <StatCard label="Status" value={sessionStatus.label} helper="Current queue state" />
+                <StatCard label="Type" value={mockSession.mock_type === "JOB_REQUIRED" ? "Job-required" : "Practice"} helper="Session category" />
+                <StatCard label="Questions" value={String(mockSession.questions?.length || 0)} helper="Appears after generation" />
+                <StatCard label="Status" value={sessionStatus} helper="Current session state" />
               </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                <div className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  <IconSparkles className="h-4 w-4 text-primary" />
-                  Generation pipeline
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                  {["Request received", "Question generation", "Ready to answer"].map((step, index) => {
-                    const isCurrent = generationActive && index === 1
-                    const isDone = index === 0 || (mockSession.status === "ANSWERING" && index < 2)
-
-                    return (
-                      <div key={step} className="space-y-2">
-                        <div className={`h-1.5 rounded-full ${isDone || isCurrent ? "bg-primary" : "bg-zinc-200 dark:bg-zinc-800"} ${isCurrent ? "animate-pulse" : ""}`} />
-                        <p className="text-[11px] font-medium text-zinc-500">{step}</p>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">What happens next</p>
-                <p className="mt-2 text-xs leading-6 text-zinc-500">
-                  The session usually becomes ready within a minute. You can keep this page open while the AI finishes generating the interview.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                    MCQ
-                  </Badge>
-                  <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                    Theory
-                  </Badge>
-                  <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                    Coding
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                <Button variant="outline" size="sm" className="h-9 rounded-xl text-xs">
-                  <IconClock className="mr-1 h-3.5 w-3.5" />
-                  Stay on this page
-                </Button>
-                <Link href="/student/mock">
-                  <Button variant="ghost" size="sm" className="h-9 rounded-xl text-xs text-zinc-500">
-                    Return later
-                  </Button>
-                </Link>
+              <div className="rounded-2xl border bg-muted/30 p-5">
+                <div className="flex items-center gap-2 text-sm font-medium"><IconSparkles className="size-4 text-primary" />Preparing your assessment</div>
+                <p className="mt-2 text-xs leading-6 text-muted-foreground">Question generation can take a little time. This page will update automatically when the session is ready.</p>
+                <Progress value={mockSession.status === "PROCESSING" || processing ? 65 : 25} className="mt-4 h-1.5" />
               </div>
             </CardContent>
           </Card>
-
-          <Card className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800">
-            <CardHeader>
-              <CardTitle className="text-sm font-semibold">Session snapshot</CardTitle>
-              <CardDescription className="text-xs">
-                Job context and threshold details are locked in this mock.
-              </CardDescription>
-            </CardHeader>
+          <Card className="rounded-3xl">
+            <CardHeader><CardTitle className="text-sm">Session snapshot</CardTitle><CardDescription>Context locked into this mock.</CardDescription></CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Role</p>
-                <p className="mt-1 text-sm font-semibold text-zinc-950 dark:text-zinc-50">
-                  {mockSession.job_spec_snapshot?.role || mockSession.job_role_context}
-                </p>
-                {mockSession.job_spec_snapshot?.companyName && (
-                  <p className="mt-1 text-xs text-zinc-500">{mockSession.job_spec_snapshot.companyName}</p>
-                )}
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <StatCard label="Pass threshold" value={formatThreshold(passThreshold)} helper="Job-specific score gate" />
-                <StatCard label="Attempts" value={String(mockSession.attempt_number || 1)} helper="Current retry number" />
-              </div>
-              <div className="space-y-2 text-xs text-zinc-500">
-                <p className="font-medium text-zinc-700 dark:text-zinc-300">Focus areas</p>
-                <div className="flex flex-wrap gap-2">
-                  {(mockSession.job_spec_snapshot?.skills || []).slice(0, 6).map((skill) => (
-                    <Badge key={skill} variant="outline" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                      {skill}
-                    </Badge>
-                  ))}
-                </div>
-                <p className="leading-6">
-                  {mockSession.job_spec_snapshot?.description || "The AI will tailor the interview to the stored job context and placement requirements."}
-                </p>
-              </div>
+              <div className="rounded-2xl border bg-muted/30 p-4"><p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Role</p><p className="mt-1 font-semibold">{mockSession.job_spec_snapshot?.role || mockSession.job_role_context}</p>{mockSession.job_spec_snapshot?.companyName && <p className="mt-1 text-xs text-muted-foreground">{mockSession.job_spec_snapshot.companyName}</p>}</div>
+              <div className="grid gap-3 sm:grid-cols-2"><StatCard label="Threshold" value={formatThreshold(passThreshold)} helper="Passing score" /><StatCard label="Attempt" value={String(mockSession.attempt_number || 1)} helper="Current retry" /></div>
+              <div><p className="text-xs font-medium">Focus areas</p><div className="mt-2 flex flex-wrap gap-2">{(mockSession.job_spec_snapshot?.skills || []).slice(0, 6).map((skill) => <Badge key={skill} variant="secondary" className="rounded-full">{skill}</Badge>)}</div></div>
             </CardContent>
           </Card>
         </div>
@@ -483,49 +317,9 @@ export default function StudentMockExecutionPage() {
     )
   }
 
-  if (mockSession && mockSession.status === "FAILED") {
+  if (mockSession?.status === "FAILED") {
     return (
-      <div className="w-full px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto w-full max-w-xl">
-          <Card className="rounded-3xl border-rose-200 shadow-sm dark:border-rose-900/50">
-            <CardHeader className="space-y-3">
-              <Badge variant="outline" className={`w-fit rounded-full px-2.5 py-1 text-[10px] font-medium ${toneClasses(sessionStatus.tone)}`}>
-                {sessionStatus.label}
-              </Badge>
-              <CardTitle className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-                Question generation failed
-              </CardTitle>
-              <CardDescription className="text-xs leading-6">
-                The AI could not build this assessment right now. Your request is still saved in the session, and you can retry generation without losing the interview record.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/25 dark:text-rose-300">
-                <div className="flex items-start gap-2">
-                  <IconAlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                  <span>{error || "We encountered an issue generating your assessment questions. Please retry generation."}</span>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Button
-                  size="sm"
-                  onClick={() => void processInterview()}
-                  disabled={processing}
-                  className="h-9 rounded-xl text-xs font-medium"
-                >
-                  <IconRefresh className={`mr-1 h-3.5 w-3.5 ${processing ? "animate-spin" : ""}`} />
-                  {processing ? "Retrying..." : "Retry question generation"}
-                </Button>
-                <Link href="/student/mock">
-                  <Button size="sm" variant="outline" className="h-9 rounded-xl text-xs font-medium">
-                    Back to Mock Hub
-                  </Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <div className="w-full px-4 py-12 sm:px-6 lg:px-8"><div className="mx-auto max-w-xl"><Card className="rounded-3xl border-rose-200 dark:border-rose-900/50"><CardHeader><Badge variant="outline" className="w-fit rounded-full border-rose-200 text-rose-700">Failed</Badge><CardTitle>Question generation failed</CardTitle><CardDescription className="leading-6">Your interview request is still saved. Retry generation without losing the session.</CardDescription></CardHeader><CardContent className="space-y-4"><div className="flex gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700"><IconAlertTriangle className="mt-0.5 size-4 shrink-0" />{error || "We could not generate the assessment right now."}</div><div className="flex flex-wrap gap-2"><Button onClick={() => void processInterview()} disabled={processing} className="rounded-xl"><IconRefresh className="mr-1 size-4" />{processing ? "Retrying..." : "Retry generation"}</Button><Link href="/student/mock"><Button variant="outline" className="rounded-xl">Back to Mock Hub</Button></Link></div></CardContent></Card></div></div>
     )
   }
 
@@ -539,578 +333,120 @@ export default function StudentMockExecutionPage() {
     const nextSteps = report?.recommendedNextSteps || []
 
     return (
-      <div className="w-full space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link href="/student/mock">
-            <Button variant="ghost" size="sm" className="h-9 rounded-xl px-3 text-xs text-zinc-500">
-              <IconArrowLeft className="mr-1 h-3.5 w-3.5" />
-              Mock hub
-            </Button>
-          </Link>
-          {mockSession?.job_college_mapping_id && (
-            <Link href="/student/jobs">
-              <Button variant="outline" size="sm" className="h-9 rounded-xl px-3 text-xs font-medium">
-                Back to campus jobs
-              </Button>
-            </Link>
-          )}
-        </div>
+      <main className="w-full px-4 py-6 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-6xl space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Link href="/student/mock"><Button variant="ghost" size="sm" className="rounded-xl px-2 text-xs text-muted-foreground"><IconArrowLeft className="mr-1 size-3.5" />Mock hub</Button></Link>
+            <div className="flex items-center gap-2">
+              {mockSession?.job_college_mapping_id && <Link href="/student/jobs"><Button variant="outline" size="sm" className="rounded-xl text-xs">Campus jobs</Button></Link>}
+              <Badge variant="outline" className={`rounded-full px-3 py-1 text-xs font-medium ${statusClasses(isPassed)}`}><IconCircleCheck className="mr-1 size-3.5" />{isPassed ? "Passed" : "Needs improvement"}</Badge>
+            </div>
+          </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-          <Card className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800">
-            <CardHeader className="space-y-4 border-b border-zinc-100 pb-5 dark:border-zinc-800">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <Badge variant="outline" className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${toneClasses(sessionStatus.tone)}`}>
-                  {sessionStatus.label}
-                </Badge>
-                <Badge
-                  variant="outline"
-                  className={`rounded-full px-3 py-1 text-[10px] font-semibold ${isPassed ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:bg-emerald-950/35 dark:text-emerald-300" : "border-rose-300 bg-rose-50 text-rose-800 dark:bg-rose-950/35 dark:text-rose-300"}`}
-                >
-                  {isPassed ? "Passed" : "Needs improvement"}
-                </Badge>
-              </div>
-              <div className="space-y-1">
-                <CardTitle className="text-2xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-                  {mockSession?.job_role_context || "AI Assessment Report"}
-                </CardTitle>
-                <CardDescription className="text-xs leading-6">
-                  Completed on {formatDateTime(mockSession?.completed_at)}
-                </CardDescription>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6 pt-6">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Overall</p>
-                  <p className={`mt-2 text-3xl font-semibold tracking-tight ${scoreTone(overallScore)}`}>{formatScore(overallScore)}</p>
-                </div>
-                <StatCard label="MCQ" value={formatScore(mcqScore)} helper="Objective accuracy" />
-                <StatCard label="Theory" value={formatScore(theoryScore)} helper="Concept clarity" />
-                <StatCard label="Coding" value={formatScore(codingScore)} helper="Implementation quality" />
-              </div>
-
-              <div className="rounded-2xl border border-zinc-200 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                <div className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  <IconSparkles className="h-4 w-4 text-primary" />
-                  AI summary
-                </div>
-                <p className="mt-2 text-xs leading-6 text-zinc-600 dark:text-zinc-400">
-                  {report?.summary || mockSession?.ai_summary || "No summary available for this attempt."}
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-50">Skill proficiency</h3>
-                  <p className="text-xs text-zinc-500">Based on your evaluated answers</p>
-                </div>
-                {report?.skillScores && Object.keys(report.skillScores).length > 0 ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    {Object.entries(report.skillScores).map(([skill, score]) => (
-                      <div key={skill} className="space-y-2 rounded-2xl border border-zinc-200 p-3 dark:border-zinc-800">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="font-medium text-zinc-700 dark:text-zinc-300">{skill}</span>
-                          <span className={`font-semibold ${scoreTone(score)}`}>{formatScore(score)}</span>
-                        </div>
-                        <Progress value={score} className="h-1.5" />
-                      </div>
-                    ))}
+          <section className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr]">
+            <Card className="overflow-hidden rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800">
+              <CardContent className="p-0">
+                <div className="border-b border-zinc-100 p-5 sm:p-7 dark:border-zinc-800">
+                  <div className="flex flex-wrap items-start justify-between gap-5">
+                    <div className="min-w-0">
+                      <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-muted-foreground">Interview result</p>
+                      <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">{mockSession?.job_role_context || "AI Mock Assessment"}</h1>
+                      <p className="mt-2 text-xs leading-5 text-muted-foreground">Completed {formatDateTime(mockSession?.completed_at)} · Attempt {mockSession?.attempt_number || 1}</p>
+                    </div>
+                    <div className={`flex min-w-[150px] items-center gap-4 rounded-2xl border p-4 ${scoreSurface(overallScore)}`}>
+                      <div><p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Overall</p><p className={`mt-1 text-4xl font-semibold tracking-tight ${scoreTone(overallScore)}`}>{formatScore(overallScore)}</p></div>
+                      <div className="ml-auto text-right"><p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Threshold</p><p className="mt-1 text-sm font-semibold">{formatThreshold(passThreshold)}</p></div>
+                    </div>
                   </div>
-                ) : (
-                  <p className="rounded-2xl border border-dashed border-zinc-200 px-4 py-5 text-center text-xs text-zinc-500 dark:border-zinc-800">
-                    No skill breakdown was returned for this attempt.
-                  </p>
-                )}
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                  <p className="text-xs font-semibold text-zinc-950 dark:text-zinc-50">Strengths</p>
-                  <ul className="mt-3 space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
-                    {strengths.length > 0 ? strengths.map((item) => <li key={item}>- {item}</li>) : <li>No strengths were returned.</li>}
-                  </ul>
+                  <div className="mt-5"><div className="flex items-center justify-between text-[11px] text-muted-foreground"><span>Assessment score</span><span>{overallScore >= passThreshold ? "Passing" : `${Math.max(0, passThreshold - overallScore)} points to pass`}</span></div><Progress value={overallScore} className="mt-2 h-2" /></div>
                 </div>
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                  <p className="text-xs font-semibold text-zinc-950 dark:text-zinc-50">Improve next</p>
-                  <ul className="mt-3 space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
-                    {improvements.length > 0 ? improvements.map((item) => <li key={item}>- {item}</li>) : <li>No improvement list was returned.</li>}
-                  </ul>
-                </div>
-                <div className="rounded-2xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-                  <p className="text-xs font-semibold text-zinc-950 dark:text-zinc-50">Next steps</p>
-                  <ul className="mt-3 space-y-2 text-xs text-zinc-600 dark:text-zinc-400">
-                    {nextSteps.length > 0 ? nextSteps.map((item) => <li key={item}>- {item}</li>) : <li>No next-step guidance was returned.</li>}
-                  </ul>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800">
-            <CardHeader>
-              <CardTitle className="text-sm font-semibold">Session details</CardTitle>
-              <CardDescription className="text-xs leading-6">
-                Everything that defines this assessment at a glance.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Job context</p>
-                <p className="mt-1 text-sm font-semibold text-zinc-950 dark:text-zinc-50">
-                  {mockSession?.job_spec_snapshot?.title || mockSession?.job_role_context}
-                </p>
-                <p className="mt-1 text-xs text-zinc-500">
-                  {mockSession?.job_spec_snapshot?.companyName || "Practice session"}
-                </p>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <StatCard label="Threshold" value={formatThreshold(passThreshold)} helper="Passing score required" />
-                <StatCard label="Attempt" value={String(mockSession?.attempt_number || 1)} helper="Saved retry number" />
-              </div>
-              <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Prompt focus</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {(mockSession?.job_spec_snapshot?.skills || []).slice(0, 8).map((skill) => (
-                    <Badge key={skill} variant="secondary" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                      {skill}
-                    </Badge>
+                <div className="grid gap-px bg-zinc-100 sm:grid-cols-3 dark:bg-zinc-800">
+                  {[["MCQ", mcqScore, "Objective accuracy"], ["Theory", theoryScore, "Concept clarity"], ["Coding", codingScore, "Implementation quality"]].map(([label, value, helper]) => (
+                    <div key={String(label)} className="bg-white p-5 dark:bg-zinc-950"><p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p><p className={`mt-1 text-2xl font-semibold ${scoreTone(Number(value))}`}>{formatScore(Number(value))}</p><p className="mt-1 text-xs text-muted-foreground">{helper}</p></div>
                   ))}
                 </div>
-              </div>
-              <div className="rounded-2xl border border-zinc-100 bg-white p-4 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400">
-                {mockSession?.job_spec_snapshot?.description || "The AI generated this session from the stored mock context and job requirements."}
-              </div>
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800">
+              <CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><IconTarget className="size-4 text-primary" />Session details</CardTitle><CardDescription className="text-xs">The context used for this assessment.</CardDescription></CardHeader>
+              <CardContent className="space-y-3">
+                <div className="rounded-2xl bg-muted/40 p-4"><p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Job context</p><p className="mt-1 text-sm font-semibold">{mockSession?.job_spec_snapshot?.title || mockSession?.job_role_context || "Practice session"}</p><p className="mt-1 text-xs text-muted-foreground">{mockSession?.job_spec_snapshot?.companyName || "Practice interview"}</p></div>
+                <div className="grid grid-cols-2 gap-3"><StatCard label="Threshold" value={formatThreshold(passThreshold)} helper="Required" /><StatCard label="Attempt" value={String(mockSession?.attempt_number || 1)} helper="Saved number" /></div>
+                {(mockSession?.job_spec_snapshot?.skills || []).length > 0 && <div className="rounded-2xl bg-muted/40 p-4"><p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Focus</p><div className="mt-2 flex flex-wrap gap-1.5">{(mockSession.job_spec_snapshot?.skills || []).slice(0, 8).map((skill) => <Badge key={skill} variant="secondary" className="rounded-full text-[10px]">{skill}</Badge>)}</div></div>}
+              </CardContent>
+            </Card>
+          </section>
+
+          <section className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]">
+            <Card className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800"><CardHeader className="pb-3"><CardTitle className="flex items-center gap-2 text-sm"><IconSparkles className="size-4 text-primary" />AI summary</CardTitle></CardHeader><CardContent><p className="text-sm leading-7 text-muted-foreground">{report?.summary || mockSession?.ai_summary || "No summary available for this attempt."}</p></CardContent></Card>
+            <Card className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800"><CardHeader className="pb-3"><CardTitle className="text-sm">Skill proficiency</CardTitle><CardDescription className="text-xs">Based on evaluated answers.</CardDescription></CardHeader><CardContent className="space-y-3">{report?.skillScores && Object.keys(report.skillScores).length > 0 ? Object.entries(report.skillScores).map(([skill, score]) => <div key={skill}><div className="flex items-center justify-between text-xs"><span className="font-medium">{skill}</span><span className={`font-semibold ${scoreTone(score)}`}>{formatScore(score)}</span></div><Progress value={score} className="mt-1.5 h-1.5" /></div>) : <p className="text-xs text-muted-foreground">No skill breakdown was returned.</p>}</CardContent></Card>
+          </section>
+
+          <section className="grid gap-4 md:grid-cols-3">
+            {[["Strengths", strengths, "What went well"], ["Improve next", improvements, "Highest-value gaps"], ["Next steps", nextSteps, "Recommended practice"]].map(([title, items, helper]) => <Card key={String(title)} className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800"><CardHeader className="pb-2"><CardTitle className="text-sm">{title}</CardTitle><CardDescription className="text-xs">{helper}</CardDescription></CardHeader><CardContent><BulletList items={items as string[]} empty="Nothing was returned for this section." /></CardContent></Card>)}
+          </section>
+
+          <Card className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800">
+            <CardHeader className="border-b border-zinc-100 pb-4 dark:border-zinc-800"><CardTitle className="text-sm">Question review</CardTitle><CardDescription className="text-xs leading-5">Open a question to see your answer, score, feedback, strengths, and improvements.</CardDescription></CardHeader>
+            <CardContent className="p-3 sm:p-4">
+              {questionEvaluations.length > 0 ? (
+                <Accordion defaultValue={["question-0"]} className="w-full">
+                  {questionEvaluations.map((evaluation, index) => {
+                    const question = questions.find((item) => item.id === evaluation.questionId)
+                    const answer = answers[evaluation.questionId]
+                    const questionType = question?.type || evaluation.type
+                    const questionScore = evaluation.pointsPossible > 0 ? Math.round((evaluation.pointsEarned / evaluation.pointsPossible) * 100) : 0
+                    return (
+                      <AccordionItem key={evaluation.questionId} value={`question-${index}`} className="border-b-0">
+                        <div className="mb-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white transition-colors dark:border-zinc-800 dark:bg-zinc-950">
+                          <AccordionTrigger className="px-4 py-4 hover:no-underline sm:px-5">
+                            <div className="flex min-w-0 items-center gap-3 pr-2">
+                              <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-muted text-xs font-semibold">{index + 1}</span>
+                              <span className="min-w-0"><span className="flex flex-wrap items-center gap-1.5"><Badge variant="secondary" className="rounded-full text-[10px]">{questionType}</Badge><Badge variant="outline" className={`rounded-full text-[10px] ${verdictClasses(evaluation.verdict)}`}>{evaluation.verdict || "needs-work"}</Badge></span><span className="mt-1.5 block truncate text-left text-xs font-medium text-foreground">{question?.question || "Question no longer available"}</span></span>
+                            </div>
+                            <span className={`shrink-0 text-sm font-semibold ${scoreTone(questionScore)}`}>{evaluation.pointsEarned}/{evaluation.pointsPossible}</span>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-4 pb-4 sm:px-5">
+                            <div className="space-y-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                              <p className="text-sm leading-6 text-foreground">{question?.question || "Question no longer available"}</p>
+                              <div className="rounded-2xl bg-muted/40 p-4"><p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">Your answer</p><div className="mt-2 whitespace-pre-wrap text-xs leading-6 text-muted-foreground"><AnswerPreview answer={answer} /></div></div>
+                              <div className="rounded-2xl border border-primary/10 bg-primary/[0.03] p-4"><p className="text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground">AI feedback</p><p className="mt-2 text-xs leading-6 text-muted-foreground">{evaluation.feedback}</p></div>
+                              <div className="grid gap-3 md:grid-cols-2"><div className="rounded-2xl bg-emerald-50/60 p-4 dark:bg-emerald-950/15"><p className="text-xs font-medium text-emerald-800 dark:text-emerald-300">Strengths</p><div className="mt-2"><BulletList items={evaluation.strengths || []} empty="No strengths captured." /></div></div><div className="rounded-2xl bg-amber-50/60 p-4 dark:bg-amber-950/15"><p className="text-xs font-medium text-amber-800 dark:text-amber-300">Improvements</p><div className="mt-2"><BulletList items={evaluation.improvements || []} empty="No improvements captured." /></div></div></div>
+                            </div>
+                          </AccordionContent>
+                        </div>
+                      </AccordionItem>
+                    )
+                  })}
+                </Accordion>
+              ) : <p className="rounded-2xl border border-dashed p-6 text-center text-xs text-muted-foreground">A detailed per-question review was not returned for this attempt.</p>}
             </CardContent>
           </Card>
         </div>
-
-        <Card className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800">
-          <CardHeader className="border-b border-zinc-100 pb-5 dark:border-zinc-800">
-            <CardTitle className="text-sm font-semibold">Question-by-question review</CardTitle>
-            <CardDescription className="text-xs leading-6">
-              The report below maps each generated question to your answer, score, and feedback.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-6">
-            {questionEvaluations.length > 0 ? (
-              questionEvaluations.map((evaluation) => {
-                const question = questions.find((item) => item.id === evaluation.questionId)
-                const answer = answers[evaluation.questionId]
-                const questionType = question?.type || evaluation.type
-
-                return (
-                  <div key={evaluation.questionId} className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="space-y-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                            {questionType}
-                          </Badge>
-                          <Badge variant="outline" className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${evaluation.verdict === "strong" ? toneClasses("emerald") : evaluation.verdict === "partial" ? toneClasses("amber") : toneClasses("rose")}`}>
-                            {evaluation.verdict}
-                          </Badge>
-                        </div>
-                        <p className="text-sm font-medium text-zinc-950 dark:text-zinc-50">
-                          {question?.question || "Question no longer available"}
-                        </p>
-                        <div className="space-y-1 text-xs text-zinc-500">
-                          <p><span className="font-medium text-zinc-700 dark:text-zinc-300">Your answer: </span><AnswerPreview answer={answer} /></p>
-                          <p>{evaluation.feedback}</p>
-                        </div>
-                      </div>
-
-                      <div className="grid min-w-[220px] gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                        <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/30">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Score</p>
-                          <p className={`mt-1 text-2xl font-semibold ${scoreTone(evaluation.pointsEarned > 0 ? Math.round((evaluation.pointsEarned / Math.max(1, evaluation.pointsPossible)) * 100) : 0)}`}>
-                            {evaluation.pointsEarned}/{evaluation.pointsPossible}
-                          </p>
-                        </div>
-                        <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-3 dark:border-zinc-800 dark:bg-zinc-900/30">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Type</p>
-                          <p className="mt-1 text-sm font-medium text-zinc-900 dark:text-zinc-100">{questionType}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-4 md:grid-cols-2">
-                      <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 text-xs dark:border-zinc-800 dark:bg-zinc-900/30">
-                        <p className="font-medium text-zinc-700 dark:text-zinc-300">Strengths</p>
-                        <ul className="mt-2 space-y-1 text-zinc-500">
-                          {evaluation.strengths.length > 0 ? evaluation.strengths.map((item) => <li key={item}>- {item}</li>) : <li>No strengths captured.</li>}
-                        </ul>
-                      </div>
-                      <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 text-xs dark:border-zinc-800 dark:bg-zinc-900/30">
-                        <p className="font-medium text-zinc-700 dark:text-zinc-300">Improvements</p>
-                        <ul className="mt-2 space-y-1 text-zinc-500">
-                          {evaluation.improvements.length > 0 ? evaluation.improvements.map((item) => <li key={item}>- {item}</li>) : <li>No improvements captured.</li>}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })
-            ) : (
-              <p className="rounded-2xl border border-dashed border-zinc-200 px-4 py-6 text-center text-xs text-zinc-500 dark:border-zinc-800">
-                A detailed per-question review was not returned for this attempt.
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      </main>
     )
   }
 
   if (!currentQ) {
-    return (
-      <div className="w-full px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mx-auto flex min-h-[320px] max-w-xl flex-col items-center justify-center rounded-3xl border border-zinc-200 bg-white p-8 text-center shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-          <IconBrain className="h-10 w-10 animate-pulse text-primary" />
-          <p className="mt-4 text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            Preparing your assessment...
-          </p>
-          <p className="mt-1 text-xs text-zinc-500">
-            The question set will appear as soon as generation completes.
-          </p>
-        </div>
-      </div>
-    )
+    return <div className="flex min-h-[320px] items-center justify-center px-4"><div className="text-center"><IconBrain className="mx-auto size-9 animate-pulse text-primary" /><p className="mt-3 text-sm font-medium">Preparing your assessment...</p><p className="mt-1 text-xs text-muted-foreground">The question set will appear as soon as generation completes.</p></div></div>
   }
 
   return (
-    <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
-      {error && (
-        <div className="mb-5 flex items-start gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/25 dark:text-rose-300">
-          <IconAlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
-        </div>
-      )}
-
-      <div className="grid gap-6 xl:grid-cols-[280px_1fr]">
-        <Card className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800">
-          <CardHeader className="space-y-3 border-b border-zinc-100 pb-5 dark:border-zinc-800">
-            <div className="flex items-center justify-between gap-3">
-              <Badge variant="outline" className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${toneClasses(sessionStatus.tone)}`}>
-                {sessionStatus.label}
-              </Badge>
-              <Link href="/student/mock">
-                <Button variant="ghost" size="sm" className="h-8 rounded-xl px-2 text-xs text-zinc-500">
-                  <IconArrowLeft className="mr-1 h-3.5 w-3.5" />
-                  Hub
-                </Button>
-              </Link>
-            </div>
-            <div className="space-y-1">
-              <CardTitle className="text-lg font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-                {mockSession?.job_role_context || "AI Mock Assessment"}
-              </CardTitle>
-              <CardDescription className="text-xs leading-6">
-                {mockSession?.mock_type || "PRACTICE"} - question {currentIdx + 1} of {totalQuestions}
-              </CardDescription>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4 pt-6">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <StatCard label="Answered" value={`${answeredCount}/${totalQuestions}`} helper="Saved responses so far" />
-              <StatCard label="Progress" value={`${Math.round(progressValue)}%`} helper="Completion toward submission" />
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-zinc-700 dark:text-zinc-300">Question navigator</span>
-                <span className="text-zinc-500">Click to jump</span>
-              </div>
-              <div className="grid grid-cols-5 gap-2 sm:grid-cols-6 xl:grid-cols-4">
-                {questions.map((question, index) => {
-                  const isCurrent = index === currentIdx
-                  const isAnswered = Boolean(answers[question.id])
-
-                  return (
-                    <button
-                      key={question.id}
-                      type="button"
-                      onClick={() => setCurrentIdx(index)}
-                      className={`relative flex h-10 items-center justify-center rounded-2xl border text-xs font-medium transition-all duration-200 ${
-                        isCurrent
-                          ? "border-primary bg-primary text-primary-foreground shadow-sm"
-                          : isAnswered
-                            ? "border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-900 dark:bg-emerald-950/35 dark:text-emerald-300"
-                            : "border-zinc-200 bg-white text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-400"
-                      }`}
-                    >
-                      {index + 1}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 text-xs text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900/30 dark:text-zinc-400">
-              <p className="font-medium text-zinc-700 dark:text-zinc-300">Need a reminder?</p>
-              <p className="mt-2 leading-6">
-                Work through each question at your pace. Saved answers stay in the session until you submit.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-6">
-          <Card className="rounded-3xl border-zinc-200 shadow-sm dark:border-zinc-800">
-            <CardHeader className="space-y-4 border-b border-zinc-100 pb-5 dark:border-zinc-800">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                    {mockSession?.mock_type || "PRACTICE"}
-                  </Badge>
-                  <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                    {currentQ.type}
-                  </Badge>
-                  {isMCQQuestion(currentQ) ? (
-                    <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                      <IconCheck className="mr-1 h-3 w-3" />
-                      One answer
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                      <IconFileText className="mr-1 h-3 w-3" />
-                      Written response
-                    </Badge>
-                  )}
-                </div>
-                <Button
-                  onClick={() => void submitAssessment()}
-                  disabled={submitting}
-                  size="sm"
-                  className="h-9 rounded-xl px-4 text-xs font-medium"
-                >
-                  <IconCheck className="mr-1 h-3.5 w-3.5" />
-                  {submitting ? "Evaluating answers..." : "Submit assessment"}
-                </Button>
-              </div>
-
-              <div className="space-y-2">
-                <h2 className="text-base font-semibold tracking-tight text-zinc-950 dark:text-zinc-50">
-                  {currentQ.question}
-                </h2>
-                <div className="flex flex-wrap gap-2">
-                  {currentQ.skill && (
-                    <Badge variant="secondary" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                      {currentQ.skill}
-                    </Badge>
-                  )}
-                  {currentQ.points && (
-                    <Badge variant="outline" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                      {currentQ.points} points
-                    </Badge>
-                  )}
-                  {currentQ.type !== "CODE" && "expectedTopics" in currentQ && Array.isArray(currentQ.expectedTopics) && currentQ.expectedTopics.length > 0 && (
-                    currentQ.expectedTopics.slice(0, 4).map((topic) => (
-                      <Badge key={topic} variant="outline" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                        {topic}
-                      </Badge>
-                    ))
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-5 pt-6">
-              {isMCQQuestion(currentQ) && (
-                <QuestionnaireMCQ
-                  question={currentQ}
-                  selectedOptionId={currentAnswer?.selectedOptionId}
-                  onSelectOption={(optionId) =>
-                    setAnswers((previous) => ({
-                      ...previous,
-                      [currentQ.id]: {
-                        questionId: currentQ.id,
-                        selectedOptionId: optionId,
-                      },
-                    }))
-                  }
-                />
-              )}
-
-              {!isMCQQuestion(currentQ) && currentQ.type !== "CODE" && (
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                    <div className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                      <IconFileText className="h-4 w-4 text-primary" />
-                      Response guidance
-                    </div>
-                    <p className="mt-2 text-xs leading-6 text-zinc-600 dark:text-zinc-400">
-                      Explain the concept clearly, mention trade-offs where relevant, and keep your answer structured.
-                    </p>
-                    {"expectedTopics" in currentQ && Array.isArray(currentQ.expectedTopics) && currentQ.expectedTopics.length > 0 && (
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {currentQ.expectedTopics.map((topic) => (
-                          <Badge key={topic} variant="secondary" className="rounded-full px-2.5 py-1 text-[10px] font-medium">
-                            {topic}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                  <Textarea
-                    value={currentAnswer?.answerText || ""}
-                    onChange={(event) =>
-                      setAnswers((previous) => ({
-                        ...previous,
-                        [currentQ.id]: {
-                          ...previous[currentQ.id],
-                          questionId: currentQ.id,
-                          answerText: event.target.value,
-                        },
-                      }))
-                    }
-                    placeholder="Type your explanation in a clear, structured way..."
-                    className="min-h-[220px] rounded-2xl text-sm"
-                  />
-                </div>
-              )}
-
-              {currentQ.type === "CODE" && (
-                <div className="space-y-5">
-                  <div className="rounded-2xl border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
-                    <div className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                      <IconCode className="h-4 w-4 text-primary" />
-                      Coding prompt
-                    </div>
-                    {currentQ.description && (
-                      <p className="mt-2 text-xs leading-6 text-zinc-600 dark:text-zinc-400">{currentQ.description}</p>
-                    )}
-                    {currentQ.constraints && currentQ.constraints.length > 0 && (
-                      <div className="mt-4 space-y-2">
-                        <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Constraints</p>
-                        <ul className="space-y-1 text-xs text-zinc-500 dark:text-zinc-400">
-                          {currentQ.constraints.map((constraint) => (
-                            <li key={constraint}>- {constraint}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-
-                  {currentQ.examples && currentQ.examples.length > 0 && (
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {currentQ.examples.map((example, index) => (
-                        <div key={`${example.input}-${index}`} className="rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500">Example {index + 1}</p>
-                          <p className="mt-2 text-xs text-zinc-700 dark:text-zinc-300">
-                            <span className="font-medium">Input: </span>
-                            {example.input}
-                          </p>
-                          <p className="mt-2 text-xs text-zinc-700 dark:text-zinc-300">
-                            <span className="font-medium">Output: </span>
-                            {example.output}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <Select
-                      value={currentAnswer?.codeLanguage || currentQ.defaultLanguage || "TypeScript"}
-                      onValueChange={(language) =>
-                        setAnswers((previous) => {
-                          const selectedLanguage = language ?? "TypeScript"
-                          const previousAnswer = previous[currentQ.id] ?? { questionId: currentQ.id }
-                          const nextAnswer: StudentAnswer = {
-                            ...previousAnswer,
-                            questionId: currentQ.id,
-                            codeLanguage: selectedLanguage,
-                          }
-
-                          return {
-                            ...previous,
-                            [currentQ.id]: nextAnswer,
-                          }
-                        })
-                      }
-                    >
-                      <SelectTrigger className="h-10 w-full rounded-xl sm:w-48">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {(currentQ.languageOptions || ["TypeScript", "JavaScript", "Python", "Java", "C++"]).map((language) => (
-                          <SelectItem key={language} value={language} className="text-xs">
-                            {language}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="text-xs text-zinc-500">
-                      Pick the language you want the evaluator to score against.
-                    </div>
-                  </div>
-
-                  <Textarea
-                    value={currentAnswer?.answerText || ""}
-                    onChange={(event) =>
-                      setAnswers((previous) => {
-                        const previousAnswer = previous[currentQ.id] ?? { questionId: currentQ.id }
-                        const nextAnswer: StudentAnswer = {
-                          ...previousAnswer,
-                          questionId: currentQ.id,
-                          answerText: event.target.value,
-                        }
-
-                        return {
-                          ...previous,
-                          [currentQ.id]: nextAnswer,
-                        }
-                      })
-                    }
-                    placeholder="Paste your solution or explain your approach in detail..."
-                    className="min-h-[260px] rounded-2xl font-mono text-sm"
-                  />
-                </div>
-              )}
-
-              <div className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-                <div className="text-xs text-zinc-500">
-                  <span className="font-semibold text-primary">{answeredCount}</span> of {totalQuestions} answered
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-9 rounded-xl px-4 text-xs font-medium"
-                    onClick={() => setCurrentIdx((previous) => Math.max(0, previous - 1))}
-                    disabled={currentIdx === 0}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    className="h-9 rounded-xl px-4 text-xs font-medium"
-                    onClick={() => setCurrentIdx((previous) => Math.min(totalQuestions - 1, previous + 1))}
-                    disabled={currentIdx >= totalQuestions - 1}
-                  >
-                    Next
-                    <IconArrowRight className="ml-1 h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-xs text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-            <div className="flex items-center gap-2">
-              <IconClock className="h-4 w-4 text-primary" />
-              <span className="font-medium text-zinc-700 dark:text-zinc-300">Progress</span>
-            </div>
-            <Progress value={progressValue} className="mt-3 h-1.5" />
-            <p className="mt-3 leading-6">
-              Your answers are preserved locally in this session until you submit the assessment.
-            </p>
-          </div>
+    <main className="w-full px-4 py-6 sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-6xl gap-5 xl:grid-cols-[280px_1fr]">
+        <Card className="h-fit rounded-3xl"><CardHeader className="border-b pb-4"><div className="flex items-center justify-between"><Badge variant="outline" className="rounded-full">{sessionStatus}</Badge><Link href="/student/mock"><Button variant="ghost" size="sm" className="rounded-xl text-xs"><IconArrowLeft className="mr-1 size-3.5" />Hub</Button></Link></div><CardTitle className="text-lg">{mockSession?.job_role_context || "AI Mock Assessment"}</CardTitle><CardDescription className="text-xs">Question {currentIdx + 1} of {totalQuestions}</CardDescription></CardHeader><CardContent className="space-y-5 pt-5"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1"><StatCard label="Answered" value={`${answeredCount}/${totalQuestions}`} helper="Saved responses" /><StatCard label="Progress" value={`${Math.round(progressValue)}%`} helper="Completion" /></div><div><div className="flex items-center justify-between text-xs"><span className="font-medium">Question navigator</span><span className="text-muted-foreground">Jump</span></div><div className="mt-2 grid grid-cols-5 gap-2">{questions.map((question, index) => <button key={question.id} type="button" onClick={() => setCurrentIdx(index)} className={`flex h-9 items-center justify-center rounded-xl border text-xs font-medium transition ${index === currentIdx ? "border-primary bg-primary text-primary-foreground" : answers[question.id] ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "hover:bg-muted"}`}>{index + 1}</button>)}</div></div></CardContent></Card>
+        <div className="space-y-5">
+          {error && <div className="flex gap-2 rounded-2xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700"><IconAlertTriangle className="mt-0.5 size-4 shrink-0" />{error}</div>}
+          <Card className="rounded-3xl"><CardHeader className="border-b pb-5"><div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-2"><Badge variant="secondary" className="rounded-full">{mockSession?.mock_type || "PRACTICE"}</Badge><Badge variant="outline" className="rounded-full">{currentQ.type}</Badge></div><Button onClick={() => void submitAssessment()} disabled={submitting} size="sm" className="rounded-xl">{submitting ? "Evaluating..." : "Submit assessment"}</Button></div><CardTitle className="text-base leading-6">{currentQ.question}</CardTitle><div className="flex flex-wrap gap-2">{currentQ.skill && <Badge variant="secondary" className="rounded-full text-[10px]">{currentQ.skill}</Badge>}{currentQ.points && <Badge variant="outline" className="rounded-full text-[10px]">{currentQ.points} points</Badge>}</div></CardHeader><CardContent className="space-y-5 pt-5">
+            {isMCQQuestion(currentQ) && <QuestionnaireMCQ question={currentQ} selectedOptionId={currentAnswer?.selectedOptionId} onSelectOption={(optionId) => setAnswers((previous) => ({ ...previous, [currentQ.id]: { questionId: currentQ.id, selectedOptionId: optionId } }))} />}
+            {!isMCQQuestion(currentQ) && currentQ.type !== "CODE" && <div className="space-y-4"><div className="rounded-2xl bg-muted/40 p-4"><div className="flex items-center gap-2 text-xs font-medium"><IconFileText className="size-4 text-primary" />Response guidance</div><p className="mt-2 text-xs leading-6 text-muted-foreground">Explain the concept clearly, mention trade-offs where relevant, and keep your answer structured.</p></div><Textarea value={currentAnswer?.answerText || ""} onChange={(event) => setAnswers((previous) => ({ ...previous, [currentQ.id]: { ...previous[currentQ.id], questionId: currentQ.id, answerText: event.target.value } }))} placeholder="Type your explanation in a clear, structured way..." className="min-h-[220px] rounded-2xl text-sm" /></div>}
+            {currentQ.type === "CODE" && <div className="space-y-4"><div className="rounded-2xl bg-muted/40 p-4"><div className="flex items-center gap-2 text-xs font-medium"><IconCode className="size-4 text-primary" />Coding prompt</div>{currentQ.description && <p className="mt-2 text-xs leading-6 text-muted-foreground">{currentQ.description}</p>}{currentQ.constraints?.length ? <ul className="mt-3 space-y-1 text-xs text-muted-foreground">{currentQ.constraints.map((constraint) => <li key={constraint}>· {constraint}</li>)}</ul> : null}</div><div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"><Select value={currentAnswer?.codeLanguage || currentQ.defaultLanguage || "TypeScript"} onValueChange={(language) => setAnswers((previous) => ({ ...previous, [currentQ.id]: { ...(previous[currentQ.id] || { questionId: currentQ.id }), questionId: currentQ.id, codeLanguage: language || "TypeScript" } }))}><SelectTrigger className="h-10 rounded-xl sm:w-48"><SelectValue /></SelectTrigger><SelectContent>{(currentQ.languageOptions || ["TypeScript", "JavaScript", "Python", "Java", "C++"]).map((language) => <SelectItem key={language} value={language}>{language}</SelectItem>)}</SelectContent></Select><span className="text-xs text-muted-foreground">Choose the language for evaluation.</span></div><Textarea value={currentAnswer?.answerText || ""} onChange={(event) => setAnswers((previous) => ({ ...previous, [currentQ.id]: { ...(previous[currentQ.id] || { questionId: currentQ.id }), questionId: currentQ.id, answerText: event.target.value } }))} placeholder="Paste your solution or explain your approach..." className="min-h-[260px] rounded-2xl font-mono text-sm" /></div>}
+            <div className="flex items-center justify-between border-t pt-4"><span className="text-xs text-muted-foreground"><span className="font-semibold text-primary">{answeredCount}</span> of {totalQuestions} answered</span><div className="flex gap-2"><Button variant="outline" size="sm" className="rounded-xl" onClick={() => setCurrentIdx((previous) => Math.max(0, previous - 1))} disabled={currentIdx === 0}>Previous</Button><Button size="sm" className="rounded-xl" onClick={() => setCurrentIdx((previous) => Math.min(totalQuestions - 1, previous + 1))} disabled={currentIdx >= totalQuestions - 1}>Next<IconArrowRight className="ml-1 size-3.5" /></Button></div></div>
+          </CardContent></Card>
+          <div className="rounded-2xl border bg-muted/20 p-4 text-xs text-muted-foreground"><div className="flex items-center gap-2 font-medium text-foreground"><IconClock className="size-4 text-primary" />Progress</div><Progress value={progressValue} className="mt-3 h-1.5" /><p className="mt-3 leading-6">Your answers remain in this session until you submit the assessment.</p></div>
         </div>
       </div>
-    </div>
+    </main>
   )
 }
