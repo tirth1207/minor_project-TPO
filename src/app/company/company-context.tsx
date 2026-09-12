@@ -154,7 +154,7 @@ const CompanyContext = React.createContext<CompanyContextType | undefined>(undef
 
 export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = React.useMemo(() => createClient(), [])
 
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
@@ -209,8 +209,8 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       setJobs(jobsData.jobs || [])
       setCompanyStatus(jobsData.company_status || "PENDING")
 
-      if (jobsData.jobs && jobsData.jobs.length > 0 && !selectedJob) {
-        setSelectedJob(jobsData.jobs[0])
+      if (jobsData.jobs && jobsData.jobs.length > 0) {
+        setSelectedJob((current) => current ?? jobsData.jobs[0])
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong loading dashboard data")
@@ -218,7 +218,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [router, supabase, selectedJob])
+  }, [router, supabase])
 
   const fetchApplicants = React.useCallback(async () => {
     if (!selectedJob) {
