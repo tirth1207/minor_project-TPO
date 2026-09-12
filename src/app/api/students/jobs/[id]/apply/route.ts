@@ -129,49 +129,64 @@ export async function POST(
       jobSpecificMockScore = bestScore
     }
 
-    const { data: application, error: appError } = await supabase
-      .from("applications")
-      .insert({
-        student_id: studentId,
-        job_college_map_id: id,
-        mock_score: jobSpecificMockScore,
-        status: "APPLIED",
-      })
-      .select()
-      .single()
-
-    if (appError) {
-      if (appError.code === "23505") {
-        return NextResponse.json({ error: "You have already applied for this job." }, { status: 400 })
-      }
-      return NextResponse.json({ error: appError.message }, { status: 400 })
-    }
-
-    let jobRounds = []
+    let jobRounds: unknown = []
     try {
       jobRounds = typeof job.rounds === "string" ? JSON.parse(job.rounds) : job.rounds
     } catch {
       jobRounds = job.rounds || []
     }
 
-    const roundsToInsert = (Array.isArray(jobRounds) && jobRounds.length > 0)
-      ? jobRounds.map((r: any) => ({
-          application_id: application.id,
-          round_name: typeof r === "string" ? r : (r.name || "Interview Round"),
-          status: "PENDING",
-        }))
-      : [
-          { application_id: application.id, round_name: "Resume Screening", status: "PENDING" },
-          { application_id: application.id, round_name: "Technical Interview", status: "PENDING" },
-          { application_id: application.id, round_name: "HR Round", status: "PENDING" },
-        ]
+    const roundNames = (Array.isArray(jobRounds) && jobRounds.length > 0)
+      ? jobRounds.map((round: unknown) => {
+          if (typeof round === "string") return round
+          if (round && typeof round === "object" && "name" in round) {
+            const name = (round as { name?: unknown }).name
+            return typeof name === "string" ? name : "Interview Round"
+          }
+          return "Interview Round"
+        })
+      : []
 
-    await supabase.from("application_rounds").insert(roundsToInsert)
+    const { data: applicationId, error: applicationError } = await supabase.rpc(
+      "create_student_application",
+      {
+        p_student_id: studentId,
+        p_job_college_map_id: id,
+        p_mock_score: jobSpecificMockScore,
+        p_round_names: roundNames,
+      }
+    )
+
+    if (applicationError || !applicationId) {
+      if (applicationError?.code === "23505") {
+        return NextResponse.json({ error: "You have already applied for this job." }, { status: 400 })
+      }
+      console.error("Atomic student application creation failed", applicationError)
+      return NextResponse.json(
+        { error: "Unable to create your application. Please try again." },
+        { status: 400 }
+      )
+    }
+
+    const { data: application, error: applicationFetchError } = await supabase
+      .from("applications")
+      .select()
+      .eq("id", applicationId)
+      .single()
+
+    if (applicationFetchError || !application) {
+      console.error("Application was created but could not be read back", applicationFetchError)
+      return NextResponse.json(
+        { error: "Application was created, but we could not load it. Please refresh your applications." },
+        { status: 500 }
+      )
+    }
 
     return NextResponse.json({ application, message: "Applied successfully!" }, { status: 201 })
   } catch (error: any) {
+    console.error("Student application request failed", error)
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred" },
+      { error: "An unexpected error occurred" },
       { status: 500 }
     )
   }
