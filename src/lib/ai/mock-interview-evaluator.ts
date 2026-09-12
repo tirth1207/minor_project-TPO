@@ -21,6 +21,46 @@ type EvaluationPayload = {
   expectedConcepts?: string[]
 }
 
+type RawQuestionEvaluation = {
+  questionId: string
+  pointsEarned: number
+  verdict: "strong" | "partial" | "needs-work"
+  feedback: string
+  strengths: string[]
+  improvements: string[]
+}
+
+const VALID_VERDICTS = new Set<RawQuestionEvaluation["verdict"]>([
+  "strong",
+  "partial",
+  "needs-work",
+])
+
+function isRawQuestionEvaluation(value: unknown): value is RawQuestionEvaluation {
+  if (!value || typeof value !== "object") return false
+
+  const candidate = value as Record<string, unknown>
+  const questionId = candidate.questionId
+  const pointsEarned = candidate.pointsEarned
+  const verdict = candidate.verdict
+  const feedback = candidate.feedback
+  const strengths = candidate.strengths
+  const improvements = candidate.improvements
+
+  return (
+    typeof questionId === "string" &&
+    questionId.trim().length > 0 &&
+    Number.isFinite(Number(pointsEarned)) &&
+    typeof verdict === "string" &&
+    VALID_VERDICTS.has(verdict as RawQuestionEvaluation["verdict"]) &&
+    typeof feedback === "string" &&
+    Array.isArray(strengths) &&
+    strengths.every((item) => typeof item === "string") &&
+    Array.isArray(improvements) &&
+    improvements.every((item) => typeof item === "string")
+  )
+}
+
 function buildEvaluationPayload(
   questions: MockInterviewQuestion[],
   answerMap: Map<string, StudentAnswer>
@@ -42,13 +82,17 @@ function buildEvaluationPayload(
   })
 }
 
-async function requestEvaluations(payload: EvaluationPayload[], attemptLabel: string): Promise<any[]> {
+async function requestEvaluations(payload: EvaluationPayload[], attemptLabel: string): Promise<RawQuestionEvaluation[]> {
   const ids = payload.map((item) => item.id)
 
-  const systemPrompt = `You are an expert technical interviewer evaluating candidate answers (THEORY and CODE).
-Evaluate objectively using correctness, technical reasoning, edge cases, and code quality.
+  const systemPrompt = `You are an expert interviewer evaluating candidate answers across THEORY, CODE, and BEHAVIORAL questions.
+Evaluate objectively and conservatively using the question type and supplied rubric.
+
+For THEORY questions, evaluate factual correctness, conceptual understanding, reasoning, and relevant edge cases.
+For CODE questions, evaluate syntax, logic, correctness, code quality, and edge cases. Do not claim runtime execution or test results that were not actually provided.
+For BEHAVIORAL questions, evaluate communication, clarity, ownership, specificity, structure, reflection, and the quality of the situation/action/result described. Prefer evidence-based answers and STAR-style structure, but do not require the candidate to literally label STAR sections. Do not penalize a behavioral answer for lacking technical details unless the question explicitly requires them.
+
 Do not award points merely because an answer contains text. An unanswered or invalid response must receive 0 points.
-For CODE questions, do not claim runtime execution or test results that were not actually provided. Evaluate conservatively for syntax, logic, correctness and edge cases.
 
 Return ONLY valid JSON in exactly this shape:
 {"evaluations":[{"questionId":"...","pointsEarned":0,"verdict":"strong|partial|needs-work","feedback":"...","strengths":[],"improvements":[]}]}
@@ -58,8 +102,9 @@ CRITICAL CONTRACT:
 - Return exactly ONE evaluation for EACH supplied ID.
 - Never omit an ID.
 - Never invent an ID.
+- Preserve each question's type when applying its rubric.
 - Keep feedback concise so the complete JSON fits in the response.
-- If the student did not answer, give 0 points.
+- If the student did not answer, give 0 points and explain that no answer was provided.
 `
 
   const userPrompt = `Evaluate ONLY these candidate responses. Do not evaluate any other questions.\n${JSON.stringify(payload, null, 2)}`
@@ -76,14 +121,23 @@ CRITICAL CONTRACT:
     if (!raw) throw new Error("AI evaluator returned an empty response")
 
     const parsed = cleanAndParseJson(raw)
-    const evals = parsed?.evaluations || (Array.isArray(parsed) ? parsed : [])
-    if (!Array.isArray(evals)) throw new Error("AI evaluator returned an invalid evaluations array")
+    const rawEvaluations = parsed?.evaluations || (Array.isArray(parsed) ? parsed : [])
+    if (!Array.isArray(rawEvaluations)) {
+      throw new Error("AI evaluator returned an invalid evaluations array")
+    }
 
-    console.log(`[AI Evaluation] ${attemptLabel} returned ${evals.length}/${payload.length} evaluations`)
+    const evals = rawEvaluations.filter(isRawQuestionEvaluation)
+    const rejectedCount = rawEvaluations.length - evals.length
+    if (rejectedCount > 0) {
+      console.warn(`[AI Evaluation] ${attemptLabel} rejected ${rejectedCount} malformed evaluation object(s)`)
+    }
+
+    console.log(`[AI Evaluation] ${attemptLabel} returned ${evals.length}/${payload.length} valid evaluations`)
     return evals
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(`[AI Evaluation] ${attemptLabel} failed:`, err)
-    throw new Error(`AI evaluation failed: ${err?.message || "Evaluator unavailable"}`)
+    const message = err instanceof Error ? err.message : "Evaluator unavailable"
+    throw new Error(`AI evaluation failed: ${message}`)
   }
 }
 
@@ -91,10 +145,10 @@ function appendEvaluation(
   questionEvaluations: QuestionEvaluation[],
   seen: Set<string>,
   questions: MockInterviewQuestion[],
-  evals: any[]
+  evals: RawQuestionEvaluation[]
 ) {
   for (const ev of evals) {
-    const questionId = String(ev?.questionId || "")
+    const questionId = ev.questionId.trim()
     const matchedQ = questions.find((q) => q.id === questionId)
     if (!matchedQ || seen.has(questionId)) continue
 
@@ -105,21 +159,22 @@ function appendEvaluation(
       ? Math.min(possible, Math.max(0, Math.round(numericEarned)))
       : 0
 
+    const verdict =
+      earned >= possible * 0.75
+        ? "strong"
+        : earned >= possible * 0.4
+          ? "partial"
+          : "needs-work"
+
     questionEvaluations.push({
       questionId: matchedQ.id,
       type: matchedQ.type,
       pointsPossible: possible,
       pointsEarned: earned,
-      verdict:
-        ev.verdict ||
-        (earned >= possible * 0.75
-          ? "strong"
-          : earned >= possible * 0.4
-            ? "partial"
-            : "needs-work"),
-      feedback: typeof ev.feedback === "string" ? ev.feedback : "Response evaluated.",
-      strengths: Array.isArray(ev.strengths) ? ev.strengths.filter(Boolean) : [],
-      improvements: Array.isArray(ev.improvements) ? ev.improvements.filter(Boolean) : [],
+      verdict,
+      feedback: ev.feedback.trim() || "Response evaluated.",
+      strengths: ev.strengths.map((item) => item.trim()).filter(Boolean),
+      improvements: ev.improvements.map((item) => item.trim()).filter(Boolean),
     })
   }
 }
