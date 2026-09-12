@@ -300,15 +300,18 @@ export async function callNvidiaChat(
     process.env.AI_FALLBACK_PROVIDER?.trim().toLowerCase() || "gemini";
 
   if (fallbackProvider === "gemini") {
+    const fallbackMaxTokens = Math.min(Math.max(maxTokens, 12000), 16000);
+
     console.warn(
       `[AI Provider] NVIDIA exhausted its retries. Falling back to Gemini ` +
-        `(${process.env.GEMINI_MODEL || "gemini-3.5-flash"}).`
+        `(${process.env.GEMINI_MODEL || "gemini-3.5-flash"}) with ` +
+        `maxOutputTokens=${fallbackMaxTokens}.`
     );
 
     try {
       return await callGeminiChat(messages, {
         timeoutMs,
-        maxTokens,
+        maxTokens: fallbackMaxTokens,
       });
     } catch (geminiError: any) {
       console.error(
