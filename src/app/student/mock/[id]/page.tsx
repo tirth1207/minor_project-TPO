@@ -373,7 +373,7 @@ export default function StudentMockExecutionPage() {
               <CardContent className="space-y-3">
                 <div className="rounded-2xl bg-muted/40 p-4"><p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Job context</p><p className="mt-1 text-sm font-semibold">{mockSession?.job_spec_snapshot?.title || mockSession?.job_role_context || "Practice session"}</p><p className="mt-1 text-xs text-muted-foreground">{mockSession?.job_spec_snapshot?.companyName || "Practice interview"}</p></div>
                 <div className="grid grid-cols-2 gap-3"><StatCard label="Threshold" value={formatThreshold(passThreshold)} helper="Required" /><StatCard label="Attempt" value={String(mockSession?.attempt_number || 1)} helper="Saved number" /></div>
-                {(mockSession?.job_spec_snapshot?.skills || []).length > 0 && <div className="rounded-2xl bg-muted/40 p-4"><p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Focus</p><div className="mt-2 flex flex-wrap gap-1.5">{(mockSession.job_spec_snapshot?.skills || []).slice(0, 8).map((skill) => <Badge key={skill} variant="secondary" className="rounded-full text-[10px]">{skill}</Badge>)}</div></div>}
+                {(mockSession?.job_spec_snapshot?.skills || []).length > 0 && <div className="rounded-2xl bg-muted/40 p-4"><p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Focus</p><div className="mt-2 flex flex-wrap gap-1.5">{(mockSession?.job_spec_snapshot?.skills || []).slice(0, 8).map((skill) => <Badge key={skill} variant="secondary" className="rounded-full text-[10px]">{skill}</Badge>)}</div></div>}
               </CardContent>
             </Card>
           </section>
