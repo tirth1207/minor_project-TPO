@@ -64,8 +64,7 @@ export async function GET() {
       `)
       .eq("org_id", orgId)
       .eq("local_status", "APPROVED")
-    console.log("[Career Roadmap] Eligible job mappings fetched:", mappings)
-    console.log("[Career Roadmap] Eligible job mappings fetch error:", jobsError)
+
     if (jobsError) {
       return NextResponse.json({ success: false, code: "JOBS_FETCH_FAILED", error: "Unable to load placement opportunities" }, { status: 500 })
     }
@@ -147,13 +146,17 @@ export async function GET() {
 
     if (cacheError) {
       console.error("[Career Roadmap] Cache persistence failed:", cacheError)
+      return NextResponse.json(
+        { success: false, code: "CACHE_PERSIST_FAILED", error: "Unable to save career roadmap" },
+        { status: 503 }
+      )
     }
 
     return NextResponse.json({
       success: true,
       data: { roadmap: roadmapData, generatedAt: nowIso, cached: false },
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("[Career Roadmap] Endpoint error:", err)
     return NextResponse.json(
       { success: false, code: "GENERATION_FAILED", error: "Failed to generate career roadmap" },
