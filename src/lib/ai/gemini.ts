@@ -191,12 +191,6 @@ export async function callGeminiChat(
       throw error
     }
 
-    console.log(
-      `[Gemini AI] Model: ${model} | Duration: ${durationMs}ms | ` +
-        `Finish: ${finishReason ?? "unknown"} | ` +
-        `Completion tokens: ${completion.usage?.completion_tokens ?? "unknown"}`
-    )
-
     return completion
   } catch (error: unknown) {
     const normalized = normalizeGeminiError(error)
