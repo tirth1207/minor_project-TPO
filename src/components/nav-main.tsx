@@ -26,9 +26,11 @@ export function NavMain({
     url: string
     icon: React.ReactNode
     isActive?: boolean
+    "data-testid"?: string
     items?: {
       title: string
       url: string
+      "data-testid"?: string
     }[]
   }[]
 }) {
@@ -45,9 +47,10 @@ export function NavMain({
             <SidebarMenuButton
               tooltip={item.title}
               render={<a href={item.url} />}
+              "data-testid": item["data-testid"]
             >
               {item.icon}
-              <span>{item.title}</span>
+              <span{"data-testid": item["data-testid"]}>{item.title}</span>
             </SidebarMenuButton>
             {item.items?.length ? (
               <>
@@ -64,8 +67,10 @@ export function NavMain({
                   <SidebarMenuSub>
                     {item.items?.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
-                        <SidebarMenuSubButton render={<a href={subItem.url} />}>
-                          <span>{subItem.title}</span>
+                        <SidebarMenuSubButton render={<a href={subItem.url} />}
+                          "data-testid": subItem["data-testid"]
+                        >
+                          <span{"data-testid": subItem["data-testid"]}>{subItem.title}</span>
                         </SidebarMenuSubButton>
                       </SidebarMenuSubItem>
                     ))}

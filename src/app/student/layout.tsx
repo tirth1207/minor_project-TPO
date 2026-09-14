@@ -103,6 +103,7 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
       url: "/student/jobs",
       icon: <IconBriefcase className="size-4" />,
       isActive: pathname === "/student/jobs",
+      "data-testid": "sidebar-eligible-jobs",
     },
     {
       title: "My Applications",
@@ -127,20 +128,24 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
       url: "/student/profile",
       icon: <IconUser className="size-4" />,
       isActive: pathname === "/student/profile",
+      "data-testid": "sidebar-candidate-profile",
     },
     {
       title: "Help",
       url: "/student/settings",
       icon: <IconSettings className="size-4" />,
       isActive: pathname === "/student/settings",
+      "data-testid": "sidebar-help",
       items: [
         {
           title: "Support",
           url: "/support",
+          "data-testid": "sidebar-help-support",
         },
         {
           title: "Feedback",
           url: "/feedback",
+          "data-testid": "sidebar-help-feedback",
         },
       ],
     },
