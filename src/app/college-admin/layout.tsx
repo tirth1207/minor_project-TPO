@@ -31,6 +31,7 @@ import {
   IconLifebuoy,
   IconSend,
   IconUser,
+  IconSettings,
 } from "@tabler/icons-react"
 
 function CollegeAdminDashboardShell({ children }: { children: React.ReactNode }) {
@@ -127,20 +128,25 @@ function CollegeAdminDashboardShell({ children }: { children: React.ReactNode })
           title: "Student Roster",
           url: "/college-admin/students",
           icon: <IconUser className="size-4" />,
-        }
+        },
+        {
+          title: "Help",
+          url: "/college-admin/settings",
+          icon: <IconSettings className="size-4" />,
+          isActive: pathname === "/college-admin/settings",
+          items: [
+            {
+              title: "Support",
+              url: "/support",
+            },
+            {
+              title: "Feedback",
+              url: "/feedback",
+            },
+          ],
+        },
       ]
-    const navSecondary = [
-      {
-        title: "Support",
-        url: "/support",
-        icon: <IconLifebuoy className="size-4" />,
-      },
-      {
-        title: "Feedback",
-        url: "/feedback",
-        icon: <IconSend className="size-4" />,
-      },
-    ]
+    const navSecondary = []
   return (
     <SidebarProvider>
       <AppSidebar 
