@@ -241,18 +241,6 @@ export async function callNvidiaChat(
     );
 
     if (result.success && result.completion) {
-      const choice = result.completion.choices?.[0];
-
-      console.log(
-        `[NVIDIA AI] Model: ${model} | ` +
-          `Attempt ${attempt}/${maxAttempts} succeeded | ` +
-          `Duration: ${result.durationMs}ms | ` +
-          `Finish: ${choice?.finish_reason ?? "unknown"} | ` +
-          `Completion tokens: ${
-            result.completion.usage?.completion_tokens ?? "unknown"
-          }`
-      );
-
       return result.completion;
     }
 
