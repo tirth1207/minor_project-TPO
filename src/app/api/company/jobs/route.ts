@@ -54,7 +54,7 @@ export async function GET() {
     }
 
     const normalizedJobs =
-      jobs?.map((job: any) => ({
+      jobs?.map((job) => ({
         ...job,
         branches:
           job.branches?.map(
@@ -99,6 +99,8 @@ export async function POST(request: Request) {
       location,
       workMode,
       package: ctc,
+      ctc_min: bodyCtcMin,
+      ctc_max: bodyCtcMax,
       minCgpa,
       maxBacklogs,
       requireMock,
@@ -125,14 +127,43 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid work mode" }, { status: 400 })
     }
 
-    const parsedCtc = ctc ? Number(ctc) : null
+    const parseOptionalNonNegativeNumber = (value: unknown) => {
+      if (value === null || value === undefined || value === "") return null
+      const parsed = Number(value)
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : Number.NaN
+    }
+
+    const parsedLegacyCtc = parseOptionalNonNegativeNumber(ctc)
+    const parsedCtcMin = parseOptionalNonNegativeNumber(bodyCtcMin)
+    const parsedCtcMax = parseOptionalNonNegativeNumber(bodyCtcMax)
+
+    if (Number.isNaN(parsedLegacyCtc)) {
+      return NextResponse.json({ error: "Invalid CTC" }, { status: 400 })
+    }
+
+    if (Number.isNaN(parsedCtcMin) || Number.isNaN(parsedCtcMax)) {
+      return NextResponse.json({ error: "Invalid CTC range" }, { status: 400 })
+    }
+
+    // The current UI sends ctc_min/ctc_max. Keep the legacy `package`/`ctc`
+    // payload supported for older clients by treating it as a single-value range.
+    const resolvedCtcMin = parsedCtcMin ?? parsedLegacyCtc
+    const resolvedCtcMax = parsedCtcMax ?? parsedLegacyCtc
+
+    if (
+      resolvedCtcMin !== null &&
+      resolvedCtcMax !== null &&
+      resolvedCtcMax < resolvedCtcMin
+    ) {
+      return NextResponse.json(
+        { error: "Maximum CTC cannot be lower than minimum CTC" },
+        { status: 400 }
+      )
+    }
+
     const parsedMinCgpa = minCgpa === null || minCgpa === undefined || minCgpa === "" ? 0 : Number(minCgpa)
     const parsedMaxBacklogs = maxBacklogs === null || maxBacklogs === undefined || maxBacklogs === "" ? 0 : Number(maxBacklogs)
     const parsedMockScore = requireMock ? Number(mockPassScore ?? 50) : 50
-
-    if (parsedCtc !== null && (!Number.isFinite(parsedCtc) || parsedCtc < 0)) {
-      return NextResponse.json({ error: "Invalid CTC" }, { status: 400 })
-    }
 
     if (!Number.isFinite(parsedMinCgpa) || parsedMinCgpa < 0 || parsedMinCgpa > 10) {
       return NextResponse.json({ error: "Minimum CGPA must be between 0 and 10" }, { status: 400 })
@@ -181,8 +212,8 @@ export async function POST(request: Request) {
         description: description.trim(),
         location: location.trim(),
         work_mode: actualWorkMode,
-        ctc_min: parsedCtc,
-        ctc_max: parsedCtc,
+        ctc_min: resolvedCtcMin,
+        ctc_max: resolvedCtcMax,
         min_cgpa: parsedMinCgpa,
         max_backlogs: parsedMaxBacklogs,
         require_mock: Boolean(requireMock),
