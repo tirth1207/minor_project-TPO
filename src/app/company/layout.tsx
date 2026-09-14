@@ -33,6 +33,7 @@ import {
   IconPlus,
   IconRefresh,
   IconSend,
+  IconSettings,
   IconUsers,
 } from "@tabler/icons-react"
 
@@ -147,20 +148,25 @@ function CompanyDashboardShell({
         pathname === "/company/applicants" ||
         pathname.startsWith("/company/applicants/"),
     },
+    {
+      title: "Help",
+      url: "/company/settings",
+      icon: <IconSettings className="size-4" />,
+      isActive: pathname === "/company/settings",
+      items: [
+        {
+          title: "Support",
+          url: "/support",
+        },
+        {
+          title: "Feedback",
+          url: "/feedback",
+        },
+      ],
+    },
   ]
 
-  const navSecondary = [
-    {
-      title: "Support",
-      url: "/support",
-      icon: <IconLifebuoy className="size-4" />,
-    },
-    {
-      title: "Feedback",
-      url: "/feedback",
-      icon: <IconSend className="size-4" />,
-    },
-  ]
+  const navSecondary = []
 
   // ---------------------------------------------------------
   // Breadcrumb
