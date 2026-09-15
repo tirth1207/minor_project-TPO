@@ -36,7 +36,6 @@ import {
 
 export default function CompanyJobsPage() {
   const { jobs, fetchData } = useCompany()
-  console.log(jobs)
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)

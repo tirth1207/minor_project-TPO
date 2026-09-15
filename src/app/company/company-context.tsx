@@ -141,6 +141,7 @@ interface CompanyContextType {
   extendCtcValues: Record<string, string>
   setExtendCtcValues: React.Dispatch<React.SetStateAction<Record<string, string>>>
   fetchData: (isRefresh?: boolean) => Promise<void>
+  notification: () => Promise<void>
   fetchApplicants: () => Promise<void>
   handleCreateJob: (e: React.FormEvent) => Promise<void>
   handleShortlistApplicant: (appId: string) => Promise<void>
@@ -174,6 +175,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [minCgpa, setMinCgpa] = React.useState("6.00")
   const [maxBacklogs, setMaxBacklogs] = React.useState("0")
   const [requireMock, setRequireMock] = React.useState(false)
+  const [notification,setNotification]= React.useState([])
   const [mockPassScore, setMockPassScore] = React.useState("50")
   const [branches, setBranches] = React.useState<string[]>([])
   const [postingJob, setPostingJob] = React.useState(false)
@@ -267,7 +269,22 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  const fetchNotification = React.useCallback(async () => {
+    try{
+      const res = await fetch("/api/notifications", {method: "GET"})
+      const data = await res.json()
+      if(!res.ok){
+        setNotification([])
+        return
+      }
+      setNotification(data)
+    } catch {
+      setNotification([])
+    }
+  },[])
+
   React.useEffect(() => { fetchData() }, [fetchData])
+  React.useEffect(() => { fetchNotification(), [fetchNotification]})
   React.useEffect(() => { fetchApplicants() }, [fetchApplicants])
   React.useEffect(() => { fetchAllApplicants() }, [fetchAllApplicants])
   React.useEffect(() => { fetchOffers() }, [fetchOffers])
@@ -334,7 +351,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     await fetchOffers()
   }
 
-  return <CompanyContext.Provider value={{ loading, refreshing, error, jobs, companyStatus, selectedJob, setSelectedJob, applicants, offers, jobTitle, setJobTitle, jobDesc, setJobDesc, jobLocation, setJobLocation, workMode, setWorkMode, ctc, setCtc, minCgpa, setMinCgpa, maxBacklogs, setMaxBacklogs, requireMock, setRequireMock, mockPassScore, setMockPassScore, branches, setBranches, postingJob, selectedApplicantIds, setSelectedApplicantIds, extendCtcValues, setExtendCtcValues, fetchData, fetchApplicants, handleCreateJob, handleShortlistApplicant, handleBulkShortlist, handleExtendOffer, handleRevokeOffer, allApplicants, fetchAllApplicants }}>{children}</CompanyContext.Provider>
+  return <CompanyContext.Provider value={{ loading, refreshing, error, jobs, companyStatus, selectedJob, setSelectedJob, applicants, offers, jobTitle, setJobTitle,notification, jobDesc, setJobDesc, jobLocation, setJobLocation, workMode, setWorkMode, ctc, setCtc, minCgpa, setMinCgpa, maxBacklogs, setMaxBacklogs, requireMock, setRequireMock, mockPassScore, setMockPassScore, branches, setBranches, postingJob, selectedApplicantIds, setSelectedApplicantIds, extendCtcValues, setExtendCtcValues, fetchData, fetchApplicants, handleCreateJob, handleShortlistApplicant, handleBulkShortlist, handleExtendOffer, handleRevokeOffer, allApplicants, fetchAllApplicants }}>{children}</CompanyContext.Provider>
 }
 
 export function useCompany() {
