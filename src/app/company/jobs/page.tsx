@@ -36,7 +36,7 @@ import {
 
 export default function CompanyJobsPage() {
   const { jobs, fetchData } = useCompany()
-
+  console.log(jobs)
   const [dialogOpen, setDialogOpen] = React.useState(false)
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -356,9 +356,7 @@ export default function CompanyJobsPage() {
 
                           <td className="px-4 py-4 text-center align-top">
                             <div className="inline-flex min-w-8 items-center justify-center rounded-md border bg-muted/30 px-2 py-1 text-xs font-semibold">
-                              {job.applicant_count ??
-                                job.applications_count ??
-                                0}
+                              {job.college_mappings?.reduce( (total:any, mapping:any) => total + (mapping.applications?.length ?? 0), 0 ) ?? 0}
                             </div>
                           </td>
 

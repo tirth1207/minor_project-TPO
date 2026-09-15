@@ -43,18 +43,24 @@ export async function GET() {
         *,
         branches:job_eligible_branches(
           branch_name
+        ),
+        college_mappings:job_college_mappings(
+          *,
+          applications:applications(
+            *
+          )
         )
       `)
       .eq("company_id", companyProfile.id)
       .order("id", { ascending: false })
-
+      
     if (jobsError) {
       console.error("Failed to load company jobs:", jobsError)
       return NextResponse.json({ error: "Failed to load jobs" }, { status: 500 })
     }
 
     const normalizedJobs =
-      jobs?.map((job) => ({
+      jobs?.map((job:any) => ({
         ...job,
         branches:
           job.branches?.map(

@@ -20,6 +20,7 @@ export interface JobPosting {
   applicant_count: number
   applications_count: number
   branches: string[]
+  college_mappings: Applicant[]
 }
 
 export interface Applicant {
