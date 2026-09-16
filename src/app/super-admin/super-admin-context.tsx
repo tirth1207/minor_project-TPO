@@ -95,7 +95,7 @@ const SuperAdminContext = React.createContext<SuperAdminContextType | undefined>
 export function SuperAdminProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const supabase = createClient()
-  const [notifications, setNotifications] = React.useState<any[]>([])
+  const [notifications, setNotifications] = React.useState<any>()
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)

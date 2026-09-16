@@ -121,7 +121,7 @@ export function NotificationCenter() {
             void load()
           }
         )
-        .subscribe((status) => {
+        .subscribe((status:any) => {
           if (status === "CHANNEL_ERROR") {
             console.warn("Notification realtime subscription failed")
           }
