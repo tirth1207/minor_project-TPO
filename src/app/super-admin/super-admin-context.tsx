@@ -87,6 +87,7 @@ interface SuperAdminContextType {
   handleUpdateJobStatus: (jobId: string, status: "APPROVED" | "PENDING" | "REJECTED") => Promise<void>
   handleCreateCollege: (e: React.FormEvent) => Promise<void>
   handleCreateDept: (e: React.FormEvent) => Promise<void>
+  notifications : () => Promise<void>
 }
 
 const SuperAdminContext = React.createContext<SuperAdminContextType | undefined>(undefined)
@@ -94,7 +95,7 @@ const SuperAdminContext = React.createContext<SuperAdminContextType | undefined>
 export function SuperAdminProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const supabase = createClient()
-
+  const [notifications, setNotifications] = React.useState<any[]>([])
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -175,10 +176,23 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       setRefreshing(false)
     }
   }, [router, supabase])
+  const fetchNotifications = React.useCallback(async () => {
+    try {
+      const res = await fetch("/api/notifications")
+      if (!res.ok) throw new Error("Failed to fetch notifications")
+      const data = await res.json()
+      setNotifications(data)
+    } catch (error) {
+      console.error("Error fetching notifications:", error)
+    }
+  }, [])
 
   React.useEffect(() => {
     fetchData()
   }, [fetchData])
+  React.useEffect(() => {
+    fetchNotifications()
+  }, [fetchNotifications])
 
   const handleUpdateOrgStatus = async (orgId: string, status: "ACTIVE" | "PENDING" | "REJECTED") => {
     try {
@@ -355,6 +369,7 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
         handleUpdateJobStatus,
         handleCreateCollege,
         handleCreateDept,
+        notifications
       }}
     >
       {children}

@@ -144,7 +144,7 @@ interface CollegeAdminContextType {
 
   selectedDeptId: string
   setSelectedDeptId: (value: string) => void
-
+  notifications: any[]
   generatingInvite: boolean
 
   latestInviteUrl: string | null
@@ -228,7 +228,8 @@ export function CollegeAdminProvider({
 
   const [mentors, setMentors] =
     React.useState<Mentor[]>([])
-
+  const [notifications, setNotifications] =
+    React.useState<any[]>([])
   const [orgStatus, setOrgStatus] =
     React.useState<ApprovalStatus>("PENDING")
 
@@ -473,6 +474,7 @@ export function CollegeAdminProvider({
           jobsResponse,
           studentsResponse,
           mentorsResponse,
+          notifications
         ] = await Promise.all([
           fetch(
             "/api/college-admin/departments",
@@ -507,6 +509,12 @@ export function CollegeAdminProvider({
               cache: "no-store",
             }
           ),
+          fetch(
+            "/api/notifications",
+            {
+              cache: "no-store",
+            }
+          )
         ])
 
         const [
@@ -515,12 +523,14 @@ export function CollegeAdminProvider({
           jobsData,
           studentsData,
           mentorsData,
+          notificationsData
         ] = await Promise.all([
           readResponse(departmentsResponse),
           readResponse(invitesResponse),
           readResponse(jobsResponse),
           readResponse(studentsResponse),
           readResponse(mentorsResponse),
+          readResponse(notifications)
         ])
 
         setDepartments(
@@ -541,6 +551,9 @@ export function CollegeAdminProvider({
 
         setMentors(
           mentorsData.mentors ?? []
+        )
+        setNotifications(
+          notificationsData ?? []
         )
       } catch (err) {
         console.error(
@@ -842,6 +855,7 @@ export function CollegeAdminProvider({
         handleGenerateInvite,
         handleUpdateJobStatus,
         handleCopyLink,
+        notifications
       }}
     >
       {children}
