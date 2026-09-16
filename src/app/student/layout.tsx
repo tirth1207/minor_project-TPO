@@ -103,6 +103,11 @@ function StudentDashboardShell({
     }
   }, [loading, pathname, profile, router])
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    router.push("/login")
+  }
+
   const studentNavMains = React.useMemo(
     () => [
       {
@@ -285,10 +290,6 @@ function StudentDashboardShell({
       </SidebarInset>
     </SidebarProvider>
   )
-}
-
-function handleLogout() {
-  return undefined
 }
 
 export default function StudentLayout({
