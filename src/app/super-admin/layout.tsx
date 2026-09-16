@@ -274,7 +274,7 @@ function SuperAdminDashboardShell({
                   >
                     <div className="flex justify-between">
                       <span className="text-xs font-medium text-muted-foreground">
-                        {label}
+                        {label.toString()}
                       </span>
                       {React.createElement(
                         Icon as React.ElementType,
