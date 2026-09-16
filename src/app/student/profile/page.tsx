@@ -499,7 +499,7 @@ export default function StudentProfilePage() {
             >
               <Select
                 value={editSemester}
-                onValueChange={(value) => setEditSemester(value)}
+                onValueChange={(value) => setEditSemester(value || "")}
               >
                 <SelectTrigger
                   className={inputClass("semester")}
