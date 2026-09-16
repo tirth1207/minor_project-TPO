@@ -1,4 +1,7 @@
+"use client"
+
 import * as React from "react"
+import { usePathname, useRouter } from "next/navigation"
 import { mergeProps } from "@base-ui/react/merge-props"
 import { useRender } from "@base-ui/react/use-render"
 
@@ -42,13 +45,30 @@ function BreadcrumbItem({ className, ...props }: React.ComponentProps<"li">) {
 function BreadcrumbLink({
   className,
   render,
+  onClick,
+  href,
   ...props
 }: useRender.ComponentProps<"a">) {
+  const pathname = usePathname()
+  const router = useRouter()
+  const isPlaceholder = href === "#"
+
+  const handleClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isPlaceholder) {
+      event.preventDefault()
+      const [root] = pathname.split("/").filter(Boolean)
+      if (root) router.push(`/${root}`)
+    }
+    onClick?.(event)
+  }
+
   return useRender({
     defaultTagName: "a",
     props: mergeProps<"a">(
       {
-        className: cn("transition-colors hover:text-foreground", className),
+        href: isPlaceholder ? (pathname === "/" ? "/" : `/${pathname.split("/").filter(Boolean)[0]}`) : href,
+        onClick: handleClick,
+        className: cn("cursor-pointer transition-colors hover:text-foreground", className),
       },
       props
     ),
@@ -85,9 +105,7 @@ function BreadcrumbSeparator({
       className={cn("[&>svg]:size-3.5", className)}
       {...props}
     >
-      {children ?? (
-        <IconChevronRight />
-      )}
+      {children ?? <IconChevronRight />}
     </li>
   )
 }
@@ -107,8 +125,7 @@ function BreadcrumbEllipsis({
       )}
       {...props}
     >
-      <IconDots
-      />
+      <IconDots />
       <span className="sr-only">More</span>
     </span>
   )
