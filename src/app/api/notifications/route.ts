@@ -51,18 +51,13 @@ export async function GET(request: Request) {
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
 
-    if (unreadOnly) {
-      query = query.eq("is_read", false)
-    }
+    if (unreadOnly) query = query.eq("is_read", false)
 
     const { data, error, count } = await query.range(offset, offset + limit - 1)
 
     if (error) {
       console.error("[NOTIFICATIONS GET]", error)
-      return NextResponse.json(
-        { error: "Unable to load notifications" },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: "Unable to load notifications" }, { status: 500 })
     }
 
     const total = count ?? 0
@@ -70,13 +65,45 @@ export async function GET(request: Request) {
     return NextResponse.json({
       notifications: data ?? [],
       count: total,
-      hasMore: total > offset + limit
+      hasMore: total > offset + limit,
     })
   } catch (error: unknown) {
     console.error("[NOTIFICATIONS GET]", error)
-    return NextResponse.json(
-      { error: "Unable to load notifications" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Unable to load notifications" }, { status: 500 })
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const auth = await requireUser()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
+    }
+
+    const { supabase, user } = auth
+    const body = await request.json().catch(() => ({}))
+
+    if (body.isRead !== true && body.isRead !== false) {
+      return NextResponse.json({ error: "isRead boolean is required" }, { status: 400 })
+    }
+
+    const { data, error } = await supabase
+      .from("notifications")
+      .update({ is_read: body.isRead })
+      .eq("user_id", user.id)
+      .select("id")
+
+    if (error) {
+      console.error("[NOTIFICATIONS PATCH]", error)
+      return NextResponse.json({ error: "Unable to update notifications" }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      updated: data?.length ?? 0,
+      message: `Notifications marked as ${body.isRead ? "read" : "unread"}`,
+    })
+  } catch (error: unknown) {
+    console.error("[NOTIFICATIONS PATCH]", error)
+    return NextResponse.json({ error: "Unable to update notifications" }, { status: 500 })
   }
 }
