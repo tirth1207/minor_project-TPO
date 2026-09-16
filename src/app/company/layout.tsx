@@ -16,29 +16,22 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb"
-
 import { Separator } from "@/components/ui/separator"
-
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-
 import {
   IconAlertCircle,
-  IconBell,
   IconBriefcase,
   IconChartArea,
   IconLifebuoy,
   IconLoader,
-  IconPlus,
   IconRefresh,
   IconSend,
   IconUsers,
 } from "@tabler/icons-react"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 
 function CompanyDashboardShell({
   children,
@@ -47,8 +40,8 @@ function CompanyDashboardShell({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-
   const supabase = React.useMemo(() => createClient(), [])
+
   const [user, setUser] = React.useState({
     name: "Loading...",
     email: "",
@@ -62,10 +55,6 @@ function CompanyDashboardShell({
     companyStatus,
     fetchData,
   } = useCompany()
-
-  // ---------------------------------------------------------
-  // User
-  // ---------------------------------------------------------
 
   React.useEffect(() => {
     async function fetchUser() {
@@ -82,9 +71,7 @@ function CompanyDashboardShell({
         }
 
         const data = await res.json()
-
         const email = data.user?.email ?? ""
-
         const name =
           data.companyProfile?.company_name ||
           email.split("@")[0] ||
@@ -98,24 +85,16 @@ function CompanyDashboardShell({
           )}`,
         })
       } catch (error) {
-        console.error(
-          "Error fetching company user:",
-          error
-        )
+        console.error("Error fetching company user:", error)
       }
     }
 
     fetchUser()
   }, [])
 
-  // ---------------------------------------------------------
-  // Logout
-  // ---------------------------------------------------------
-
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut()
-
       router.replace("/login")
       router.refresh()
     } catch (error) {
@@ -123,16 +102,13 @@ function CompanyDashboardShell({
     }
   }
 
-  // ---------------------------------------------------------
-  // Navigation
-  // ---------------------------------------------------------
-
   const navMain = [
     {
       title: "Dashboard",
       url: "/company",
       icon: <IconChartArea className="size-4" />,
-      isActive: pathname === "/company" || pathname.startsWith("/company"),
+      isActive:
+        pathname === "/company" || pathname.startsWith("/company"),
     },
     {
       title: "Posted Jobs",
@@ -165,13 +141,8 @@ function CompanyDashboardShell({
     },
   ]
 
-  // ---------------------------------------------------------
-  // Breadcrumb
-  // ---------------------------------------------------------
-
   const currentPage =
-    navMain.find((item) => item.isActive)?.title ??
-    "Dashboard"
+    navMain.find((item) => item.isActive)?.title ?? "Dashboard"
 
   return (
     <SidebarProvider>
@@ -185,11 +156,9 @@ function CompanyDashboardShell({
       />
 
       <SidebarInset>
-        {/* Header */}
         <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-100 px-6 dark:border-secondary">
           <div className="flex items-center gap-2">
             <SidebarTrigger className="-ml-1 text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50" />
-
             <Separator
               orientation="vertical"
               className="mr-2 data-vertical:h-4 data-vertical:self-auto"
@@ -202,13 +171,9 @@ function CompanyDashboardShell({
                     Corporate Partner
                   </BreadcrumbLink>
                 </BreadcrumbItem>
-
                 <BreadcrumbSeparator className="hidden md:block" />
-
                 <BreadcrumbItem>
-                  <BreadcrumbPage>
-                    {currentPage}
-                  </BreadcrumbPage>
+                  <BreadcrumbPage>{currentPage}</BreadcrumbPage>
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumb>
@@ -216,7 +181,7 @@ function CompanyDashboardShell({
 
           <div className="flex items-center gap-3">
             <NotificationCenter />
-<button
+            <button
               type="button"
               onClick={() => fetchData(true)}
               disabled={loading || refreshing}
@@ -232,50 +197,36 @@ function CompanyDashboardShell({
           </div>
         </header>
 
-        {/* Content */}
         <div className="flex flex-1 flex-col gap-6 p-6">
-          {/* Company approval status */}
           {companyStatus !== "ACTIVE" && (
             <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/40 p-4 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-400">
               <IconAlertCircle className="h-5 w-5 shrink-0" />
-
               <div>
                 <p className="font-bold">
                   Your corporate account is pending approval
                 </p>
-
                 <p className="mt-0.5 text-xs">
-                  Your dashboard features are restricted.
-                  You can browse, but cannot publish new job
-                  postings until the Super Admin verifies your
-                  corporate credentials.
+                  Your dashboard features are restricted. You can browse, but
+                  cannot publish new job postings until the Super Admin verifies
+                  your corporate credentials.
                 </p>
               </div>
             </div>
           )}
 
-          {/* Error */}
           {error && (
             <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/50 p-4 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400">
               <IconAlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-
               <div className="flex-1">
-                <p className="font-semibold">
-                  Failed to load data
-                </p>
-
-                <p className="mt-0.5 text-xs opacity-90">
-                  {error}
-                </p>
+                <p className="font-semibold">Failed to load data</p>
+                <p className="mt-0.5 text-xs opacity-90">{error}</p>
               </div>
             </div>
           )}
 
-          {/* Loading / Page */}
           {loading ? (
             <div className="flex min-h-[400px] flex-col items-center justify-center gap-2">
               <IconLoader className="h-8 w-8 animate-spin text-primary" />
-
               <span className="text-sm font-medium text-zinc-500">
                 Fetching corporate panel...
               </span>
@@ -296,9 +247,7 @@ export default function CompanyLayout({
 }) {
   return (
     <CompanyProvider>
-      <CompanyDashboardShell>
-        {children}
-      </CompanyDashboardShell>
+      <CompanyDashboardShell>{children}</CompanyDashboardShell>
     </CompanyProvider>
   )
 }
