@@ -279,7 +279,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       }
       setNotification(data)
     } catch {
-      setNotification([])
+      setNotification({ notifications: [], count: 0, hasMore: false })
     }
   },[])
 
