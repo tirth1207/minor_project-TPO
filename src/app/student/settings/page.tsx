@@ -1,17 +1,13 @@
 "use client"
 
 import * as React from "react"
-import { useStudent } from "../student-context"
 import { StudentCareerOnboardingDialog } from "@/components/student/career-onboarding-dialog"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { IconSparkles, IconTarget, IconCheck, IconEdit } from "@tabler/icons-react"
+import { IconTarget, IconEdit } from "@tabler/icons-react"
 
 export default function StudentSettingsPage() {
-  const { profile } = useStudent()
   const [careerProfile, setCareerProfile] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(true)
   const [onboardingOpen, setOnboardingOpen] = React.useState(false)

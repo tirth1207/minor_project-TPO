@@ -518,6 +518,7 @@ export default function CompanyApplicantsPage() {
                                     min="0"
                                     step="0.1"
                                     placeholder="CTC"
+                                    aria-label={`CTC offer amount for ${student?.name || "applicant"}`}
                                     value={
                                       extendCtcValues[
                                         applicant.id

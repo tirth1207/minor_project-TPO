@@ -372,6 +372,7 @@ export default function CompanyJobsPage() {
                               variant="ghost"
                               size="icon"
                               className="size-8"
+                              aria-label={`Options for ${job.title}`}
                             >
                               <IconDotsVertical className="size-4" />
                             </Button>
