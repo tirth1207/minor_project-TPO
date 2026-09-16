@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import {
   Avatar,
   AvatarFallback,
@@ -77,26 +78,22 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <IconSparkles
-                />
+                <IconSparkles />
                 Upgrade to Pro
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem>
-                <IconRosetteDiscountCheck
-                />
+                <IconRosetteDiscountCheck />
                 Account
               </DropdownMenuItem>
               <DropdownMenuItem>
-                <IconCreditCard
-                />
+                <IconCreditCard />
                 Billing
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <IconBell
-                />
+              <DropdownMenuItem render={<Link href="/notifications" />}>
+                <IconBell />
                 Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
@@ -105,8 +102,7 @@ export function NavUser({
               <ThemeToggle />
             </DropdownMenuItem>
             <DropdownMenuItem onClick={func}>
-              <IconLogout
-              />
+              <IconLogout />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>
