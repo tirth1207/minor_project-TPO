@@ -25,6 +25,7 @@ import {
   IconAlertCircle,
   IconBrain,
   IconBriefcase,
+  IconChartBar,
   IconCircleCheck,
   IconDashboard,
   IconExclamationCircle,
@@ -141,6 +142,12 @@ function StudentDashboardShell({
         isActive: pathname === "/student/roadmap",
       },
       {
+        title: "Career Analytics",
+        url: "/student/analytics",
+        icon: <IconChartBar className="size-4" />,
+        isActive: pathname === "/student/analytics",
+      },
+      {
         title: "Candidate Profile",
         url: "/student/profile",
         icon: <IconUser className="size-4" />,
@@ -177,9 +184,11 @@ function StudentDashboardShell({
             ? "My Applications"
             : pathname === "/student/roadmap"
               ? "AI Career Roadmap"
-              : pathname === "/student/settings"
-                ? "Career Preferences"
-                : "Interview Prep"
+              : pathname === "/student/analytics"
+                ? "Career Analytics"
+                : pathname === "/student/settings"
+                  ? "Career Preferences"
+                  : "Interview Prep"
 
   return (
     <SidebarProvider>
