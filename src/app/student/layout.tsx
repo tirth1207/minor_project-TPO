@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { AppSidebar } from "@/components/app-sidebar"
+import { NotificationCenter } from "@/components/notification-center"
 import { StudentProvider, useStudent } from "./student-context"
 import {
   Breadcrumb,
@@ -37,16 +38,11 @@ import {
   IconSettings,
   IconBell,
 } from "@tabler/icons-react"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Button } from "@/components/ui/button"
 
 function StudentDashboardShell({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
-  const {notification} = useStudent()
-  const unreadCount =
-  notification.notifications?.filter((item: any) => !item.is_read).length ?? 0
   const {
     loading,
     refreshing,
@@ -206,97 +202,8 @@ function StudentDashboardShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
-            <Popover>
-              <PopoverTrigger
-                render={
-                  <Button
-                    variant="secondary"
-                    className="relative"
-                  >
-                    <IconBell />
-
-                    {unreadCount > 0 && (
-                      <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </span>
-                    )}
-                  </Button>
-                }
-              />
-
-              <PopoverContent
-                align="end"
-                className="w-80 p-0"
-              >
-                <div className="border-b px-4 py-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">
-                      Notifications
-                    </h3>
-
-                    {unreadCount > 0 && (
-                      <span className="text-xs text-muted-foreground">
-                        {unreadCount} unread
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="max-h-96 overflow-y-auto">
-                  {notification.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center px-4 py-10 text-center">
-                      <IconBell className="mb-2 h-8 w-8 text-muted-foreground/50" />
-
-                      <p className="text-sm font-medium">
-                        No notifications
-                      </p>
-
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        You're all caught up.
-                      </p>
-                    </div>
-                  ) : (
-                    notification.notifications.map((item: any) => (
-                      <div
-                        key={item.id}
-                        className={`border-b px-4 py-3 last:border-b-0 ${
-                          !item.is_read
-                            ? "bg-muted/40"
-                            : ""
-                        }`}
-                      >
-                        <div className="flex gap-3">
-                          <div className="mt-0.5 shrink-0">
-                            <IconBell className="h-4 w-4 text-primary" />
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-start justify-between gap-2">
-                              <p className="text-sm font-semibold">
-                                {item.title}
-                              </p>
-
-                              {!item.is_read && (
-                                <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
-                              )}
-                            </div>
-
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {item.message}
-                            </p>
-
-                            <p className="mt-2 text-[10px] text-muted-foreground">
-                              {new Date(item.created_at).toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <button
+            <NotificationCenter />
+<button
               onClick={() => fetchData(true)}
               disabled={loading || refreshing}
               className="p-1.5 rounded-lg border border-secondary text-zinc-500 hover:text-zinc-950 hover:bg-zinc-50 dark:border-secondary dark:text-zinc-400 dark:hover:text-zinc-50 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"

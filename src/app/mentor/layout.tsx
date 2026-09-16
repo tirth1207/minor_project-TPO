@@ -5,6 +5,7 @@ import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { AppSidebar } from "@/components/app-sidebar"
+import { NotificationCenter } from "@/components/notification-center"
 import { MentorProvider, useMentor } from "./mentor-context"
 import {
   Breadcrumb,
@@ -165,6 +166,7 @@ function MentorDashboardShell({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-3">
+            <NotificationCenter />
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}

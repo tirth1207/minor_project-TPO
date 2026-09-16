@@ -236,7 +236,7 @@ interface StudentContextType {
   mockAnswers: string[]
   setMockAnswers: (ans: string[]) => void
   scoringMock: boolean
-  notification: () => Promise<void>
+  notification: { notifications: any[]; count: number; hasMore: boolean }
   fetchData: (isRefresh?: boolean) => Promise<void>
   refreshMockInterviews: () => Promise<void>
   handleUpdateProfile: (e: React.FormEvent) => Promise<void>
@@ -264,7 +264,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   const [editAddress, setEditAddress] = React.useState("")
   const [editBacklogs, setEditBacklogs] = React.useState("0")
   const [editSkills, setEditSkills] = React.useState("")
-  const [notification,setNotification] = React.useState([])
+  const [notification,setNotification] = React.useState<{ notifications: any[]; count: number; hasMore: boolean }>({ notifications: [], count: 0, hasMore: false })
   const [editHobbies, setEditHobbies] = React.useState("")
   const [editMarksheetUrl, setEditMarksheetUrl] = React.useState("")
   const [editSocialLinks, setEditSocialLinks] = React.useState<Record<string, string>>({})
@@ -375,7 +375,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/notifications", {method: "GET"})
       const data = await res.json()
       if(!res.ok){
-        setNotification([])
+        setNotification({ notifications: [], count: 0, hasMore: false })
         return
       }
       setNotification(data)
@@ -386,7 +386,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   React.useEffect(() => {
     fetchData()
   }, [fetchData])
-  React.useEffect(() => { fetchNotification(), [fetchNotification]})
+  React.useEffect(() => { fetchNotification() }, [fetchNotification])
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault()

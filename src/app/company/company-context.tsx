@@ -141,7 +141,7 @@ interface CompanyContextType {
   extendCtcValues: Record<string, string>
   setExtendCtcValues: React.Dispatch<React.SetStateAction<Record<string, string>>>
   fetchData: (isRefresh?: boolean) => Promise<void>
-  notification: () => Promise<void>
+  notification: { notifications: any[]; count: number; hasMore: boolean }
   fetchApplicants: () => Promise<void>
   handleCreateJob: (e: React.FormEvent) => Promise<void>
   handleShortlistApplicant: (appId: string) => Promise<void>
@@ -175,7 +175,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [minCgpa, setMinCgpa] = React.useState("6.00")
   const [maxBacklogs, setMaxBacklogs] = React.useState("0")
   const [requireMock, setRequireMock] = React.useState(false)
-  const [notification,setNotification]= React.useState([])
+  const [notification,setNotification] = React.useState<{ notifications: any[]; count: number; hasMore: boolean }>({ notifications: [], count: 0, hasMore: false })
   const [mockPassScore, setMockPassScore] = React.useState("50")
   const [branches, setBranches] = React.useState<string[]>([])
   const [postingJob, setPostingJob] = React.useState(false)
@@ -274,7 +274,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/notifications", {method: "GET"})
       const data = await res.json()
       if(!res.ok){
-        setNotification([])
+        setNotification({ notifications: [], count: 0, hasMore: false })
         return
       }
       setNotification(data)
@@ -284,7 +284,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   },[])
 
   React.useEffect(() => { fetchData() }, [fetchData])
-  React.useEffect(() => { fetchNotification(), [fetchNotification]})
+  React.useEffect(() => { fetchNotification() }, [fetchNotification])
   React.useEffect(() => { fetchApplicants() }, [fetchApplicants])
   React.useEffect(() => { fetchAllApplicants() }, [fetchAllApplicants])
   React.useEffect(() => { fetchOffers() }, [fetchOffers])
