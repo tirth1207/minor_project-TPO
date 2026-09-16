@@ -380,7 +380,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       }
       setNotification(data)
     } catch {
-      setNotification([])
+      setNotification({ notifications: [], count: 0, hasMore: false })
     }
   },[])
   React.useEffect(() => {
