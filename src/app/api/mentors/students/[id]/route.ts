@@ -8,6 +8,58 @@ type ProfileStatus =
   | "APPROVED"
   | "REJECTED"
 
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: studentProfileId } = await params
+    const auth = await requireActiveMentor()
+
+    if (!auth.ok) {
+      return NextResponse.json(
+        { error: auth.error },
+        { status: auth.status }
+      )
+    }
+
+    const { supabase, deptId, orgId } = auth
+
+    const { data: student, error: studentError } = await supabase
+      .from("student_profiles")
+      .select(`
+        *,
+        user:users!student_profiles_user_id_fkey!inner(
+          id, org_id, dept_id,
+          department:departments!users_dept_id_fkey(id, name)
+        )
+      `)
+      .eq("id", studentProfileId)
+      .maybeSingle()
+
+    if (studentError) {
+      console.error("Student lookup failed:", studentError)
+      return NextResponse.json({ error: studentError.message }, { status: 500 })
+    }
+
+    if (!student) {
+      return NextResponse.json({ error: "Student profile not found" }, { status: 404 })
+    }
+
+    if (student.user.dept_id !== deptId || student.user.org_id !== orgId) {
+      return NextResponse.json({ error: "Forbidden: Student belongs to another department or college" }, { status: 403 })
+    }
+
+    return NextResponse.json({ student })
+  } catch (error: unknown) {
+    console.error("GET mentor student failed:", error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "An unexpected error occurred" },
+      { status: 500 }
+    )
+  }
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }

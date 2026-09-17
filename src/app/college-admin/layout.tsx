@@ -31,6 +31,7 @@ import {
   IconRefresh,
   IconSchool,
   IconSend,
+  IconSettings,
   IconUsers,
 } from "@tabler/icons-react"
 
@@ -128,6 +129,12 @@ function CollegeAdminDashboardShell({
       url: "/college-admin/mentors",
       icon: <IconBuilding className="size-4" />,
       isActive: pathname.startsWith("/college-admin/mentors"),
+    },
+    {
+      title: "Settings",
+      url: "/college-admin/settings",
+      icon: <IconSettings className="size-4" />,
+      isActive: pathname.startsWith("/college-admin/settings"),
     },
   ]
 

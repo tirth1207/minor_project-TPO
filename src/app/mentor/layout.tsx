@@ -33,6 +33,7 @@ import {
   IconLifebuoy,
   IconSend,
   IconDatabaseSearch,
+  IconSettings,
 } from "@tabler/icons-react"
 
 const navMains = [
@@ -40,7 +41,6 @@ const navMains = [
       title: "Dashboard",
       url: "/mentor",
       icon: <IconDashboard className="size-4" />,
-      isActive: true,
     },
     {
       title: "Insights",
@@ -51,6 +51,11 @@ const navMains = [
       title: "Student Approvals",
       url: "/mentor/students",
       icon: <IconBuilding className="size-4" />,
+    },
+    {
+      title: "Settings",
+      url: "/mentor/settings",
+      icon: <IconSettings className="size-4" />,
     }
   ]
 const navSecondary = [

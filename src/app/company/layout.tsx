@@ -30,6 +30,7 @@ import {
   IconLoader,
   IconRefresh,
   IconSend,
+  IconSettings,
   IconUsers,
 } from "@tabler/icons-react"
 
@@ -125,6 +126,12 @@ function CompanyDashboardShell({
       isActive:
         pathname === "/company/applicants" ||
         pathname.startsWith("/company/applicants/"),
+    },
+    {
+      title: "Settings",
+      url: "/company/settings",
+      icon: <IconSettings className="size-4" />,
+      isActive: pathname.startsWith("/company/settings"),
     },
   ]
 
