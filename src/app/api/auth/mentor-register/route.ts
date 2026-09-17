@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
 
     const email = String(body.email ?? "").trim().toLowerCase()
     const password = String(body.password ?? "")
@@ -205,7 +205,7 @@ export async function POST(request: Request) {
     console.error("Mentor registration error:", error)
     await cleanup()
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unexpected error during mentor registration" },
+      { error: "Unexpected error during mentor registration" },
       { status: 500 }
     )
   }

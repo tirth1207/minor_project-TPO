@@ -38,8 +38,8 @@ export async function GET(request: Request) {
       console.error("Invite lookup failed:", inviteError)
 
       return NextResponse.json(
-        { error: inviteError.message },
-        { status: 400 }
+        { error: "Unable to validate invitation token" },
+        { status: 500 }
       )
     }
 
@@ -87,8 +87,8 @@ export async function GET(request: Request) {
       )
 
       return NextResponse.json(
-        { error: departmentError.message },
-        { status: 400 }
+        { error: "Unable to lookup department details" },
+        { status: 500 }
       )
     }
 
@@ -128,8 +128,8 @@ export async function GET(request: Request) {
       )
 
       return NextResponse.json(
-        { error: organizationError.message },
-        { status: 400 }
+        { error: "Unable to lookup college details" },
+        { status: 500 }
       )
     }
 
@@ -190,8 +190,8 @@ export async function GET(request: Request) {
       )
 
       return NextResponse.json(
-        { error: mentorsError.message },
-        { status: 400 }
+        { error: "Unable to load mentors list" },
+        { status: 500 }
       )
     }
 
@@ -238,10 +238,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to load mentors",
+        error: "Failed to load mentors",
       },
       { status: 500 }
     )

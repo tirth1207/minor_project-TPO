@@ -74,13 +74,15 @@ export async function GET() {
       .order("applied_at", { ascending: false })
 
     if (fetchError) {
-      return NextResponse.json({ error: fetchError.message }, { status: 400 })
+      console.error("Student applications fetch error:", fetchError)
+      return NextResponse.json({ error: "Unable to load student applications" }, { status: 500 })
     }
 
-    return NextResponse.json({ applications })
-  } catch (error: any) {
+    return NextResponse.json({ applications: applications ?? [] })
+  } catch (error: unknown) {
+    console.error("GET /api/students/applications failed:", error)
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred" },
+      { error: "An unexpected error occurred" },
       { status: 500 }
     )
   }

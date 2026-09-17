@@ -58,9 +58,10 @@ export async function GET(
       data: { mock: sanitizedMock },
       mock: sanitizedMock,
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("GET /api/students/mock-interviews/[id] error:", err)
     return NextResponse.json(
-      { success: false, code: "SERVER_ERROR", error: err?.message || "Internal server error" },
+      { success: false, code: "SERVER_ERROR", error: "Internal server error" },
       { status: 500 }
     )
   }

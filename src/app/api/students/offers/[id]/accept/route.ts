@@ -20,7 +20,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
     const status = body?.status
     if (status !== "ACCEPTED" && status !== "REJECTED") {
       return NextResponse.json({ error: "Invalid offer status value" }, { status: 400 })

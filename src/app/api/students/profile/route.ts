@@ -104,13 +104,8 @@ export async function GET() {
       console.error("Student profile fetch error:", profileError)
 
       return NextResponse.json(
-        {
-          error: profileError.message,
-          code: profileError.code,
-          details: profileError.details,
-          hint: profileError.hint,
-        },
-        { status: 400 }
+        { error: "Unable to load student profile" },
+        { status: 500 }
       )
     }
 
@@ -126,12 +121,7 @@ export async function GET() {
     console.error("GET /api/students/profile failed:", error)
 
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-      },
+      { error: "An unexpected error occurred" },
       { status: 500 }
     )
   }
@@ -158,7 +148,7 @@ export async function PUT(request: Request) {
       )
     }
 
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
 
     const {
       name,
@@ -358,9 +348,10 @@ export async function PUT(request: Request) {
       .single()
 
     if (updateError) {
+      console.error("Student profile update error:", updateError)
       return NextResponse.json(
-        { error: updateError.message },
-        { status: 400 }
+        { error: "Unable to update student profile" },
+        { status: 500 }
       )
     }
 
@@ -369,12 +360,7 @@ export async function PUT(request: Request) {
     console.error("PUT /api/students/profile failed:", error)
 
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "An unexpected error occurred",
-      },
+      { error: "An unexpected error occurred" },
       { status: 500 }
     )
   }

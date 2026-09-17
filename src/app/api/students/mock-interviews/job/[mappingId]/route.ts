@@ -139,9 +139,10 @@ export async function POST(
       .single()
 
     if (error) {
+      console.error("[Mock Create Job] Insert error:", error)
       return NextResponse.json(
-        { success: false, code: "DB_ERROR", error: error.message },
-        { status: 400 }
+        { success: false, code: "DB_ERROR", error: "Unable to create mock interview assessment" },
+        { status: 500 }
       )
     }
 
@@ -153,9 +154,10 @@ export async function POST(
       },
       { status: 201 }
     )
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("[Mock Create Job] Error:", err)
     return NextResponse.json(
-      { success: false, code: "SERVER_ERROR", error: err?.message || "Internal server error" },
+      { success: false, code: "SERVER_ERROR", error: "Internal server error" },
       { status: 500 }
     )
   }

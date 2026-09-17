@@ -38,18 +38,16 @@ export async function GET(
       data: { mock },
       mock,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    console.error("GET /api/students/mock-interviews/[id]/complete error:", error)
     return NextResponse.json(
-      { success: false, code: "SERVER_ERROR", error: error?.message || "Internal server error" },
+      { success: false, code: "SERVER_ERROR", error: "Internal server error" },
       { status: 500 }
     )
   }
 }
 
-export async function POST(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function POST() {
   return NextResponse.json(
     {
       success: false,
