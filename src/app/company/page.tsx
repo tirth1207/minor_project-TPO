@@ -145,10 +145,10 @@ export default function CompanyRootPage() {
               <span>Shortlist rate</span>
               <b>{shortlistRate}%</b>
             </div>
-            <div className="h-2 rounded-full bg-muted">
+            <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
               <div
-                className="h-full rounded-full bg-foreground"
-                style={{ width: `${shortlistRate}%` }}
+                className="h-full rounded-full transition-all"
+                style={{ width: `${shortlistRate}%`, backgroundColor: "#86efac" }}
               />
             </div>
 
@@ -156,10 +156,10 @@ export default function CompanyRootPage() {
               <span>Offer rate</span>
               <b>{offerRate}%</b>
             </div>
-            <div className="h-2 rounded-full bg-muted">
+            <div className="h-2 rounded-full bg-muted/60 overflow-hidden">
               <div
-                className="h-full rounded-full bg-foreground"
-                style={{ width: `${offerRate}%` }}
+                className="h-full rounded-full transition-all"
+                style={{ width: `${offerRate}%`, backgroundColor: "#fef08a" }}
               />
             </div>
           </CardContent>

@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation"
 
 import { AppSidebar } from "@/components/app-sidebar"
 import { NotificationCenter } from "@/components/notification-center"
-import { AnalyticsBars, AnalyticsDonut } from "@/components/dashboard-analytics"
 import { createClient } from "@/lib/supabase/client"
 import { SuperAdminProvider, useSuperAdmin } from "./super-admin-context"
 import {
@@ -32,7 +31,6 @@ import {
   IconRefresh,
   IconSchool,
   IconSend,
-  IconUsers,
 } from "@tabler/icons-react"
 
 function SuperAdminDashboardShell({
@@ -54,7 +52,6 @@ function SuperAdminDashboardShell({
     loading,
     refreshing,
     error,
-    stats,
     fetchData,
   } = useSuperAdmin()
 
@@ -134,51 +131,6 @@ function SuperAdminDashboardShell({
     },
   ]
 
-  const orgStatus = [
-    {
-      label: "Active",
-      value: stats?.organizations.active ?? 0,
-    },
-    {
-      label: "Pending",
-      value: stats?.organizations.pending ?? 0,
-    },
-    {
-      label: "Rejected",
-      value: stats?.organizations.rejected ?? 0,
-    },
-  ]
-
-  const companyStatus = [
-    {
-      label: "Active",
-      value: stats?.companies.active ?? 0,
-    },
-    {
-      label: "Pending",
-      value: stats?.companies.pending ?? 0,
-    },
-    {
-      label: "Rejected",
-      value: stats?.companies.rejected ?? 0,
-    },
-  ]
-
-  const jobStatus = [
-    {
-      label: "Approved",
-      value: stats?.jobs.active ?? 0,
-    },
-    {
-      label: "Pending",
-      value: stats?.jobs.pending ?? 0,
-    },
-    {
-      label: "Rejected",
-      value: stats?.jobs.rejected ?? 0,
-    },
-  ]
-
   return (
     <SidebarProvider>
       <AppSidebar
@@ -244,111 +196,7 @@ function SuperAdminDashboardShell({
               <IconLoader className="size-8 animate-spin" />
             </div>
           ) : (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {[
-                  [
-                    "Colleges",
-                    stats?.organizations.total ?? 0,
-                    IconSchool,
-                  ],
-                  [
-                    "Companies",
-                    stats?.companies.total ?? 0,
-                    IconBuilding,
-                  ],
-                  [
-                    "Job Postings",
-                    stats?.jobs.total ?? 0,
-                    IconBriefcase,
-                  ],
-                  [
-                    "Students",
-                    stats?.students.total ?? 0,
-                    IconUsers,
-                  ],
-                ].map(([label, value, Icon]) => (
-                  <div
-                    key={String(label)}
-                    className="rounded-2xl border bg-card p-5"
-                  >
-                    <div className="flex justify-between">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {label.toString()}
-                      </span>
-                      {React.createElement(
-                        Icon as React.ElementType,
-                        {
-                          className: "size-5 text-muted-foreground",
-                        }
-                      )}
-                    </div>
-                    <p className="mt-2 text-3xl font-semibold">
-                      {value as number}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="grid gap-5 lg:grid-cols-3">
-                <AnalyticsDonut
-                  title="College status"
-                  description="Live organization distribution from Supabase."
-                  data={orgStatus}
-                />
-                <AnalyticsDonut
-                  title="Company status"
-                  description="Live company registration distribution."
-                  data={companyStatus}
-                />
-                <AnalyticsDonut
-                  title="Job status"
-                  description="Live global job approval distribution."
-                  data={jobStatus}
-                />
-              </div>
-
-              <div className="grid gap-5 lg:grid-cols-2">
-                <AnalyticsBars
-                  title="Platform entities"
-                  description="Current totals across the platform."
-                  data={[
-                    {
-                      label: "Colleges",
-                      value: stats?.organizations.total ?? 0,
-                    },
-                    {
-                      label: "Companies",
-                      value: stats?.companies.total ?? 0,
-                    },
-                    {
-                      label: "Jobs",
-                      value: stats?.jobs.total ?? 0,
-                    },
-                    {
-                      label: "Students",
-                      value: stats?.students.total ?? 0,
-                    },
-                  ]}
-                />
-                <AnalyticsBars
-                  title="Placement snapshot"
-                  description="Current student placement state."
-                  data={[
-                    {
-                      label: "Placed",
-                      value: stats?.students.placed ?? 0,
-                    },
-                    {
-                      label: "Unplaced",
-                      value: stats?.students.unplaced ?? 0,
-                    },
-                  ]}
-                />
-              </div>
-
-              {children}
-            </>
+            children
           )}
         </div>
       </SidebarInset>

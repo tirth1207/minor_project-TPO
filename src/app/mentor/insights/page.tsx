@@ -600,6 +600,8 @@ function ReadinessRow({
   value: number
   detail: string
 }) {
+  const color = value >= 75 ? "#86efac" : value >= 50 ? "#fef08a" : "#fca5a5"
+
   return (
     <div>
       <div className="mb-2 flex items-center justify-between">
@@ -618,7 +620,12 @@ function ReadinessRow({
         </span>
       </div>
 
-      <Progress value={value} />
+      <div className="h-2 w-full overflow-hidden rounded-full bg-muted/60">
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${Math.min(Math.max(value, 0), 100)}%`, backgroundColor: color }}
+        />
+      </div>
     </div>
   )
 }
