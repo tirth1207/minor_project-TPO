@@ -25,7 +25,6 @@ export default function CompanyPostJobPage() {
     setRequireMock,
     mockPassScore,
     setMockPassScore,
-    branches,
     postingJob,
     handleCreateJob,
   } = useCompany()

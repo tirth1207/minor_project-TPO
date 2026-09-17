@@ -2,13 +2,10 @@
 
 import * as React from "react";
 import { useCollegeAdmin } from "./college-admin-context";
-import Link from "next/link";
 import {
   IconSchool,
   IconBriefcase,
   IconUsers,
-  IconArrowRight,
-  IconTicket,
   IconAward,
   IconPlus,
 } from "@tabler/icons-react";
@@ -21,7 +18,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import {
   AnalyticsBars,
   AnalyticsDonut,

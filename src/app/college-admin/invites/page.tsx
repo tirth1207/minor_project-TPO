@@ -10,7 +10,6 @@ export default function CollegeAdminInvitesPage() {
     departments,
     invites,
     selectedDeptId,
-    setSelectedDeptId,
     generatingInvite,
     latestInviteUrl,
     handleGenerateInvite,
