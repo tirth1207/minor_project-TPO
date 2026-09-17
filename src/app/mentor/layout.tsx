@@ -1,8 +1,7 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { AppSidebar } from "@/components/app-sidebar"
 import { NotificationCenter } from "@/components/notification-center"
@@ -26,13 +25,11 @@ import {
   IconAlertCircle,
   IconRefresh,
   IconDashboard,
-  IconSchool,
   IconBuilding,
-  IconUser,
-  IconBriefcase,
   IconLifebuoy,
   IconSend,
   IconDatabaseSearch,
+  IconSettings,
 } from "@tabler/icons-react"
 
 const navMains = [
@@ -40,7 +37,6 @@ const navMains = [
       title: "Dashboard",
       url: "/mentor",
       icon: <IconDashboard className="size-4" />,
-      isActive: true,
     },
     {
       title: "Insights",
@@ -51,8 +47,14 @@ const navMains = [
       title: "Student Approvals",
       url: "/mentor/students",
       icon: <IconBuilding className="size-4" />,
+    },
+    {
+      title: "Settings",
+      url: "/mentor/settings",
+      icon: <IconSettings className="size-4" />,
     }
   ]
+
 const navSecondary = [
   {
     title: "Support",
@@ -117,7 +119,6 @@ function MentorDashboardShell({ children }: { children: React.ReactNode }) {
 
 
   const router = useRouter()
-  const pathname = usePathname()
   const supabase = createClient()
   const {
     loading,
@@ -206,33 +207,7 @@ function MentorDashboardShell({ children }: { children: React.ReactNode }) {
               <span className="text-sm text-zinc-500 font-medium">Fetching assigned recruits...</span>
             </div>
           ) : (
-            <>
-              {/* Tabs bar */}
-              {/* <div className="flex items-center gap-1.5 border-b border-secondary dark:border-secondary">
-                <Link
-                  href="/mentor/overview"
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all capitalize ${
-                    pathname === "/mentor/overview"
-                      ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
-                      : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
-                  }`}
-                >
-                  Dashboard Overview
-                </Link>
-                <Link
-                  href="/mentor/students"
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 mb-[-2px] transition-all capitalize ${
-                    pathname === "/mentor/students"
-                      ? "border-primary text-zinc-950 dark:text-zinc-50 font-bold"
-                      : "border-transparent text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50"
-                  }`}
-                >
-                  Assigned Students
-                </Link>
-              </div> */}
-
-              {children}
-            </>
+            children
           )}
         </div>
       </SidebarInset>

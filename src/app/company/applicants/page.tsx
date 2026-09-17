@@ -3,6 +3,7 @@
 import * as React from "react"
 import { useCompany } from "../company-context"
 
+import Link from "next/link"
 import {
   IconBan,
   IconBriefcase,
@@ -10,6 +11,7 @@ import {
   IconCircleCheck,
   IconExternalLink,
   IconFileText,
+  IconListCheck,
   IconSend,
   IconUsers,
 } from "@tabler/icons-react"
@@ -484,6 +486,15 @@ export default function CompanyApplicantsPage() {
 
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
+                          {(applicant.status === "SHORTLISTED" || applicant.status === "OFFERED") && (
+                            <Link href={`/company/applications/${applicant.id}/rounds`}>
+                              <Button size="sm" variant="ghost" className="h-8 gap-1 px-2 text-xs">
+                                <IconListCheck className="size-3.5" />
+                                Rounds
+                              </Button>
+                            </Link>
+                          )}
+
                           {applicant.status ===
                             "APPLIED" && (
                             <Button

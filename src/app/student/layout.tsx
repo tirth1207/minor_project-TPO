@@ -30,6 +30,7 @@ import {
   IconDashboard,
   IconExclamationCircle,
   IconFileCertificate,
+  IconGift,
   IconLoader,
   IconRefresh,
   IconRobot,
@@ -128,6 +129,12 @@ function StudentDashboardShell({
         isActive: pathname === "/student/applications",
       },
       {
+        title: "Job Offers",
+        url: "/student/offers",
+        icon: <IconGift className="size-4" />,
+        isActive: pathname === "/student/offers",
+      },
+      {
         title: "Interview Prep & Mocks",
         url: "/student/mock",
         icon: <IconRobot className="size-4" />,
@@ -180,7 +187,9 @@ function StudentDashboardShell({
           ? "Eligible Jobs"
           : pathname === "/student/applications"
             ? "My Applications"
-            : pathname === "/student/roadmap"
+            : pathname === "/student/offers"
+              ? "Job Offers"
+              : pathname === "/student/roadmap"
               ? "AI Career Roadmap"
               : pathname === "/student/analytics"
                 ? "Career Analytics"

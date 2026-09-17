@@ -31,6 +31,7 @@ import {
   IconRefresh,
   IconSchool,
   IconSend,
+  IconSettings,
 } from "@tabler/icons-react"
 
 function SuperAdminDashboardShell({
@@ -115,6 +116,12 @@ function SuperAdminDashboardShell({
       url: "/super-admin/jobs",
       icon: <IconBriefcase className="size-4" />,
       isActive: pathname.startsWith("/super-admin/jobs"),
+    },
+    {
+      title: "Settings",
+      url: "/super-admin/settings",
+      icon: <IconSettings className="size-4" />,
+      isActive: pathname.startsWith("/super-admin/settings"),
     },
   ]
 
