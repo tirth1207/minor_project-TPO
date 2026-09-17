@@ -395,7 +395,7 @@ export default function CompanyInterviewRoundsPage() {
       {/* Interview Rounds List */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold tracking-tight">Scheduled Interview Rounds</h2>
+          <h2 className="text-base font-semibold tracking-tight">Interview Progression</h2>
           <span className="text-xs text-muted-foreground">{rounds.length} round(s) total</span>
         </div>
 
@@ -403,9 +403,9 @@ export default function CompanyInterviewRoundsPage() {
           <Card className="rounded-2xl border-dashed">
             <CardContent className="flex min-h-[200px] flex-col items-center justify-center py-10 text-center">
               <IconBriefcase className="mb-3 size-8 text-muted-foreground opacity-50" />
-              <h3 className="text-sm font-semibold">No Interview Rounds Scheduled</h3>
+              <h3 className="text-sm font-semibold">No Interview Rounds Added</h3>
               <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                Click &quot;Add Interview Round&quot; above to create technical, HR, or aptitude evaluation rounds for this applicant.
+                Click &quot;Add Interview Round&quot; above to create technical, HR, or aptitude evaluation steps for this applicant.
               </p>
             </CardContent>
           </Card>
