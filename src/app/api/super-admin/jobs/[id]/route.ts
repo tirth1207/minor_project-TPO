@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic"
 
-import { createClient } from "@/lib/supabase/server"
+import { requireSuperAdmin } from "@/lib/auth/require-super-admin"
 import { NextResponse } from "next/server"
 
 export async function PATCH(
@@ -8,36 +8,22 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const supabase = await createClient()
-
-    // 1. Authenticate user
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const auth = await requireSuperAdmin()
+    if (!auth.ok) {
+      return NextResponse.json({ error: auth.error }, { status: auth.status })
     }
 
-    // 2. Authorize (SA)
-    const { data: dbUser } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", user.id)
-      .maybeSingle()
-
-    const role = dbUser?.role || user.app_metadata?.role
-
-    if (role !== "SA") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+    const { supabase } = auth
     const { id } = await params
-    const { global_status } = await request.json()
+    const body = await request.json().catch(() => ({}))
+    const { global_status } = body
 
-    if (!global_status) {
-      return NextResponse.json({ error: "global_status is required" }, { status: 400 })
+    const allowedStatuses = ["APPROVED", "REJECTED", "PENDING"]
+    if (!global_status || !allowedStatuses.includes(global_status)) {
+      return NextResponse.json(
+        { error: "global_status must be APPROVED, REJECTED, or PENDING" },
+        { status: 400 }
+      )
     }
 
     const { data: updatedJob, error } = await supabase
@@ -45,14 +31,22 @@ export async function PATCH(
       .update({ global_status })
       .eq("id", id)
       .select()
-      .single()
+      .maybeSingle()
 
-    if (error) throw error
+    if (error) {
+      console.error("Super Admin update job status error:", error)
+      return NextResponse.json({ error: "Unable to update job global status" }, { status: 500 })
+    }
+
+    if (!updatedJob) {
+      return NextResponse.json({ error: "Job posting not found" }, { status: 404 })
+    }
 
     return NextResponse.json({ success: true, job: updatedJob })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    console.error("PATCH /api/super-admin/jobs/[id] error:", error)
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred updating job global status" },
+      { error: "An unexpected error occurred updating job global status" },
       { status: 500 }
     )
   }

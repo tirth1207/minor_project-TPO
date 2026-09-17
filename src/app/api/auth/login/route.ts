@@ -10,7 +10,8 @@ export async function POST(request: Request) {
   if (!rateLimit.success) return rateLimitResponse()
 
   try {
-    const { email, password } = await request.json()
+    const body = await request.json().catch(() => ({}))
+    const { email, password } = body
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })

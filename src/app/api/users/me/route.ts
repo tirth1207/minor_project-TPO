@@ -23,6 +23,10 @@ export async function GET() {
       .eq("id", user.id)
       .maybeSingle()
 
+    if (dbUserError) {
+      console.error("GET /api/users/me dbUserError:", dbUserError)
+    }
+
     const role = dbUser?.role || user.app_metadata?.role || "STUDENT"
     const org_id = dbUser?.org_id || user.app_metadata?.org_id || null
     const dept_id = dbUser?.dept_id || user.app_metadata?.dept_id || null
@@ -57,9 +61,10 @@ export async function GET() {
       studentProfile,
       companyProfile,
     })
-  } catch (error: any) {
+  } catch (error: unknown) {
+    console.error("GET /api/users/me failed:", error)
     return NextResponse.json(
-      { error: error?.message || "An unexpected error occurred retrieving your profile" },
+      { error: "An unexpected error occurred retrieving your profile" },
       { status: 500 }
     )
   }

@@ -22,8 +22,9 @@ export async function GET() {
       .maybeSingle()
 
     if (error) {
+      console.error("GET /api/students/career-profile db error:", error)
       return NextResponse.json(
-        { success: false, code: "DB_ERROR", error: error.message },
+        { success: false, code: "DB_ERROR", error: "Unable to load career profile" },
         { status: 500 }
       )
     }
@@ -32,9 +33,10 @@ export async function GET() {
       success: true,
       data: { profile: profile || null },
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("GET /api/students/career-profile error:", err)
     return NextResponse.json(
-      { success: false, code: "SERVER_ERROR", error: err?.message || "Internal server error" },
+      { success: false, code: "SERVER_ERROR", error: "Internal server error" },
       { status: 500 }
     )
   }
@@ -51,7 +53,7 @@ export async function PUT(request: Request) {
     }
 
     const { supabase, studentId } = auth
-    const body = await request.json()
+    const body = await request.json().catch(() => ({}))
 
     const dreamJob = (body.dream_job || body.dreamJob || "").trim()
     const dreamRole = (body.dream_role || body.dreamRole || "").trim()
@@ -108,9 +110,10 @@ export async function PUT(request: Request) {
       .single()
 
     if (error) {
+      console.error("PUT /api/students/career-profile upsert error:", error)
       return NextResponse.json(
-        { success: false, code: "DB_ERROR", error: error.message },
-        { status: 400 }
+        { success: false, code: "DB_ERROR", error: "Unable to save career profile" },
+        { status: 500 }
       )
     }
 
@@ -119,9 +122,10 @@ export async function PUT(request: Request) {
       data: { profile: data },
       message: "Career profile updated successfully",
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("PUT /api/students/career-profile error:", err)
     return NextResponse.json(
-      { success: false, code: "SERVER_ERROR", error: err?.message || "Internal server error" },
+      { success: false, code: "SERVER_ERROR", error: "Internal server error" },
       { status: 500 }
     )
   }

@@ -54,9 +54,10 @@ export async function GET(
       mock,
       result: mock.ai_results,
     })
-  } catch (err: any) {
+  } catch (err: unknown) {
+    console.error("GET /api/students/mock-interviews/[id]/result error:", err)
     return NextResponse.json(
-      { success: false, code: "SERVER_ERROR", error: err?.message || "Internal server error" },
+      { success: false, code: "SERVER_ERROR", error: "Internal server error" },
       { status: 500 }
     )
   }
