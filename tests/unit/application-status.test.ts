@@ -19,9 +19,17 @@ describe("Application State Machine & Status Helpers", () => {
       expect(canTransitionApplication("SHORTLISTED", "REJECTED")).toBe(true)
     })
 
-    it("should reject invalid SHORTLISTED transitions", () => {
+    it("should reject invalid SHORTLISTED transitions and self-transitions", () => {
       expect(canTransitionApplication("SHORTLISTED", "APPLIED")).toBe(false)
       expect(canTransitionApplication("SHORTLISTED", "WITHDRAWN")).toBe(false)
+      expect(canTransitionApplication("SHORTLISTED", "SHORTLISTED")).toBe(false)
+    })
+
+    it("should reject self-transitions for all application statuses", () => {
+      const statuses: ApplicationStatus[] = ["APPLIED", "SHORTLISTED", "OFFERED", "REJECTED", "WITHDRAWN"]
+      for (const status of statuses) {
+        expect(canTransitionApplication(status, status)).toBe(false)
+      }
     })
 
     it("should treat OFFERED, REJECTED, and WITHDRAWN as terminal states", () => {
@@ -31,6 +39,11 @@ describe("Application State Machine & Status Helpers", () => {
         expect(canTransitionApplication("REJECTED", next)).toBe(false)
         expect(canTransitionApplication("WITHDRAWN", next)).toBe(false)
       }
+    })
+
+    it("should return false for unknown or invalid runtime status strings", () => {
+      expect(canTransitionApplication("UNKNOWN" as any, "SHORTLISTED")).toBe(false)
+      expect(canTransitionApplication("APPLIED", "INVALID" as any)).toBe(false)
     })
   })
 

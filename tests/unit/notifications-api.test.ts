@@ -56,7 +56,7 @@ describe("Notification API Endpoint Handlers", () => {
       expect(res.status).toBe(400)
     })
 
-    it("should accept valid limit and offset params and construct database query", async () => {
+    it("should accept valid limit and offset params, enforce user ownership filter, and construct query", async () => {
       const mockRange = vi.fn().mockResolvedValue({
         data: [{ id: "notif-1", title: "Test Notification", is_read: false }],
         error: null,
@@ -88,7 +88,36 @@ describe("Notification API Endpoint Handlers", () => {
       const data = await res.json()
       expect(data.notifications).toHaveLength(1)
       expect(data.count).toBe(1)
-      expect(mockRange).toHaveBeenCalledWith(10, 29) // offset 10 to offset + limit - 1
+      expect(mockQueryChain.eq).toHaveBeenCalledWith("user_id", "user-1")
+      expect(mockRange).toHaveBeenCalledWith(10, 29)
+    })
+
+    it("should return 500 when database returns an error", async () => {
+      const mockRange = vi.fn().mockResolvedValue({
+        data: null,
+        error: { message: "Database failure" },
+        count: null,
+      })
+
+      const mockQueryChain: any = {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        order: vi.fn().mockReturnThis(),
+        range: mockRange,
+      }
+
+      vi.mocked(requireUser).mockResolvedValue({
+        ok: true,
+        user: { id: "user-1" } as any,
+        dbUser: null,
+        supabase: { from: vi.fn().mockReturnValue(mockQueryChain) } as any,
+      })
+
+      const req = new Request("http://localhost/api/notifications")
+      const res = await getNotifications(req)
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toBe("Unable to load notifications")
     })
   })
 
@@ -111,6 +140,38 @@ describe("Notification API Endpoint Handlers", () => {
       const data = await res.json()
       expect(data.error).toBe("isRead boolean is required")
     })
+
+    it("should update notifications scoped to user_id", async () => {
+      const mockSelect = vi.fn().mockResolvedValue({
+        data: [{ id: "n1" }, { id: "n2" }],
+        error: null,
+      })
+
+      const mockQueryChain: any = {
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        select: mockSelect,
+      }
+
+      vi.mocked(requireUser).mockResolvedValue({
+        ok: true,
+        user: { id: "user-1" } as any,
+        dbUser: null,
+        supabase: { from: vi.fn().mockReturnValue(mockQueryChain) } as any,
+      })
+
+      const req = new Request("http://localhost/api/notifications", {
+        method: "PATCH",
+        body: JSON.stringify({ isRead: true }),
+      })
+
+      const res = await patchNotifications(req)
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.updated).toBe(2)
+      expect(mockQueryChain.update).toHaveBeenCalledWith({ is_read: true })
+      expect(mockQueryChain.eq).toHaveBeenCalledWith("user_id", "user-1")
+    })
   })
 
   describe("PATCH /api/notifications/[id]", () => {
@@ -131,7 +192,7 @@ describe("Notification API Endpoint Handlers", () => {
       expect(res.status).toBe(400)
     })
 
-    it("should return 404 if notification is not found for user", async () => {
+    it("should return 404 if notification is not found or does not belong to user", async () => {
       const mockQueryChain: any = {
         update: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
@@ -153,13 +214,15 @@ describe("Notification API Endpoint Handlers", () => {
 
       const res = await patchSingleNotification(req, { params: Promise.resolve({ id: "n1" }) })
       expect(res.status).toBe(404)
+      expect(mockQueryChain.eq).toHaveBeenCalledWith("id", "n1")
+      expect(mockQueryChain.eq).toHaveBeenCalledWith("user_id", "user-1")
       const data = await res.json()
       expect(data.error).toBe("Notification not found")
     })
   })
 
   describe("DELETE /api/notifications/[id]", () => {
-    it("should return 404 if notification to delete is not found", async () => {
+    it("should return 404 if notification to delete is not found or belongs to another user", async () => {
       const mockQueryChain: any = {
         delete: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
@@ -177,6 +240,30 @@ describe("Notification API Endpoint Handlers", () => {
       const req = new Request("http://localhost/api/notifications/n1", { method: "DELETE" })
       const res = await deleteSingleNotification(req, { params: Promise.resolve({ id: "n1" }) })
       expect(res.status).toBe(404)
+      expect(mockQueryChain.eq).toHaveBeenCalledWith("id", "n1")
+      expect(mockQueryChain.eq).toHaveBeenCalledWith("user_id", "user-1")
+    })
+
+    it("should return 200 on successful deletion", async () => {
+      const mockQueryChain: any = {
+        delete: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: { id: "n1" }, error: null }),
+      }
+
+      vi.mocked(requireUser).mockResolvedValue({
+        ok: true,
+        user: { id: "user-1" } as any,
+        dbUser: null,
+        supabase: { from: vi.fn().mockReturnValue(mockQueryChain) } as any,
+      })
+
+      const req = new Request("http://localhost/api/notifications/n1", { method: "DELETE" })
+      const res = await deleteSingleNotification(req, { params: Promise.resolve({ id: "n1" }) })
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.message).toBe("Notification deleted successfully")
     })
   })
 })

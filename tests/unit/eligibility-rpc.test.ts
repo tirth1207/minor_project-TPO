@@ -12,7 +12,7 @@ describe("Eligibility RPC Database Helper", () => {
     )
   })
 
-  it("should return true when RPC returns true", async () => {
+  it("should return true when RPC returns strict boolean true", async () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: true, error: null })
     const mockSupabase = { rpc: mockRpc }
 
@@ -25,13 +25,15 @@ describe("Eligibility RPC Database Helper", () => {
     })
   })
 
-  it("should return false when RPC returns false", async () => {
-    const mockRpc = vi.fn().mockResolvedValue({ data: false, error: null })
-    const mockSupabase = { rpc: mockRpc }
+  it("should return false when RPC returns false or non-strict-boolean truthy values", async () => {
+    const mockRpcFalse = vi.fn().mockResolvedValue({ data: false, error: null })
+    expect(await checkStudentEligibility({ rpc: mockRpcFalse }, "student-100", "job-200")).toBe(false)
 
-    const isEligible = await checkStudentEligibility(mockSupabase, "student-100", "job-200")
+    const mockRpcString = vi.fn().mockResolvedValue({ data: "true", error: null })
+    expect(await checkStudentEligibility({ rpc: mockRpcString }, "student-100", "job-200")).toBe(false)
 
-    expect(isEligible).toBe(false)
+    const mockRpcNull = vi.fn().mockResolvedValue({ data: null, error: null })
+    expect(await checkStudentEligibility({ rpc: mockRpcNull }, "student-100", "job-200")).toBe(false)
   })
 
   it("should throw descriptive error when database RPC returns error", async () => {

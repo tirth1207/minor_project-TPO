@@ -2,6 +2,10 @@ import { describe, it, expect } from "vitest"
 import { cn } from "../../src/lib/utils"
 
 describe("Class Name Utility (cn)", () => {
+  it("should return empty string when no arguments are passed", () => {
+    expect(cn()).toBe("")
+  })
+
   it("should merge simple class strings", () => {
     expect(cn("px-2", "py-1")).toBe("px-2 py-1")
   })

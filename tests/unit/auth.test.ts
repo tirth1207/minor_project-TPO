@@ -64,6 +64,7 @@ describe("Authentication & Authorization Helpers", () => {
       expect(res.ok).toBe(false)
       if (!res.ok) {
         expect(res.status).toBe(500)
+        expect(res.error).toContain("Database error retrieving user metadata")
       }
     })
 
@@ -107,6 +108,45 @@ describe("Authentication & Authorization Helpers", () => {
       }
     })
 
+    it("should fallback to user.app_metadata if dbUser is missing/null", async () => {
+      mockCreateClient.mockResolvedValue(
+        createMockSupabase(
+          { id: "user-1", app_metadata: { role: "STUDENT", org_id: "org-1", dept_id: "dept-1" } },
+          null,
+          {
+            users: { data: null },
+            student_profiles: { data: { id: "sp-1", profile_status: "APPROVED", name: "Alice" } },
+            organizations: { data: { id: "org-1", status: "ACTIVE" } },
+            departments: { data: { id: "dept-1", status: "ACTIVE" } },
+          }
+        )
+      )
+      const res = await requireApprovedStudent()
+      expect(res.ok).toBe(true)
+      if (res.ok) {
+        expect(res.studentId).toBe("sp-1")
+      }
+    })
+
+    it("should return 500 if DB fails reading student profile", async () => {
+      mockCreateClient.mockResolvedValue(
+        createMockSupabase(
+          { id: "user-1" },
+          null,
+          {
+            users: { data: { role: "STUDENT", org_id: "org-1", dept_id: "dept-1" } },
+            student_profiles: { error: new Error("DB Query Error") },
+          }
+        )
+      )
+      const res = await requireApprovedStudent()
+      expect(res.ok).toBe(false)
+      if (!res.ok) {
+        expect(res.status).toBe(500)
+        expect(res.error).toContain("Database error retrieving student profile")
+      }
+    })
+
     it("should return 404 if student profile is not found", async () => {
       mockCreateClient.mockResolvedValue(
         createMockSupabase(
@@ -145,7 +185,7 @@ describe("Authentication & Authorization Helpers", () => {
       }
     })
 
-    it("should return 403 if organization is not active", async () => {
+    it("should return 403 if organization is not active or DB errors", async () => {
       mockCreateClient.mockResolvedValue(
         createMockSupabase(
           { id: "user-1" },
@@ -230,6 +270,44 @@ describe("Authentication & Authorization Helpers", () => {
       if (!res.ok) expect(res.status).toBe(403)
     })
 
+    it("should return 500 when organization lookup encounters a DB error", async () => {
+      mockCreateClient.mockResolvedValue(
+        createMockSupabase(
+          { id: "user-1" },
+          null,
+          {
+            users: { data: { role: "COLLEGE_ADMIN", org_id: "org-1" } },
+            organizations: { error: new Error("DB Error") },
+          }
+        )
+      )
+      const res = await requireActiveCollegeAdmin()
+      expect(res.ok).toBe(false)
+      if (!res.ok) {
+        expect(res.status).toBe(500)
+        expect(res.error).toContain("Database error retrieving organization")
+      }
+    })
+
+    it("should return 403 when organization is not found", async () => {
+      mockCreateClient.mockResolvedValue(
+        createMockSupabase(
+          { id: "user-1" },
+          null,
+          {
+            users: { data: { role: "COLLEGE_ADMIN", org_id: "org-1" } },
+            organizations: { data: null },
+          }
+        )
+      )
+      const res = await requireActiveCollegeAdmin()
+      expect(res.ok).toBe(false)
+      if (!res.ok) {
+        expect(res.status).toBe(403)
+        expect(res.error).toContain("Associated organization not found")
+      }
+    })
+
     it("should return 403 when organization status is not ACTIVE", async () => {
       mockCreateClient.mockResolvedValue(
         createMockSupabase(
@@ -287,6 +365,25 @@ describe("Authentication & Authorization Helpers", () => {
       const res = await requireActiveCompany()
       expect(res.ok).toBe(false)
       if (!res.ok) expect(res.status).toBe(403)
+    })
+
+    it("should return 500 when company profile lookup encounters a DB error", async () => {
+      mockCreateClient.mockResolvedValue(
+        createMockSupabase(
+          { id: "user-1" },
+          null,
+          {
+            users: { data: { role: "COMPANY" } },
+            company_profiles: { error: new Error("DB Error") },
+          }
+        )
+      )
+      const res = await requireActiveCompany()
+      expect(res.ok).toBe(false)
+      if (!res.ok) {
+        expect(res.status).toBe(500)
+        expect(res.error).toContain("Database error retrieving company profile")
+      }
     })
 
     it("should return 404 when company profile is missing", async () => {
@@ -349,6 +446,57 @@ describe("Authentication & Authorization Helpers", () => {
       const res = await requireActiveMentor()
       expect(res.ok).toBe(false)
       if (!res.ok) expect(res.status).toBe(401)
+    })
+
+    it("should return 403 if public user record is missing", async () => {
+      mockCreateClient.mockResolvedValue(
+        createMockSupabase(
+          { id: "user-1" },
+          null,
+          { users: { data: null } }
+        )
+      )
+      const res = await requireActiveMentor()
+      expect(res.ok).toBe(false)
+      if (!res.ok) {
+        expect(res.status).toBe(403)
+        expect(res.error).toContain("Mentor user record not found")
+      }
+    })
+
+    it("should return 403 if mentor is missing org_id or dept_id", async () => {
+      mockCreateClient.mockResolvedValue(
+        createMockSupabase(
+          { id: "user-1" },
+          null,
+          { users: { data: { id: "user-1", role: "MENTOR", org_id: null, dept_id: "dept-1" } } }
+        )
+      )
+      const res = await requireActiveMentor()
+      expect(res.ok).toBe(false)
+      if (!res.ok) {
+        expect(res.status).toBe(403)
+        expect(res.error).toContain("not assigned to an organization")
+      }
+    })
+
+    it("should return 403 when mentor profile status is PENDING", async () => {
+      mockCreateClient.mockResolvedValue(
+        createMockSupabase(
+          { id: "user-1" },
+          null,
+          {
+            users: { data: { id: "user-1", role: "MENTOR", org_id: "org-1", dept_id: "dept-1" } },
+            mentor_profiles: { data: { id: "m-1", profile_status: "PENDING" } },
+          }
+        )
+      )
+      const res = await requireActiveMentor()
+      expect(res.ok).toBe(false)
+      if (!res.ok) {
+        expect(res.status).toBe(403)
+        expect(res.error).toContain("awaiting approval")
+      }
     })
 
     it("should return 403 when mentor profile status is REJECTED", async () => {
