@@ -24,7 +24,6 @@ import {
   IconMapPin,
   IconSearch,
   IconSparkles,
-  IconUsers,
   IconX,
 } from "@tabler/icons-react"
 
@@ -72,7 +71,6 @@ function CompanyWebsiteIcon({
     return <span>{companyName.charAt(0).toUpperCase() || "C"}</span>
   }
 
-  // eslint-disable-next-line @next/next/no-img-element
   return (
     <img
       src={iconUrl}

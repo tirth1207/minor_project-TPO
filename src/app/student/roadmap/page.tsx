@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
 
 import { StudentCareerOnboardingDialog } from "@/components/student/career-onboarding-dialog";
 import { createClient } from "@/lib/supabase/client";
@@ -30,13 +29,11 @@ import {
   IconBriefcase,
   IconBook,
   IconCheck,
-  IconInfoCircle,
   IconRefresh,
   IconSparkles,
   IconTarget,
   IconPlaneDeparture,
   IconCircleCheck,
-  IconMapPin,
 } from "@tabler/icons-react";
 
 import type { CareerRoadmapData } from "@/types/career";

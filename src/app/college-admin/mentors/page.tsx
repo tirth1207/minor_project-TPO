@@ -15,7 +15,6 @@ import { useCollegeAdmin } from "../college-admin-context"
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
@@ -385,7 +384,7 @@ export default function MentorsPage() {
             <Select
               value={statusFilter}
               onValueChange={(value) => {
-                setDepartmentFilter(value ?? "ALL")
+                setStatusFilter(value ?? "ALL")
             }}
             >
               <SelectTrigger className="w-full lg:w-[170px]">

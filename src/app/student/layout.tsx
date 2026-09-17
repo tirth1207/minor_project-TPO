@@ -30,11 +30,9 @@ import {
   IconDashboard,
   IconExclamationCircle,
   IconFileCertificate,
-  IconLifebuoy,
   IconLoader,
   IconRefresh,
   IconRobot,
-  IconSend,
   IconSettings,
   IconUser,
 } from "@tabler/icons-react"
