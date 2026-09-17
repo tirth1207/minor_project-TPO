@@ -38,10 +38,10 @@ export default function MentorSettingsPage() {
     <div className="w-full max-w-4xl space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Faculty Mentor Account & Settings
+          Faculty Mentor Account Information
         </h1>
         <p className="mt-1 text-xs text-muted-foreground">
-          View your mentor credentials, assigned department, and system preferences.
+          View your mentor credentials, assigned department, and account information.
         </p>
       </div>
 

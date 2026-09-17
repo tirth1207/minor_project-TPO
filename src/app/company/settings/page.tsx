@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   IconBriefcase,
   IconBuilding,
-  IconCheck,
   IconGlobe,
   IconLoader,
   IconMail,
@@ -39,10 +38,10 @@ export default function CompanySettingsPage() {
     <div className="w-full max-w-4xl space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Corporate Partner Profile & Settings
+          Corporate Partner Profile & Account
         </h1>
         <p className="mt-1 text-xs text-muted-foreground">
-          View corporate registration credentials, partner website, and recruitment preferences.
+          View corporate registration credentials and account information.
         </p>
       </div>
 

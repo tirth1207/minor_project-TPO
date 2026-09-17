@@ -37,10 +37,10 @@ export default function SuperAdminSettingsPage() {
     <div className="w-full max-w-4xl space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          Super Admin System Settings
+          Super Admin System Account
         </h1>
         <p className="mt-1 text-xs text-muted-foreground">
-          Global platform administration, root account privileges, and system settings.
+          Global platform administration and root account credentials.
         </p>
       </div>
 

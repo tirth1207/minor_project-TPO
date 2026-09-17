@@ -38,10 +38,10 @@ export default function CollegeAdminSettingsPage() {
     <div className="w-full max-w-4xl space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          College Admin Account & Settings
+          College Admin Account Information
         </h1>
         <p className="mt-1 text-xs text-muted-foreground">
-          Manage your institute profile, administrator credentials, and campus settings.
+          View your institute profile and administrator credentials.
         </p>
       </div>
 

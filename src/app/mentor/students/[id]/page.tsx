@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import {
   IconAddressBook,
@@ -32,6 +31,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
 
 type StudentDetail = {
@@ -73,6 +80,9 @@ export default function MentorStudentDetailPage() {
   const [actionSuccess, setActionSuccess] = React.useState<string | null>(null)
   const [updating, setUpdating] = React.useState(false)
 
+  // Confirmation dialog state
+  const [pendingAction, setPendingAction] = React.useState<"APPROVED" | "REJECTED" | null>(null)
+
   const fetchStudent = React.useCallback(async () => {
     if (!studentId) return
     setLoading(true)
@@ -95,8 +105,9 @@ export default function MentorStudentDetailPage() {
     fetchStudent()
   }, [fetchStudent])
 
-  const handleUpdateStatus = async (status: "APPROVED" | "REJECTED") => {
-    if (!student) return
+  const handleConfirmAction = async () => {
+    if (!student || !pendingAction) return
+    const status = pendingAction
     setUpdating(true)
     setError(null)
     setActionSuccess(null)
@@ -115,6 +126,7 @@ export default function MentorStudentDetailPage() {
 
       setActionSuccess(data.message || `Student profile ${status.toLowerCase()} successfully.`)
       setStudent((prev) => (prev ? { ...prev, profile_status: status } : null))
+      setPendingAction(null)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to update profile status")
     } finally {
@@ -182,20 +194,20 @@ export default function MentorStudentDetailPage() {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
-            onClick={() => handleUpdateStatus("APPROVED")}
+            onClick={() => setPendingAction("APPROVED")}
             disabled={updating || student.profile_status === "APPROVED"}
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
           >
-            {updating ? <IconLoader className="mr-1.5 size-4 animate-spin" /> : <IconCheck className="mr-1.5 size-4" />}
+            <IconCheck className="mr-1.5 size-4" />
             Approve Profile
           </Button>
           <Button
             size="sm"
             variant="destructive"
-            onClick={() => handleUpdateStatus("REJECTED")}
+            onClick={() => setPendingAction("REJECTED")}
             disabled={updating || student.profile_status === "REJECTED"}
           >
-            {updating ? <IconLoader className="mr-1.5 size-4 animate-spin" /> : <IconX className="mr-1.5 size-4" />}
+            <IconX className="mr-1.5 size-4" />
             Reject Profile
           </Button>
         </div>
@@ -369,6 +381,37 @@ export default function MentorStudentDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Approve / Reject Action Dialogs */}
+      <Dialog open={!!pendingAction} onOpenChange={(open) => !open && setPendingAction(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {pendingAction === "APPROVED" ? "Approve Student Profile?" : "Reject Student Profile?"}
+            </DialogTitle>
+            <DialogDescription>
+              {pendingAction === "APPROVED"
+                ? "Are you sure you want to approve this student's profile? The student will be allowed to continue through the placement workflow."
+                : "Are you sure you want to reject this student's profile?"}
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setPendingAction(null)} disabled={updating}>
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              className={pendingAction === "APPROVED" ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "bg-rose-600 hover:bg-rose-700 text-white"}
+              onClick={handleConfirmAction}
+              disabled={updating}
+            >
+              {updating && <IconLoader className="mr-1.5 size-4 animate-spin" />}
+              {pendingAction === "APPROVED" ? "Confirm Approval" : "Confirm Rejection"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -8,7 +8,6 @@ import {
   IconCalendar,
   IconCheck,
   IconClock,
-  IconCurrencyDollar,
   IconExternalLink,
   IconLoader,
   IconMapPin,
