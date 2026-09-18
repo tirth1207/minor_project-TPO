@@ -217,11 +217,17 @@ export async function getStudentEligibility(
   ] = await Promise.all([
     supabase
       .from("student_profiles")
-      .select(
-        "id, cgpa, active_backlogs, branch, skills, profile_status, is_placed, user_id, users(org_id)"
-      )
+      .select(`
+        *,
+        users!student_profiles_user_id_fkey (
+          id,
+          org_id,
+          dept_id
+        )
+      `)
       .eq("id", studentId)
-      .maybeSingle(),
+      .single(),
+
 
     supabase
       .from("job_postings")
