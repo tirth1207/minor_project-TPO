@@ -18,10 +18,10 @@ export type Point = {
 
 const CHART_COLORS = [
   "var(--primary)",
-  "var(--secondary-foreground)",
-  "var(--accent-foreground)",
-  "var(--muted-foreground)",
-  "var(--foreground)",
+  "var(--chart-2, #3b82f6)",
+  "var(--chart-3, #f59e0b)",
+  "var(--chart-4, #8b5cf6)",
+  "var(--chart-5, #06b6d4)",
   "var(--destructive)",
 ]
 
@@ -32,7 +32,7 @@ function getChartColor(point: Point, index: number): string {
 
   const label = point.label.toLowerCase().trim()
 
-  // Positive / successful states
+  // Positive / successful states → primary
   if (
     /active|approved|placed|passed|eligible|selected|shortlisted|success|completed|verified|hired/.test(
       label
@@ -41,42 +41,42 @@ function getChartColor(point: Point, index: number): string {
     return "var(--primary)"
   }
 
-  // Pending / neutral states
+  // Pending / in-progress states → amber
   if (
     /pending|applied|offered|review|processing|waiting|scheduled|progress/.test(
       label
     )
   ) {
-    return "var(--accent-foreground)"
+    return "var(--chart-3, #f59e0b)"
   }
 
-  // Negative states
+  // Negative / error states → destructive red
   if (
-    /reject|rejected|not passed|not eligible|backlog|withdrawn|failed|cancelled|inactive|closed/.test(
+    /reject|rejected|not passed|not eligible|backlog|withdrawn|failed|cancelled|inactive|closed|error|expired/.test(
       label
     )
   ) {
     return "var(--destructive)"
   }
 
-  // Organization-related
+  // Organization-related → blue
   if (/college|department|branch|organization/.test(label)) {
-    return "var(--secondary-foreground)"
+    return "var(--chart-2, #3b82f6)"
   }
 
-  // Company-related
+  // Company-related → primary
   if (/company|companies/.test(label)) {
     return "var(--primary)"
   }
 
-  // Job-related
+  // Job-related → cyan
   if (/job|jobs|drive|opening|openings/.test(label)) {
-    return "var(--foreground)"
+    return "var(--chart-5, #06b6d4)"
   }
 
-  // People-related
+  // People-related → purple
   if (/student|students|applicant|applicants|mentor|mentors/.test(label)) {
-    return "var(--muted-foreground)"
+    return "var(--chart-4, #8b5cf6)"
   }
 
   return CHART_COLORS[index % CHART_COLORS.length]

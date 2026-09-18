@@ -35,7 +35,7 @@ export default function MentorSettingsPage() {
   }, [])
 
   return (
-    <div className="w-full max-w-4xl space-y-6">
+    <div className="w-full max-w-4xl mx-auto space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight text-foreground">
           Faculty Mentor Account Information

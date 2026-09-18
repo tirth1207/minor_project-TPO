@@ -343,7 +343,7 @@ export default function MentorOverviewPage() {
           {semesterDistribution.length === 0 ? (
             <EmptyState />
           ) : (
-            <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+            <div className="space-y-4 w-full">
               {semesterDistribution.map(
                 ({
                   semester,
