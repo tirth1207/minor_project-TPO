@@ -20,6 +20,7 @@ import {
   IconSchool
 } from "@tabler/icons-react"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAuth } from "@/providers/auth-provider"
 
 interface AvailableMentor {
   id: string
@@ -45,6 +46,7 @@ interface StudentInviteContext {
 function RegisterFormContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const { refreshUser } = useAuth()
   const [activeTab, setActiveTab] = useState<"student" | "company" | "college-admin" | "mentor">("student")
   
   // Student fields
@@ -209,6 +211,11 @@ function RegisterFormContent() {
       if (!response.ok) {
         throw new Error(data.error || "Failed to register. Please check your token or try again.")
       }
+
+      // Registration signs the new student in server-side. Synchronize the
+      // shared auth provider before showing the success state so the first
+      // dashboard navigation does not require a hard refresh.
+      await refreshUser()
 
       setIsSuccess(true)
       setSuccessRole("STUDENT")
