@@ -76,7 +76,7 @@ export default function StudentSettingsPage() {
             <p className="text-zinc-500 py-4 text-center">Loading career settings...</p>
           ) : !careerProfile ? (
             <div className="py-6 text-center space-y-3">
-              <p className="text-zinc-500">You haven&apos;t set up your career preferences yet.</p>
+              <p className="text-zinc-500">You haven't set up your career preferences yet.</p>
               <Button size="sm" onClick={() => setOnboardingOpen(true)} className="h-8 text-xs">
                 Complete Career Onboarding
               </Button>

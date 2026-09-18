@@ -12,7 +12,7 @@ export default function UnauthorizedPage() {
           Access Denied
         </h1>
         <p className="mt-4 text-base text-zinc-600 dark:text-zinc-400">
-          You don&apos;t have authorization to view this section of the portal. If you think this is a mistake, please reach out to your college administrator.
+          You don't have authorization to view this section of the portal. If you think this is a mistake, please reach out to your college administrator.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <Link

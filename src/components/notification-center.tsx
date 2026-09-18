@@ -248,7 +248,7 @@ export function NotificationCenter() {
             <p className="text-xs text-muted-foreground">
               {unreadCount
                 ? `${unreadCount} unread`
-                : "You&apos;re all caught up"}
+                : "You're all caught up"}
             </p>
           </div>
 

@@ -430,13 +430,13 @@ export default function StudentJobsPage() {
                         <span>
                           {isEligible
                             ? "You meet the academic criteria"
-                            : "You don&apos;t currently meet the criteria"}
+                            : "You don't currently meet the criteria"}
                         </span>
                       </div>
 
                       {isEligible ? (
                         <p className="mt-1 text-[11px] text-muted-foreground">
-                          You&apos;re eligible to continue with this drive.
+                          You're eligible to continue with this drive.
                         </p>
                       ) : (
                         failedCriteria.length > 0 && (
