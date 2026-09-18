@@ -137,6 +137,8 @@ interface CompanyContextType {
   setMockPassScore: (v: string) => void
   branches: string[]
   setBranches: (v: string[]) => void
+  requiredSkills: string[]
+  setRequiredSkills: (v: string[]) => void
   postingJob: boolean
   selectedApplicantIds: Record<string, boolean>
   setSelectedApplicantIds: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
@@ -180,6 +182,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [notification, setNotification] = React.useState<{ notifications: any[]; count: number; hasMore: boolean }>({ notifications: [], count: 0, hasMore: false })
   const [mockPassScore, setMockPassScore] = React.useState("50")
   const [branches, setBranches] = React.useState<string[]>([])
+  const [requiredSkills, setRequiredSkills] = React.useState<string[]>([])
   const [postingJob, setPostingJob] = React.useState(false)
   const [selectedApplicantIds, setSelectedApplicantIds] = React.useState<Record<string, boolean>>({})
   const [extendCtcValues, setExtendCtcValues] = React.useState<Record<string, string>>({})
@@ -301,7 +304,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/company/jobs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: jobTitle, description: jobDesc, location: jobLocation, workMode, package: ctc, minCgpa, maxBacklogs, requireMock, mockPassScore, branches: branches.length > 0 ? branches : ["Computer Science", "Information Technology", "Electronics"] })
+        body: JSON.stringify({ title: jobTitle, description: jobDesc, location: jobLocation, workMode, package: ctc, minCgpa, maxBacklogs, requireMock, mockPassScore, skills: requiredSkills, branches: branches.length > 0 ? branches : ["Computer Science", "Information Technology", "Electronics"] })
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Failed to create job")
@@ -314,6 +317,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       setRequireMock(false)
       setMockPassScore("50")
       setBranches([])
+      setRequiredSkills([])
       await fetchData(true)
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to create job")
@@ -352,7 +356,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     await fetchOffers()
   }
 
-  return <CompanyContext.Provider value={{ loading, refreshing, error, jobs, companyStatus, selectedJob, setSelectedJob, applicants, offers, jobTitle, setJobTitle, notification, jobDesc, setJobDesc, jobLocation, setJobLocation, workMode, setWorkMode, ctc, setCtc, minCgpa, setMinCgpa, maxBacklogs, setMaxBacklogs, requireMock, setRequireMock, mockPassScore, setMockPassScore, branches, setBranches, postingJob, selectedApplicantIds, setSelectedApplicantIds, extendCtcValues, setExtendCtcValues, fetchData, fetchApplicants, handleCreateJob, handleShortlistApplicant, handleBulkShortlist, handleExtendOffer, handleRevokeOffer, allApplicants, fetchAllApplicants }}>{children}</CompanyContext.Provider>
+  return <CompanyContext.Provider value={{ loading, refreshing, error, jobs, companyStatus, selectedJob, setSelectedJob, applicants, offers, jobTitle, setJobTitle, notification, jobDesc, setJobDesc, jobLocation, setJobLocation, workMode, setWorkMode, ctc, setCtc, minCgpa, setMinCgpa, maxBacklogs, setMaxBacklogs, requireMock, setRequireMock, mockPassScore, setMockPassScore, branches, setBranches, requiredSkills, setRequiredSkills, postingJob, selectedApplicantIds, setSelectedApplicantIds, extendCtcValues, setExtendCtcValues, fetchData, fetchApplicants, handleCreateJob, handleShortlistApplicant, handleBulkShortlist, handleExtendOffer, handleRevokeOffer, allApplicants, fetchAllApplicants }}>{children}</CompanyContext.Provider>
 }
 
 export function useCompany() {
