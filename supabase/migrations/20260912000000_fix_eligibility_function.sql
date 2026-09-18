@@ -16,7 +16,8 @@ BEGIN
     CASE v_raw
         WHEN 'c++', 'c plus plus' THEN RETURN 'cpp';
         WHEN 'c#', 'c sharp' THEN RETURN 'csharp';
-        WHEN '.net', 'asp.net' THEN RETURN 'dotnet';
+        WHEN '.net', 'dotnet' THEN RETURN 'dotnet';
+        WHEN 'asp.net', 'aspnet' THEN RETURN 'aspnet';
         WHEN 'node.js', 'node js', 'nodejs', 'node' THEN RETURN 'nodejs';
         WHEN 'react.js', 'react js', 'reactjs', 'react' THEN RETURN 'reactjs';
         WHEN 'next.js', 'next js', 'nextjs' THEN RETURN 'nextjs';

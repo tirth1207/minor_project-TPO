@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest"
 import {
   getStudentEligibility,
-  checkStudentEligibility,
   normalizeSkill,
   normalizeSkills,
   displaySkill,
@@ -20,6 +19,8 @@ describe("Skill Normalization & Aliases", () => {
     expect(normalizeSkill("C#")).toBe("csharp")
     expect(normalizeSkill("C sharp")).toBe("csharp")
     expect(normalizeSkill("C")).toBe("c")
+    expect(normalizeSkill(".NET")).toBe("dotnet")
+    expect(normalizeSkill("ASP.NET")).toBe("aspnet")
     expect(normalizeSkill("PostgreSQL")).toBe("postgres")
     expect(normalizeSkill("Postgre SQL")).toBe("postgres")
   })
@@ -34,6 +35,15 @@ describe("Skill Normalization & Aliases", () => {
     expect(cpp).not.toBe(csharp)
   })
 
+  it("ensures .NET and ASP.NET remain distinct", () => {
+    const dotnet = normalizeSkill(".NET")
+    const aspnet = normalizeSkill("ASP.NET")
+
+    expect(dotnet).toBe("dotnet")
+    expect(aspnet).toBe("aspnet")
+    expect(dotnet).not.toBe(aspnet)
+  })
+
   it("normalizes and deduplicates skill arrays", () => {
     const skills = normalizeSkills(["React.js", "react js", " Node.js ", "C++", "cpp"])
     expect(skills).toEqual(["reactjs", "nodejs", "cpp"])
@@ -42,6 +52,8 @@ describe("Skill Normalization & Aliases", () => {
   it("displays human-readable skill names", () => {
     expect(displaySkill("cpp")).toBe("C++")
     expect(displaySkill("csharp")).toBe("C#")
+    expect(displaySkill("dotnet")).toBe(".NET")
+    expect(displaySkill("aspnet")).toBe("ASP.NET")
     expect(displaySkill("reactjs")).toBe("React.js")
     expect(displaySkill("postgres")).toBe("PostgreSQL")
   })
@@ -141,39 +153,65 @@ describe("Critical Skill Eligibility Regression Scenarios", () => {
     expect(res.missingSkills).toContain("C++")
   })
 
+  it("MUST FAIL 5: Student has .NET, Job requires ASP.NET", async () => {
+    const res = await getStudentEligibility(createMockSupabase([".NET"], ["ASP.NET"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(false)
+    expect(res.reasons.skills).toBe(false)
+    expect(res.missingSkills).toContain("ASP.NET")
+  })
+
+  it("MUST FAIL 6: Student has ASP.NET, Job requires .NET", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["ASP.NET"], [".NET"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(false)
+    expect(res.reasons.skills).toBe(false)
+    expect(res.missingSkills).toContain(".NET")
+  })
+
   // Must pass
-  it("MUST PASS 5: Student has C++, Job requires C++", async () => {
+  it("MUST PASS 7: Student has C++, Job requires C++", async () => {
     const res = await getStudentEligibility(createMockSupabase(["C++"], ["C++"]), "student-1", "job-1", "org-1")
     expect(res.eligible).toBe(true)
     expect(res.reasons.skills).toBe(true)
   })
 
-  it("MUST PASS 6: Student has C#, Job requires C#", async () => {
+  it("MUST PASS 8: Student has C#, Job requires C#", async () => {
     const res = await getStudentEligibility(createMockSupabase(["C#"], ["C#"]), "student-1", "job-1", "org-1")
     expect(res.eligible).toBe(true)
     expect(res.reasons.skills).toBe(true)
   })
 
-  it("MUST PASS 7: Student has React.js, Job requires React", async () => {
+  it("MUST PASS 9: Student has React.js, Job requires React", async () => {
     const res = await getStudentEligibility(createMockSupabase(["React.js"], ["React"]), "student-1", "job-1", "org-1")
     expect(res.eligible).toBe(true)
     expect(res.reasons.skills).toBe(true)
   })
 
-  it("MUST PASS 8: Student has Node.js, Job requires NodeJS", async () => {
+  it("MUST PASS 10: Student has Node.js, Job requires NodeJS", async () => {
     const res = await getStudentEligibility(createMockSupabase(["Node.js"], ["NodeJS"]), "student-1", "job-1", "org-1")
     expect(res.eligible).toBe(true)
     expect(res.reasons.skills).toBe(true)
   })
 
-  it("MUST PASS 9: Student has PostgreSQL, Job requires Postgres", async () => {
+  it("MUST PASS 11: Student has PostgreSQL, Job requires Postgres", async () => {
     const res = await getStudentEligibility(createMockSupabase(["PostgreSQL"], ["Postgres"]), "student-1", "job-1", "org-1")
     expect(res.eligible).toBe(true)
     expect(res.reasons.skills).toBe(true)
   })
 
-  it("MUST PASS 10: Student has Mongo DB, Job requires MongoDB", async () => {
+  it("MUST PASS 12: Student has Mongo DB, Job requires MongoDB", async () => {
     const res = await getStudentEligibility(createMockSupabase(["Mongo DB"], ["MongoDB"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(true)
+    expect(res.reasons.skills).toBe(true)
+  })
+
+  it("MUST PASS 13: Student has .NET, Job requires .NET", async () => {
+    const res = await getStudentEligibility(createMockSupabase([".NET"], [".NET"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(true)
+    expect(res.reasons.skills).toBe(true)
+  })
+
+  it("MUST PASS 14: Student has ASP.NET, Job requires ASP.NET", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["ASP.NET"], ["ASP.NET"]), "student-1", "job-1", "org-1")
     expect(res.eligible).toBe(true)
     expect(res.reasons.skills).toBe(true)
   })

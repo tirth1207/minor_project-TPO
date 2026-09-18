@@ -106,6 +106,7 @@ create table public.job_postings (
     company_id uuid not null references public.company_profiles(id) on delete cascade,
     title varchar not null,
     description text not null,
+    skills text[],
     ctc_min decimal check (ctc_min >= 0),
     ctc_max decimal check (ctc_max >= 0),
     location varchar not null,
@@ -248,7 +249,8 @@ begin
     case v_raw
         when 'c++', 'c plus plus' then return 'cpp';
         when 'c#', 'c sharp' then return 'csharp';
-        when '.net', 'asp.net' then return 'dotnet';
+        when '.net', 'dotnet' then return 'dotnet';
+        when 'asp.net', 'aspnet' then return 'aspnet';
         when 'node.js', 'node js', 'nodejs', 'node' then return 'nodejs';
         when 'react.js', 'react js', 'reactjs', 'react' then return 'reactjs';
         when 'next.js', 'next js', 'nextjs' then return 'nextjs';
