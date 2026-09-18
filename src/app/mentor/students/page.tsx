@@ -11,6 +11,7 @@ import {
   IconExternalLink,
   IconSearch,
   IconUsers,
+  IconSelector
 } from "@tabler/icons-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -268,7 +269,9 @@ function SortableHeader({
             <IconChevronDown className="size-4" />
           )
         ) : (
-          <span className="text-muted-foreground">↕</span>
+          <span className="text-muted-foreground">
+            <IconSelector className="size-4" />
+          </span>
         )}
       </Button>
     </TableHead>

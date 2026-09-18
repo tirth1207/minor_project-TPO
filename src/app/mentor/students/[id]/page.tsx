@@ -40,6 +40,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Separator } from "@/components/ui/separator"
+import { Input } from "@/components/ui/input"
 
 type StudentDetail = {
   id: string
@@ -67,6 +68,7 @@ type StudentDetail = {
       name: string
     }
   }
+  rejection_reason?: string | null
 }
 
 export default function MentorStudentDetailPage() {
@@ -75,6 +77,7 @@ export default function MentorStudentDetailPage() {
   const studentId = params?.id as string
 
   const [student, setStudent] = React.useState<StudentDetail | null>(null)
+  const [rejectionReason, setRejectionReason] = React.useState("")
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [actionSuccess, setActionSuccess] = React.useState<string | null>(null)
@@ -116,7 +119,7 @@ export default function MentorStudentDetailPage() {
       const res = await fetch(`/api/mentors/students/${student.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile_status: status }),
+        body: JSON.stringify({ profile_status: status, ...(status === "REJECTED" && rejectionReason ? { rejection_reason: rejectionReason } : {}) }),
       })
 
       const data = await res.json()
@@ -164,7 +167,7 @@ export default function MentorStudentDetailPage() {
   }
 
   return (
-    <div className="w-full max-w-5xl space-y-6">
+    <div className="w-full max-w-5xl mx-auto space-y-6">
       {/* Top Header & Navigation */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
@@ -217,6 +220,13 @@ export default function MentorStudentDetailPage() {
         <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/50 p-4 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-400">
           <IconCheck className="size-5 shrink-0" />
           <p className="font-semibold">{actionSuccess}</p>
+        </div>
+      )}
+      
+      {student.rejection_reason && student.profile_status === "REJECTED" && (
+        <div className="flex items-center gap-3 rounded-xl border border-rose-200 bg-rose-50/50 p-4 text-sm text-rose-800 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400">
+          <IconX className="size-5 shrink-0" />
+          <p className="font-semibold">Rejection Reason: {student.rejection_reason}</p>
         </div>
       )}
 
@@ -393,10 +403,13 @@ export default function MentorStudentDetailPage() {
               {pendingAction === "APPROVED"
                 ? "Are you sure you want to approve this student's profile? The student will be allowed to continue through the placement workflow."
                 : "Are you sure you want to reject this student's profile?"}
+              {pendingAction === "REJECTED" && (
+                <Input type="text" placeholder="Reason for rejection..." className="mt-4" value={rejectionReason} onChange={(e) => setRejectionReason(e.target.value)} />
+              )}
             </DialogDescription>
           </DialogHeader>
 
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2">
             <Button variant="outline" size="sm" onClick={() => setPendingAction(null)} disabled={updating}>
               Cancel
             </Button>
