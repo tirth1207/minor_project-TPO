@@ -3,9 +3,9 @@
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 
+import { useAuth } from "@/providers/auth-provider"
 import { AppSidebar } from "@/components/app-sidebar"
 import { NotificationCenter } from "@/components/notification-center"
-import { createClient } from "@/lib/supabase/client"
 import { SuperAdminProvider, useSuperAdmin } from "./super-admin-context"
 import {
   Breadcrumb,
@@ -41,54 +41,24 @@ function SuperAdminDashboardShell({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = React.useMemo(() => createClient(), [])
-
-  const [user, setUser] = React.useState({
-    name: "Loading...",
-    email: "",
-    avatar: "/avatars/default.jpg",
-  })
+  const { user: authUser, loading: authLoading, signOut } = useAuth()
 
   const {
-    loading,
+    loading: superAdminLoading,
     refreshing,
     error,
     fetchData,
   } = useSuperAdmin()
 
-  React.useEffect(() => {
-    async function fetchUser() {
-      try {
-        const response = await fetch("/api/users/me")
-
-        if (!response.ok) {
-          return
-        }
-
-        const data = await response.json()
-        const email = data.user?.email ?? ""
-        const name =
-          data.user?.name ||
-          email.split("@")[0] ||
-          "Super Administrator"
-
-        setUser({
-          name,
-          email,
-          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-            name
-          )}`,
-        })
-      } catch (fetchError) {
-        console.error("Error fetching super admin user:", fetchError)
-      }
-    }
-
-    fetchUser()
-  }, [])
+  const sidebarUser = React.useMemo(() => {
+    const name = authUser?.name || "Super Administrator"
+    const email = authUser?.email || ""
+    const avatar = authUser?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
+    return { name, email, avatar }
+  }, [authUser])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await signOut()
     router.push("/login")
   }
 
@@ -138,6 +108,8 @@ function SuperAdminDashboardShell({
     },
   ]
 
+  const isLoading = authLoading || superAdminLoading
+
   return (
     <SidebarProvider>
       <AppSidebar
@@ -145,7 +117,7 @@ function SuperAdminDashboardShell({
         subtitle="Dashboard"
         navMain={navMains}
         navSecondary={navSecondary}
-        user={user}
+        user={sidebarUser}
         func={handleLogout}
       />
 
@@ -177,7 +149,7 @@ function SuperAdminDashboardShell({
             <button
               type="button"
               onClick={() => fetchData(true)}
-              disabled={loading || refreshing}
+              disabled={isLoading || refreshing}
               className="rounded-lg border p-1.5 disabled:opacity-50"
               title="Refresh Data"
             >
@@ -198,7 +170,7 @@ function SuperAdminDashboardShell({
             </div>
           )}
 
-          {loading ? (
+          {isLoading ? (
             <div className="flex min-h-[400px] items-center justify-center">
               <IconLoader className="size-8 animate-spin" />
             </div>

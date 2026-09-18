@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/providers/auth-provider"
 
 export interface Department {
   id: string
@@ -94,7 +94,7 @@ const SuperAdminContext = React.createContext<SuperAdminContextType | undefined>
 
 export function SuperAdminProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const supabase = createClient()
+  const { user, initialized, loading: authLoading } = useAuth()
   const [notifications, setNotifications] = React.useState<any>()
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
@@ -125,20 +125,14 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
     setError(null)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        router.push("/login")
+        if (initialized && !authLoading) {
+          router.push("/login")
+        }
         return
       }
 
-      const { data: dbUser } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle()
-
-      const role = dbUser?.role || user.app_metadata?.role
-      if (role !== "SA") {
+      if (user.role !== "SA") {
         router.push("/unauthorized")
         return
       }
@@ -175,7 +169,8 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
       setLoading(false)
       setRefreshing(false)
     }
-  }, [router, supabase])
+  }, [user, initialized, authLoading, router])
+
   const fetchNotifications = React.useCallback(async () => {
     try {
       const res = await fetch("/api/notifications")
@@ -188,8 +183,11 @@ export function SuperAdminProvider({ children }: { children: React.ReactNode }) 
   }, [])
 
   React.useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    if (initialized && !authLoading) {
+      fetchData()
+    }
+  }, [initialized, authLoading, fetchData])
+
   React.useEffect(() => {
     fetchNotifications()
   }, [fetchNotifications])

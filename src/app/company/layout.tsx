@@ -3,7 +3,7 @@
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/providers/auth-provider"
 import { AppSidebar } from "@/components/app-sidebar"
 import { NotificationCenter } from "@/components/notification-center"
 import { CompanyProvider, useCompany } from "./company-context"
@@ -41,61 +41,26 @@ function CompanyDashboardShell({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = React.useMemo(() => createClient(), [])
-
-  const [user, setUser] = React.useState({
-    name: "Loading...",
-    email: "",
-    avatar: "/avatars/default.jpg",
-  })
+  const { user: authUser, loading: authLoading, signOut } = useAuth()
 
   const {
-    loading,
+    loading: companyLoading,
     refreshing,
     error,
     companyStatus,
     fetchData,
   } = useCompany()
 
-  React.useEffect(() => {
-    async function fetchUser() {
-      try {
-        const res = await fetch("/api/users/me")
-
-        if (!res.ok) {
-          console.error(
-            "Failed to fetch user:",
-            res.status,
-            res.statusText
-          )
-          return
-        }
-
-        const data = await res.json()
-        const email = data.user?.email ?? ""
-        const name =
-          data.companyProfile?.company_name ||
-          email.split("@")[0] ||
-          "Corporate Partner"
-
-        setUser({
-          name,
-          email,
-          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-            name
-          )}`,
-        })
-      } catch (error) {
-        console.error("Error fetching company user:", error)
-      }
-    }
-
-    fetchUser()
-  }, [])
+  const sidebarUser = React.useMemo(() => {
+    const name = authUser?.companyProfile?.company_name || authUser?.name || "Corporate Partner"
+    const email = authUser?.email || ""
+    const avatar = authUser?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
+    return { name, email, avatar }
+  }, [authUser])
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut()
+      await signOut()
       router.replace("/login")
       router.refresh()
     } catch (error) {
@@ -151,6 +116,8 @@ function CompanyDashboardShell({
   const currentPage =
     navMain.find((item) => item.isActive)?.title ?? "Dashboard"
 
+  const isLoading = authLoading || companyLoading
+
   return (
     <SidebarProvider>
       <AppSidebar
@@ -158,7 +125,7 @@ function CompanyDashboardShell({
         subtitle="Corporate Partner"
         navMain={navMain}
         navSecondary={navSecondary}
-        user={user}
+        user={sidebarUser}
         func={handleLogout}
       />
 
@@ -191,7 +158,7 @@ function CompanyDashboardShell({
             <button
               type="button"
               onClick={() => fetchData(true)}
-              disabled={loading || refreshing}
+              disabled={isLoading || refreshing}
               title="Refresh Data"
               className="cursor-pointer rounded-lg border border-secondary p-1.5 text-zinc-500 transition-all hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
             >
@@ -231,7 +198,7 @@ function CompanyDashboardShell({
             </div>
           )}
 
-          {loading ? (
+          {isLoading ? (
             <div className="flex min-h-[400px] flex-col items-center justify-center gap-2">
               <IconLoader className="h-8 w-8 animate-spin text-primary" />
               <span className="text-sm font-medium text-zinc-500">
