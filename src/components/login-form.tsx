@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import React, { useState } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/providers/auth-provider"
 import {
     Field,
     FieldDescription,
@@ -31,6 +32,7 @@ export function LoginForm({
 }: React.ComponentProps<"div">) {
 
     const router = useRouter()
+    const { refreshUser } = useAuth()
 
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
@@ -63,6 +65,11 @@ export function LoginForm({
                     "Authentication failed. Please verify your credentials."
                 )
             }
+
+            // The login endpoint sets the auth cookies server-side. Refresh
+            // the shared client auth state before navigating so dashboard
+            // providers receive the authenticated user immediately.
+            await refreshUser()
 
             // Check role and redirect accordingly
             const role = data.role
