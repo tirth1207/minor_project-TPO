@@ -70,7 +70,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   React.useEffect(() => {
-    fetchUser()
+    let mounted = true
+    const supabase = createClient()
+
+    // Load the current server-authenticated user on mount.
+    void fetchUser()
+
+    // Keep the client auth state synchronized with Supabase auth events
+    // (sign-in, token refresh, sign-out, etc.). The login form uses the
+    // server API, so it also calls refreshUser explicitly after login.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(() => {
+      if (!mounted) return
+
+      // Do not await inside the Supabase auth callback. Schedule the
+      // server profile lookup after the callback has returned.
+      window.setTimeout(() => {
+        if (mounted) void fetchUser()
+      }, 0)
+    })
+
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [fetchUser])
 
   const signOut = React.useCallback(async () => {
