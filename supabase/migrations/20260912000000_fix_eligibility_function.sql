@@ -1,4 +1,42 @@
 -- Migration to align check_student_eligibility SQL function with TypeScript Eligibility Engine
+
+CREATE OR REPLACE FUNCTION public.normalize_skill(p_skill text)
+RETURNS text
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+    v_raw text;
+BEGIN
+    v_raw := lower(trim(coalesce(p_skill, '')));
+    IF v_raw = '' THEN
+        RETURN '';
+    END IF;
+
+    CASE v_raw
+        WHEN 'c++', 'c plus plus' THEN RETURN 'cpp';
+        WHEN 'c#', 'c sharp' THEN RETURN 'csharp';
+        WHEN '.net', 'asp.net' THEN RETURN 'dotnet';
+        WHEN 'node.js', 'node js', 'nodejs', 'node' THEN RETURN 'nodejs';
+        WHEN 'react.js', 'react js', 'reactjs', 'react' THEN RETURN 'reactjs';
+        WHEN 'next.js', 'next js', 'nextjs' THEN RETURN 'nextjs';
+        WHEN 'vue.js', 'vue js', 'vuejs' THEN RETURN 'vuejs';
+        WHEN 'express.js', 'express js', 'expressjs' THEN RETURN 'expressjs';
+        WHEN 'tailwind css', 'tailwind' THEN RETURN 'tailwind';
+        WHEN 'postgresql', 'postgre sql', 'postgres' THEN RETURN 'postgres';
+        WHEN 'mongo db', 'mongodb' THEN RETURN 'mongodb';
+        WHEN 'machine learning', 'machinelearning' THEN RETURN 'machinelearning';
+        WHEN 'deep learning', 'deeplearning' THEN RETURN 'deeplearning';
+        WHEN 'artificial intelligence', 'ai' THEN RETURN 'ai';
+        WHEN 'amazon web services', 'aws' THEN RETURN 'aws';
+        WHEN 'google cloud platform', 'gcp' THEN RETURN 'gcp';
+        WHEN 'microsoft azure', 'azure' THEN RETURN 'azure';
+        ELSE
+            RETURN regexp_replace(regexp_replace(v_raw, '\s+', '', 'g'), '[._\-/#+]+', '', 'g');
+    END CASE;
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.check_student_eligibility(
     p_student_id uuid,
     p_job_id uuid
@@ -56,8 +94,7 @@ BEGIN
                   WHERE NOT EXISTS (
                       SELECT 1
                       FROM unnest(coalesce(s.skills, '{}'::text[])) stud_skill
-                      WHERE lower(regexp_replace(trim(stud_skill), '[^a-zA-Z0-9]', '', 'g')) =
-                            lower(regexp_replace(trim(req_skill), '[^a-zA-Z0-9]', '', 'g'))
+                      WHERE public.normalize_skill(stud_skill) = public.normalize_skill(req_skill)
                   )
               )
           )

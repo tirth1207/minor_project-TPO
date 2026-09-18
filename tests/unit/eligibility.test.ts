@@ -11,8 +11,10 @@ describe("Skill Normalization & Aliases", () => {
   it("normalizes skill names and aliases correctly", () => {
     expect(normalizeSkill("React.js")).toBe("reactjs")
     expect(normalizeSkill("React JS")).toBe("reactjs")
+    expect(normalizeSkill("React")).toBe("reactjs")
     expect(normalizeSkill("Node.js")).toBe("nodejs")
     expect(normalizeSkill("Node JS")).toBe("nodejs")
+    expect(normalizeSkill("NodeJS")).toBe("nodejs")
     expect(normalizeSkill("C++")).toBe("cpp")
     expect(normalizeSkill("C plus plus")).toBe("cpp")
     expect(normalizeSkill("C#")).toBe("csharp")
@@ -42,6 +44,138 @@ describe("Skill Normalization & Aliases", () => {
     expect(displaySkill("csharp")).toBe("C#")
     expect(displaySkill("reactjs")).toBe("React.js")
     expect(displaySkill("postgres")).toBe("PostgreSQL")
+  })
+})
+
+describe("Critical Skill Eligibility Regression Scenarios", () => {
+  function createMockSupabase(studentSkills: string[], jobSkills: string[]) {
+    return {
+      from: (table: string) => ({
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: { id: "map-1", org_id: "org-1", local_status: "APPROVED" },
+                  error: null,
+                }),
+              }),
+              maybeSingle: async () => ({
+                data: table === "student_profiles"
+                  ? {
+                      id: "student-1",
+                      cgpa: 8.5,
+                      active_backlogs: 0,
+                      branch: "Computer Engineering",
+                      skills: studentSkills,
+                      profile_status: "APPROVED",
+                      is_placed: false,
+                      user_id: "user-1",
+                      users: { org_id: "org-1" },
+                    }
+                  : {
+                      id: "job-1",
+                      min_cgpa: 7.5,
+                      max_backlogs: 0,
+                      skills: jobSkills,
+                      global_status: "APPROVED",
+                    },
+                error: null,
+              }),
+            }),
+            maybeSingle: async () => ({
+              data: table === "student_profiles"
+                ? {
+                    id: "student-1",
+                    cgpa: 8.5,
+                    active_backlogs: 0,
+                    branch: "Computer Engineering",
+                    skills: studentSkills,
+                    profile_status: "APPROVED",
+                    is_placed: false,
+                    user_id: "user-1",
+                    users: { org_id: "org-1" },
+                  }
+                : {
+                    id: "job-1",
+                    min_cgpa: 7.5,
+                    max_backlogs: 0,
+                    skills: jobSkills,
+                    global_status: "APPROVED",
+                  },
+              error: null,
+            }),
+            then: (resolve: any) => resolve({ data: [{ branch_name: "Computer Engineering" }], error: null }),
+          }),
+        }),
+      }),
+    }
+  }
+
+  // Must fail
+  it("MUST FAIL 1: Student has C, Job requires C++", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["C"], ["C++"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(false)
+    expect(res.reasons.skills).toBe(false)
+    expect(res.missingSkills).toContain("C++")
+  })
+
+  it("MUST FAIL 2: Student has C, Job requires C#", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["C"], ["C#"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(false)
+    expect(res.reasons.skills).toBe(false)
+    expect(res.missingSkills).toContain("C#")
+  })
+
+  it("MUST FAIL 3: Student has C++, Job requires C#", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["C++"], ["C#"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(false)
+    expect(res.reasons.skills).toBe(false)
+    expect(res.missingSkills).toContain("C#")
+  })
+
+  it("MUST FAIL 4: Student has Java, Job requires C++", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["Java"], ["C++"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(false)
+    expect(res.reasons.skills).toBe(false)
+    expect(res.missingSkills).toContain("C++")
+  })
+
+  // Must pass
+  it("MUST PASS 5: Student has C++, Job requires C++", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["C++"], ["C++"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(true)
+    expect(res.reasons.skills).toBe(true)
+  })
+
+  it("MUST PASS 6: Student has C#, Job requires C#", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["C#"], ["C#"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(true)
+    expect(res.reasons.skills).toBe(true)
+  })
+
+  it("MUST PASS 7: Student has React.js, Job requires React", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["React.js"], ["React"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(true)
+    expect(res.reasons.skills).toBe(true)
+  })
+
+  it("MUST PASS 8: Student has Node.js, Job requires NodeJS", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["Node.js"], ["NodeJS"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(true)
+    expect(res.reasons.skills).toBe(true)
+  })
+
+  it("MUST PASS 9: Student has PostgreSQL, Job requires Postgres", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["PostgreSQL"], ["Postgres"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(true)
+    expect(res.reasons.skills).toBe(true)
+  })
+
+  it("MUST PASS 10: Student has Mongo DB, Job requires MongoDB", async () => {
+    const res = await getStudentEligibility(createMockSupabase(["Mongo DB"], ["MongoDB"]), "student-1", "job-1", "org-1")
+    expect(res.eligible).toBe(true)
+    expect(res.reasons.skills).toBe(true)
   })
 })
 

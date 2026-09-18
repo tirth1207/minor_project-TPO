@@ -78,18 +78,15 @@ export async function GET() {
     const jobEntries = await Promise.all(
       (jobs as Job[] | null ?? []).map(async (job) => {
         const mapping = mappingMap.get(job.id) ?? null
-        let eligibilityDetails = null
 
-        try {
-          eligibilityDetails = await getStudentEligibility(
-            supabase,
-            studentId,
-            job.id,
-            orgId
-          )
-        } catch (err) {
-          console.error(`Eligibility calculation failed for job ${job.id}:`, err)
-        }
+        //getStudentEligibility handles calculations cleanly or throws on DB error.
+        //Errors propagate to the outer try/catch to return HTTP 500 instead of false ineligibility.
+        const eligibilityDetails = await getStudentEligibility(
+          supabase,
+          studentId,
+          job.id,
+          orgId
+        )
 
         return {
           job: {
@@ -110,20 +107,11 @@ export async function GET() {
             branches: job.job_eligible_branches || [],
           },
           mapping,
-          is_eligible: eligibilityDetails?.eligible ?? false,
-          eligibility_reasons: eligibilityDetails?.reasons ?? {
-            profileApproved: false,
-            notPlaced: false,
-            collegeMapping: false,
-            jobApproved: false,
-            branch: false,
-            cgpa: false,
-            backlogs: false,
-            skills: false,
-          },
-          matched_skills: eligibilityDetails?.matchedSkills ?? [],
-          missing_skills: eligibilityDetails?.missingSkills ?? [],
-          failed_requirements: eligibilityDetails?.failedRequirements ?? [],
+          is_eligible: eligibilityDetails.eligible,
+          eligibility_reasons: eligibilityDetails.reasons,
+          matched_skills: eligibilityDetails.matchedSkills,
+          missing_skills: eligibilityDetails.missingSkills,
+          failed_requirements: eligibilityDetails.failedRequirements,
         }
       })
     )

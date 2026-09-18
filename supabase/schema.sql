@@ -232,6 +232,43 @@ create index idx_mock_interviews_status on public.mock_interviews(status);
 
 -- 4.1 Job Eligibility Engine
 -- Verifies if a student is eligible for a specific job posting
+create or replace function public.normalize_skill(p_skill text)
+returns text
+language plpgsql
+immutable
+as $$
+declare
+    v_raw text;
+begin
+    v_raw := lower(trim(coalesce(p_skill, '')));
+    if v_raw = '' then
+        return '';
+    end if;
+
+    case v_raw
+        when 'c++', 'c plus plus' then return 'cpp';
+        when 'c#', 'c sharp' then return 'csharp';
+        when '.net', 'asp.net' then return 'dotnet';
+        when 'node.js', 'node js', 'nodejs', 'node' then return 'nodejs';
+        when 'react.js', 'react js', 'reactjs', 'react' then return 'reactjs';
+        when 'next.js', 'next js', 'nextjs' then return 'nextjs';
+        when 'vue.js', 'vue js', 'vuejs' then return 'vuejs';
+        when 'express.js', 'express js', 'expressjs' then return 'expressjs';
+        when 'tailwind css', 'tailwind' then return 'tailwind';
+        when 'postgresql', 'postgre sql', 'postgres' then return 'postgres';
+        when 'mongo db', 'mongodb' then return 'mongodb';
+        when 'machine learning', 'machinelearning' then return 'machinelearning';
+        when 'deep learning', 'deeplearning' then return 'deeplearning';
+        when 'artificial intelligence', 'ai' then return 'ai';
+        when 'amazon web services', 'aws' then return 'aws';
+        when 'google cloud platform', 'gcp' then return 'gcp';
+        when 'microsoft azure', 'azure' then return 'azure';
+        else
+            return regexp_replace(regexp_replace(v_raw, '\s+', '', 'g'), '[._\-/#+]+', '', 'g');
+    end case;
+end;
+$$;
+
 create or replace function public.check_student_eligibility(
     p_student_id uuid,
     p_job_id uuid
@@ -289,8 +326,7 @@ begin
                   where not exists (
                       select 1
                       from unnest(coalesce(s.skills, '{}'::text[])) stud_skill
-                      where lower(regexp_replace(trim(stud_skill), '[^a-zA-Z0-9]', '', 'g')) =
-                            lower(regexp_replace(trim(req_skill), '[^a-zA-Z0-9]', '', 'g'))
+                      where public.normalize_skill(stud_skill) = public.normalize_skill(req_skill)
                   )
               )
           )

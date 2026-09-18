@@ -92,9 +92,11 @@ export function normalizeSkill(value: unknown): string {
     "node.js": "nodejs",
     "node js": "nodejs",
     "nodejs": "nodejs",
+    "node": "nodejs",
     "react.js": "reactjs",
     "react js": "reactjs",
     "reactjs": "reactjs",
+    "react": "reactjs",
     "next.js": "nextjs",
     "next js": "nextjs",
     "nextjs": "nextjs",
@@ -129,7 +131,7 @@ export function normalizeSkill(value: unknown): string {
 
   return raw
     .replace(/\s+/g, "")
-    .replace(/[._\-/#]+/g, "")
+    .replace(/[._\-/#+]+/g, "")
 }
 
 /**
