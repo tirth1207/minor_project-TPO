@@ -218,7 +218,7 @@ export async function getStudentEligibility(
     supabase
       .from("student_profiles")
       .select(
-        "id, cgpa, active_backlogs, branch, skills, profile_status, is_placed, user_id, users(org_id)"
+        "id, cgpa, active_backlogs, branch, skills, profile_status, is_placed, user_id, users!student_profiles_user_id_fkey(org_id)"
       )
       .eq("id", studentId)
       .maybeSingle(),
