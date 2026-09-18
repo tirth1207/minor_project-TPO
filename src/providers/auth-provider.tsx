@@ -46,9 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           data.user?.name ||
           (email ? email.split("@")[0] : "User")
 
-        const avatar = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-          name
-        )}`
+        const avatar = "https://api.dicebear.com/7.x/initials/svg?seed=" + encodeURIComponent(name)
 
         setUser({
           ...data.user,
@@ -73,22 +71,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true
     const supabase = createClient()
 
-    // Load the current server-authenticated user on mount.
     void fetchUser()
 
-    // Keep the client auth state synchronized with Supabase auth events
-    // (sign-in, token refresh, sign-out, etc.). The login form uses the
-    // server API, so it also calls refreshUser explicitly after login.
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
+    } = supabase.auth.onAuthStateChange((event) => {
       if (!mounted) return
 
-      // Do not await inside the Supabase auth callback. Schedule the
-      // server profile lookup after the callback has returned.
-      window.setTimeout(() => {
-        if (mounted) void fetchUser()
-      }, 0)
+      // Token refresh commonly happens when a background tab becomes active.
+      // The access token changed, but application profile data did not. Avoid
+      // refetching the user here so dashboards do not visibly reload on tab switch.
+      if (event === "TOKEN_REFRESHED") return
+
+      if (
+        event === "INITIAL_SESSION" ||
+        event === "SIGNED_IN" ||
+        event === "SIGNED_OUT" ||
+        event === "USER_UPDATED" ||
+        event === "PASSWORD_RECOVERY"
+      ) {
+        window.setTimeout(() => {
+          if (mounted) void fetchUser()
+        }, 0)
+      }
     })
 
     return () => {

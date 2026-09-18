@@ -29,10 +29,10 @@ export default function CollegeAdminInvitesPage() {
             <label className="text-xs font-semibold text-zinc-400 block mb-1">
               Target Department *
             </label>
-            <Select 
+            <Select
               items={departments.filter((d) => d.status === "ACTIVE").map((d) => ({ value: d.id, label: d.name }))}
               value={selectedDeptId}
-              onValueChange={setSelectedDeptId}
+              onValueChange={(value) => setSelectedDeptId(value ?? "")}
             >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Theme" />
@@ -49,22 +49,6 @@ export default function CollegeAdminInvitesPage() {
                 </SelectGroup>
               </SelectContent>
             </Select>
-            {/* <Select
-              value={selectedDeptId}
-              // onValueChange={setSelectedDeptId}
-              onChange={(e) => setSelectedDeptId(e.target.value)}
-              className="w-full"
-              required
-            >
-              <option value="">-- Choose Department --</option>
-              {departments
-                .filter((d) => d.status === "ACTIVE")
-                .map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.name}
-                  </option>
-                ))}
-            </Select> */}
           </div>
           <button
             type="submit"
