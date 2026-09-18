@@ -53,14 +53,14 @@ export async function GET() {
       `)
       .eq("company_id", companyProfile.id)
       .order("id", { ascending: false })
-      
+
     if (jobsError) {
       console.error("Failed to load company jobs:", jobsError)
       return NextResponse.json({ error: "Failed to load jobs" }, { status: 500 })
     }
 
     const normalizedJobs =
-      jobs?.map((job:any) => ({
+      jobs?.map((job: any) => ({
         ...job,
         branches:
           job.branches?.map(
@@ -151,8 +151,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid CTC range" }, { status: 400 })
     }
 
-    // The current UI sends ctc_min/ctc_max. Keep the legacy `package`/`ctc`
-    // payload supported for older clients by treating it as a single-value range.
     const resolvedCtcMin = parsedCtcMin ?? parsedLegacyCtc
     const resolvedCtcMax = parsedCtcMax ?? parsedLegacyCtc
 
@@ -200,6 +198,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "At least one valid eligible branch is required" }, { status: 400 })
     }
 
+    const rawSkillsInput = body.skills ?? body.requiredSkills ?? body.required_skills ?? []
+    let parsedSkills: string[] = []
+    if (Array.isArray(rawSkillsInput)) {
+      parsedSkills = rawSkillsInput
+        .filter((s): s is string => typeof s === "string")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    } else if (typeof rawSkillsInput === "string") {
+      parsedSkills = rawSkillsInput
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
+    }
+    const skillList = [...new Set(parsedSkills)]
+
     const { data: activeColleges, error: collegesError } = await supabase
       .from("organizations")
       .select("id")
@@ -222,6 +235,7 @@ export async function POST(request: Request) {
         ctc_max: resolvedCtcMax,
         min_cgpa: parsedMinCgpa,
         max_backlogs: parsedMaxBacklogs,
+        skills: skillList,
         require_mock: Boolean(requireMock),
         mock_pass_score: requireMock ? parsedMockScore : 50,
         global_status: "PENDING",

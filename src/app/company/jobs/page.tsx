@@ -89,6 +89,11 @@ export default function CompanyJobsPage() {
       .map((item) => item.trim())
       .filter(Boolean)
 
+    const skills = String(formData.get("skills") || "")
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+
     const payload = {
       title: String(formData.get("title") || ""),
       description: String(formData.get("description") || ""),
@@ -117,6 +122,7 @@ export default function CompanyJobsPage() {
         Number(formData.get("mock_pass_score")) || null,
 
       branches,
+      skills,
     }
 
     try {
@@ -167,224 +173,214 @@ export default function CompanyJobsPage() {
 
         {/* Jobs Table */}
 
-          {jobs.length === 0 ? (
-            <div className="flex min-h-[320px] flex-col items-center justify-center rounded-xl border border-dashed">
-              <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-muted">
-                <IconBriefcase className="size-5 text-muted-foreground" />
-              </div>
-
-              <p className="font-medium">No job openings yet</p>
-
-              <p className="mt-1 max-w-sm text-center text-sm text-muted-foreground">
-                Create your first campus opportunity and start receiving
-                applications from eligible students.
-              </p>
-
-              <Button
-                size="sm"
-                className="mt-5"
-                onClick={() => setDialogOpen(true)}
-              >
-                <IconPlus className="size-4" />
-                Post Opening
-              </Button>
+        {jobs.length === 0 ? (
+          <div className="flex min-h-[320px] flex-col items-center justify-center rounded-xl border border-dashed">
+            <div className="mb-4 flex size-11 items-center justify-center rounded-xl bg-muted">
+              <IconBriefcase className="size-5 text-muted-foreground" />
             </div>
-          ) : (
-            <div className="overflow-hidden rounded-xl border">
-              {/* Table header */}
 
-              {/* <div className="flex items-center justify-between border-b px-5 py-4">
-                <div>
-                  <h3 className="font-semibold">
-                    Job Openings
-                  </h3>
+            <p className="font-medium">No job openings yet</p>
 
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {jobs.length}{" "}
-                    {jobs.length === 1 ? "opening" : "openings"} posted
-                  </p>
-                </div>
+            <p className="mt-1 max-w-sm text-center text-sm text-muted-foreground">
+              Create your first campus opportunity and start receiving
+              applications from eligible students.
+            </p>
 
-                <Button
-                  size="sm"
-                  onClick={() => setDialogOpen(true)}
-                >
-                  <IconPlus className="size-4" />
-                  Post Opening
-                </Button>
-              </div> */}
+            <Button
+              size="sm"
+              className="mt-5"
+              onClick={() => setDialogOpen(true)}
+            >
+              <IconPlus className="size-4" />
+              Post Opening
+            </Button>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-xl border">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b bg-muted/40 text-left">
+                    <th className="min-w-[240px] px-4 py-3 font-medium text-muted-foreground">
+                      Position
+                    </th>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/40 text-left">
-                      <th className="min-w-[240px] px-4 py-3 font-medium text-muted-foreground">
-                        Position
-                      </th>
+                    <th className="min-w-[150px] px-4 py-3 font-medium text-muted-foreground">
+                      Work
+                    </th>
 
-                      <th className="min-w-[150px] px-4 py-3 font-medium text-muted-foreground">
-                        Work
-                      </th>
+                    <th className="min-w-[130px] px-4 py-3 font-medium text-muted-foreground">
+                      Package
+                    </th>
 
-                      <th className="min-w-[130px] px-4 py-3 font-medium text-muted-foreground">
-                        Package
-                      </th>
+                    <th className="min-w-[170px] px-4 py-3 font-medium text-muted-foreground">
+                      Eligibility & Skills
+                    </th>
 
-                      <th className="min-w-[170px] px-4 py-3 font-medium text-muted-foreground">
-                        Eligibility
-                      </th>
+                    <th className="px-4 py-3 text-center font-medium text-muted-foreground">
+                      Applicants
+                    </th>
 
+                    <th className="px-4 py-3 font-medium text-muted-foreground">
+                      Status
+                    </th>
 
-                      <th className="px-4 py-3 text-center font-medium text-muted-foreground">
-                        Applicants
-                      </th>
+                    <th className="w-[60px] px-4 py-3" />
+                  </tr>
+                </thead>
 
-                      <th className="px-4 py-3 font-medium text-muted-foreground">
-                        Status
-                      </th>
+                <tbody className="divide-y">
+                  {jobs.map((job) => {
+                    const branches = job.branches ?? []
 
-                      <th className="w-[60px] px-4 py-3" />
-                    </tr>
-                  </thead>
+                    return (
+                      <tr
+                        key={job.id}
+                        className="group transition-colors hover:bg-muted/30"
+                      >
+                        {/* Position */}
 
-                  <tbody className="divide-y">
-                    {jobs.map((job) => {
-
-                      const branches = job.branches ?? []
-
-                      return (
-                        <tr
-                          key={job.id}
-                          className="group transition-colors hover:bg-muted/30"
-                        >
-                          {/* Position */}
-
-                          <td className="px-4 py-4 align-top">
-                            <div className="flex gap-3">
-                              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
-                                <IconBriefcase className="size-4 text-muted-foreground" />
-                              </div>
-
-                              <div className="min-w-0">
-                                <p className="max-w-[260px] truncate font-medium text-foreground">
-                                  {job.title}
-                                </p>
-
-                                <p className="mt-1 max-w-[260px] truncate text-xs text-muted-foreground">
-                                  {job.description ||
-                                    "No description provided"}
-                                </p>
-
-                              </div>
+                        <td className="px-4 py-4 align-top">
+                          <div className="flex gap-3">
+                            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-muted/40">
+                              <IconBriefcase className="size-4 text-muted-foreground" />
                             </div>
-                          </td>
 
-                          {/* Work */}
-
-                          <td className="px-4 py-4 align-top">
-                            <div className="space-y-1">
-                              <p className="font-medium">
-                                {job.location || "Not specified"}
+                            <div className="min-w-0">
+                              <p className="max-w-[260px] truncate font-medium text-foreground">
+                                {job.title}
                               </p>
 
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <span className="size-1 rounded-full bg-muted-foreground" />
-
-                                {job.work_mode === "ONSITE"
-                                  ? "On-site"
-                                  : job.work_mode === "HYBRID"
-                                    ? "Hybrid"
-                                    : job.work_mode === "REMOTE"
-                                      ? "Remote"
-                                      : job.work_mode || "—"}
-                              </div>
+                              <p className="mt-1 max-w-[260px] truncate text-xs text-muted-foreground">
+                                {job.description ||
+                                  "No description provided"}
+                              </p>
                             </div>
-                          </td>
+                          </div>
+                        </td>
 
-                          {/* Package */}
+                        {/* Work */}
 
-                          <td className="px-4 py-4 align-top">
-                            <p className="whitespace-nowrap font-semibold">
-                              {job.ctc_min && job.ctc_max
-                                ? `₹${job.ctc_min}–${job.ctc_max} LPA`
-                                : job.ctc_max
-                                  ? `₹${job.ctc_max} LPA`
-                                  : job.ctc_min
-                                    ? `₹${job.ctc_min}+ LPA`
-                                    : "Not disclosed"}
+                        <td className="px-4 py-4 align-top">
+                          <div className="space-y-1">
+                            <p className="font-medium">
+                              {job.location || "Not specified"}
                             </p>
 
-                          </td>
+                            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                              <span className="size-1 rounded-full bg-muted-foreground" />
 
-                          {/* Eligibility */}
+                              {job.work_mode === "ONSITE"
+                                ? "On-site"
+                                : job.work_mode === "HYBRID"
+                                  ? "Hybrid"
+                                  : job.work_mode === "REMOTE"
+                                    ? "Remote"
+                                    : job.work_mode || "—"}
+                            </div>
+                          </div>
+                        </td>
 
-                          <td className="px-4 py-4 align-top">
-                            <div className="space-y-2">
-                              <div className="flex flex-wrap gap-1">
-                                <span className="rounded-md border bg-muted/30 px-1.5 py-0.5 text-[11px] font-medium">
-                                  CGPA ≥ {job.min_cgpa ?? 0}
-                                </span>
+                        {/* Package */}
 
-                                <span className="rounded-md border bg-muted/30 px-1.5 py-0.5 text-[11px] font-medium">
-                                  Backlogs ≤ {job.max_backlogs ?? 0}
-                                </span>
+                        <td className="px-4 py-4 align-top">
+                          <p className="whitespace-nowrap font-semibold">
+                            {job.ctc_min && job.ctc_max
+                              ? `₹${job.ctc_min}–${job.ctc_max} LPA`
+                              : job.ctc_max
+                                ? `₹${job.ctc_max} LPA`
+                                : job.ctc_min
+                                  ? `₹${job.ctc_min}+ LPA`
+                                  : "Not disclosed"}
+                          </p>
+                        </td>
+
+                        {/* Eligibility & Skills */}
+
+                        <td className="px-4 py-4 align-top">
+                          <div className="space-y-2">
+                            <div className="flex flex-wrap gap-1">
+                              <span className="rounded-md border bg-muted/30 px-1.5 py-0.5 text-[11px] font-medium">
+                                CGPA ≥ {job.min_cgpa ?? 0}
+                              </span>
+
+                              <span className="rounded-md border bg-muted/30 px-1.5 py-0.5 text-[11px] font-medium">
+                                Backlogs ≤ {job.max_backlogs ?? 0}
+                              </span>
+                            </div>
+
+                            {branches.length > 0 && (
+                              <p
+                                className="max-w-[180px] truncate text-xs text-muted-foreground"
+                                title={branches.join(", ")}
+                              >
+                                {branches.slice(0, 2).join(", ")}
+
+                                {branches.length > 2 &&
+                                  ` +${branches.length - 2}`}
+                              </p>
+                            )}
+
+                            {Array.isArray(job.skills) && job.skills.length > 0 && (
+                              <div className="flex flex-wrap gap-1 pt-1">
+                                {job.skills.map((skill: string, idx: number) => (
+                                  <span
+                                    key={idx}
+                                    className="inline-flex items-center rounded-md border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+                                  >
+                                    {skill}
+                                  </span>
+                                ))}
                               </div>
+                            )}
 
-                              {branches.length > 0 && (
-                                <p
-                                  className="max-w-[180px] truncate text-xs text-muted-foreground"
-                                  title={branches.join(", ")}
-                                >
-                                  {branches.slice(0, 2).join(", ")}
+                            {job.require_mock && (
+                              <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                                Mock score ≥{" "}
+                                {job.mock_pass_score ?? 0}
+                              </p>
+                            )}
+                          </div>
+                        </td>
 
-                                  {branches.length > 2 &&
-                                    ` +${branches.length - 2}`}
-                                </p>
-                              )}
+                        {/* Applicants */}
 
-                              {job.require_mock && (
-                                <p className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                                  Mock score ≥{" "}
-                                  {job.mock_pass_score ?? 0}
-                                </p>
-                              )}
-                            </div>
-                          </td>
+                        <td className="px-4 py-4 text-center align-top">
+                          <div className="inline-flex min-w-8 items-center justify-center rounded-md border bg-muted/30 px-2 py-1 text-xs font-semibold">
+                            {job.college_mappings?.reduce(
+                              (total: any, mapping: any) =>
+                                total + (mapping.applications?.length ?? 0),
+                              0
+                            ) ?? 0}
+                          </div>
+                        </td>
 
-                          {/* Applicants */}
+                        {/* Status */}
 
-                          <td className="px-4 py-4 text-center align-top">
-                            <div className="inline-flex min-w-8 items-center justify-center rounded-md border bg-muted/30 px-2 py-1 text-xs font-semibold">
-                              {job.college_mappings?.reduce( (total:any, mapping:any) => total + (mapping.applications?.length ?? 0), 0 ) ?? 0}
-                            </div>
-                          </td>
+                        <td className="px-4 py-4 align-top">
+                          {renderStatusBadge(job.global_status)}
+                        </td>
 
-                          {/* Status */}
+                        {/* Actions */}
 
-                          <td className="px-4 py-4 align-top">
-                            {renderStatusBadge(job.global_status)}
-                          </td>
-
-                          {/* Actions */}
-
-                          <td className="px-4 py-4 text-right align-top">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="size-8"
-                              aria-label={`Options for ${job.title}`}
-                            >
-                              <IconDotsVertical className="size-4" />
-                            </Button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                        <td className="px-4 py-4 text-right align-top">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8"
+                            aria-label={`Options for ${job.title}`}
+                          >
+                            <IconDotsVertical className="size-4" />
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-          )}
+          </div>
+        )}
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -418,6 +414,18 @@ export default function CompanyJobsPage() {
                     required
                     rows={4}
                   />
+                </Field>
+
+                <Field>
+                  <Label htmlFor="skills">Required Skills</Label>
+                  <Input
+                    id="skills"
+                    name="skills"
+                    placeholder="React.js, Node.js, SQL, Python"
+                  />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Separate required skills with commas.
+                  </p>
                 </Field>
 
                 <Field>
@@ -498,7 +506,6 @@ export default function CompanyJobsPage() {
                     />
                   </Field>
                 </div>
-
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field>

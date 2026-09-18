@@ -11,15 +11,6 @@
  *   5. CGPA meets minimum
  *   6. Active backlogs are within the maximum
  *   7. Every required job skill is present in the student's profile
- *
- * The current database model exposes these job requirements through:
- * job_postings.min_cgpa
- * job_postings.max_backlogs
- * job_postings.skills
- * job_eligible_branches
- * job_college_mappings
- *
- * Keep this file deterministic and explainable. Do not use an LLM here.
  */
 
 type EligibilityStudent = {
@@ -30,6 +21,8 @@ type EligibilityStudent = {
   skills: string[] | null
   profile_status: string | null
   is_placed: boolean | null
+  user_id?: string
+  users?: { org_id: string | null } | null
 }
 
 type EligibilityJob = {
@@ -42,12 +35,6 @@ type EligibilityJob = {
 
 type EligibilityBranch = {
   branch_name: string | null
-}
-
-type EligibilityMapping = {
-  id: string
-  org_id: string
-  local_status: string
 }
 
 export type StudentEligibilityReasons = {
@@ -86,25 +73,9 @@ export type StudentEligibilityDetails = {
 }
 
 /**
- * Normalizes a skill so matching is case-insensitive and tolerant of:
- * - spaces
- * - hyphens
- * - underscores
- * - dots
- * - plus signs
- * - # symbols
- *
- * Examples:
- *   "React.js"       -> "reactjs"
- *   "React JS"       -> "reactjs"
- *   "Node.js"        -> "nodejs"
- *   "C++"            -> "c"
- *   "C#"             -> "c"
- *
- * The aliases below preserve common programming-language spellings that
- * would otherwise lose meaning during punctuation normalization.
+ * Normalizes a skill so matching is case-insensitive and tolerant of punctuation/spaces.
  */
-function normalizeSkill(value: unknown): string {
+export function normalizeSkill(value: unknown): string {
   const raw = String(value ?? "")
     .trim()
     .toLowerCase()
@@ -117,41 +88,64 @@ function normalizeSkill(value: unknown): string {
     "c#": "csharp",
     "c sharp": "csharp",
     ".net": "dotnet",
+    "dotnet": "dotnet",
     "asp.net": "aspnet",
+    "aspnet": "aspnet",
     "node.js": "nodejs",
     "node js": "nodejs",
+    "nodejs": "nodejs",
+    "node": "nodejs",
     "react.js": "reactjs",
     "react js": "reactjs",
+    "reactjs": "reactjs",
+    "react": "reactjs",
     "next.js": "nextjs",
     "next js": "nextjs",
+    "nextjs": "nextjs",
     "vue.js": "vuejs",
     "vue js": "vuejs",
+    "vuejs": "vuejs",
     "express.js": "expressjs",
     "express js": "expressjs",
+    "expressjs": "expressjs",
     "tailwind css": "tailwind",
+    "tailwind": "tailwind",
     "postgresql": "postgres",
     "postgre sql": "postgres",
+    "postgres": "postgres",
     "mongo db": "mongodb",
+    "mongodb": "mongodb",
     "machine learning": "machinelearning",
+    "machinelearning": "machinelearning",
     "deep learning": "deeplearning",
+    "deeplearning": "deeplearning",
     "artificial intelligence": "ai",
+    "ai": "ai",
     "amazon web services": "aws",
+    "aws": "aws",
     "google cloud platform": "gcp",
+    "gcp": "gcp",
     "microsoft azure": "azure",
+    "azure": "azure",
   }
 
   if (aliases[raw]) return aliases[raw]
 
   return raw
     .replace(/\s+/g, "")
-    .replace(/[._\-/#]+/g, "")
+    .replace(/[._\-/#+]+/g, "")
 }
 
 /**
  * Returns a normalized, unique skill list.
  */
-function normalizeSkills(values: unknown): string[] {
-  if (!Array.isArray(values)) return []
+export function normalizeSkills(values: unknown): string[] {
+  if (!Array.isArray(values)) {
+    if (typeof values === "string" && values.trim()) {
+      return normalizeSkills(values.split(","))
+    }
+    return []
+  }
 
   return Array.from(
     new Set(
@@ -165,33 +159,46 @@ function normalizeSkills(values: unknown): string[] {
 /**
  * Human-readable version of a normalized skill.
  */
-function displaySkill(value: string): string {
-  return value
-    .replace(/^cpp$/, "C++")
-    .replace(/^csharp$/, "C#")
-    .replace(/^dotnet$/, ".NET")
-    .replace(/^aspnet$/, "ASP.NET")
-    .replace(/^nodejs$/, "Node.js")
-    .replace(/^reactjs$/, "React.js")
-    .replace(/^nextjs$/, "Next.js")
-    .replace(/^vuejs$/, "Vue.js")
-    .replace(/^expressjs$/, "Express.js")
-    .replace(/^tailwind$/, "Tailwind CSS")
-    .replace(/^postgres$/, "PostgreSQL")
-    .replace(/^mongodb$/, "MongoDB")
-    .replace(/^machinelearning$/, "Machine Learning")
-    .replace(/^deeplearning$/, "Deep Learning")
-    .replace(/^ai$/, "AI")
-    .replace(/^aws$/, "AWS")
-    .replace(/^gcp$/, "GCP")
-    .replace(/^azure$/, "Azure")
+export function displaySkill(value: string): string {
+  const normalized = normalizeSkill(value)
+  const displayMap: Record<string, string> = {
+    cpp: "C++",
+    csharp: "C#",
+    dotnet: ".NET",
+    aspnet: "ASP.NET",
+    nodejs: "Node.js",
+    reactjs: "React.js",
+    nextjs: "Next.js",
+    vuejs: "Vue.js",
+    expressjs: "Express.js",
+    tailwind: "Tailwind CSS",
+    postgres: "PostgreSQL",
+    mongodb: "MongoDB",
+    machinelearning: "Machine Learning",
+    deeplearning: "Deep Learning",
+    ai: "AI",
+    aws: "AWS",
+    gcp: "GCP",
+    azure: "Azure",
+  }
+
+  if (displayMap[normalized]) {
+    return displayMap[normalized]
+  }
+
+  const str = value.trim()
+  if (!str) return ""
+  if (str.toLowerCase() === "sql") return "SQL"
+  if (str.toLowerCase() === "html") return "HTML"
+  if (str.toLowerCase() === "css") return "CSS"
+  if (str.toLowerCase() === "js") return "JS"
+  if (str.toLowerCase() === "ts") return "TS"
+
+  return str.split(/\s+/).map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" ")
 }
 
 /**
  * Check eligibility and return the complete explanation.
- *
- * This intentionally performs the checks from the current database instead
- * of trusting eligibility flags sent by the browser.
  */
 export async function getStudentEligibility(
   supabase: any,
@@ -211,7 +218,7 @@ export async function getStudentEligibility(
     supabase
       .from("student_profiles")
       .select(
-        "id, cgpa, active_backlogs, branch, skills, profile_status, is_placed"
+        "id, cgpa, active_backlogs, branch, skills, profile_status, is_placed, user_id, users(org_id)"
       )
       .eq("id", studentId)
       .maybeSingle(),
@@ -253,19 +260,16 @@ export async function getStudentEligibility(
     throw new Error("Job posting not found")
   }
 
-  /**
-   * If an organization is supplied, require the actual approved mapping.
-   * This prevents a student from being considered eligible for a job that
-   * exists globally but is not approved for their college.
-   */
+  const effectiveOrgId = orgId || student?.users?.org_id || null
+
   let mappingApproved = true
 
-  if (orgId) {
+  if (effectiveOrgId) {
     const { data: mapping, error: mappingError } = await supabase
       .from("job_college_mappings")
       .select("id, org_id, local_status")
       .eq("job_id", jobId)
-      .eq("org_id", orgId)
+      .eq("org_id", effectiveOrgId)
       .eq("local_status", "APPROVED")
       .maybeSingle()
 
@@ -296,10 +300,6 @@ export async function getStudentEligibility(
 
   const studentBranch = String(student.branch ?? "").trim()
 
-  /**
-   * An empty eligible-branch list means the company did not restrict the
-   * drive by branch. This preserves the existing application's behavior.
-   */
   const branchMatches =
     eligibleBranches.length === 0 ||
     eligibleBranches.some(
@@ -391,17 +391,6 @@ export async function getStudentEligibility(
   }
 }
 
-/**
- * Backwards-compatible boolean API.
- *
- * Existing application, mock-assessment and server-side callers can continue
- * to use:
- *
- *   await checkStudentEligibility(supabase, studentId, jobId)
- *
- * while the jobs API can use getStudentEligibility() when it needs the
- * detailed reasons and matched/missing skills.
- */
 export async function checkStudentEligibility(
   supabase: any,
   studentId: string,
@@ -418,9 +407,6 @@ export async function checkStudentEligibility(
   return result.eligible
 }
 
-/**
- * Optional helper for UI/API layers that need a concise explanation.
- */
 export function formatEligibilityFailure(
   result: StudentEligibilityDetails,
 ): string {

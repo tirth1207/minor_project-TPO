@@ -299,6 +299,8 @@ export default function StudentJobsPage() {
               applicant_count,
               is_eligible,
               eligibility_reasons,
+              missing_skills,
+              failed_requirements,
             }) => {
               const alreadyApplied = mapping
                 ? applications.some(
@@ -327,13 +329,6 @@ export default function StudentJobsPage() {
                   bestAttempt?.passed !== false
               )
               const isBookmarked = bookmarkedJobs.has(job.id)
-              const failedCriteria = eligibility_reasons
-                ? [
-                    !eligibility_reasons.branch && "Branch",
-                    !eligibility_reasons.cgpa && "CGPA",
-                    !eligibility_reasons.backlogs && "Backlogs",
-                  ].filter(Boolean)
-                : []
 
               return (
                 <Card
@@ -415,7 +410,7 @@ export default function StudentJobsPage() {
                     </p>
 
                     <div
-                      className={`rounded-xl border p-3 ${
+                      className={`rounded-xl border p-3.5 space-y-2 ${
                         isEligible
                           ? "border-emerald-200 bg-emerald-50/60 dark:border-emerald-900/50 dark:bg-emerald-950/20"
                           : "border-amber-200 bg-amber-50/60 dark:border-amber-900/50 dark:bg-amber-950/20"
@@ -423,28 +418,75 @@ export default function StudentJobsPage() {
                     >
                       <div className="flex items-center gap-2 text-xs font-semibold">
                         {isEligible ? (
-                          <IconCheck className="size-3.5 text-emerald-600" />
+                          <IconCheck className="size-4 text-emerald-600" />
                         ) : (
-                          <IconAlertTriangle className="size-3.5 text-amber-600" />
+                          <IconAlertTriangle className="size-4 text-amber-600" />
                         )}
                         <span>
                           {isEligible
-                            ? "You meet the academic criteria"
-                            : "You don't currently meet the criteria"}
+                            ? "Eligible for this drive"
+                            : "Not eligible for this drive"}
                         </span>
                       </div>
 
-                      {isEligible ? (
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          You're eligible to continue with this drive.
-                        </p>
-                      ) : (
-                        failedCriteria.length > 0 && (
-                          <p className="mt-1 text-[11px] text-amber-800 dark:text-amber-300">
-                            Needs attention: {failedCriteria.join(", ")}
-                          </p>
-                        )
-                      )}
+                      <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] pt-1 border-t border-border/40">
+                        <div className="flex items-center gap-1.5">
+                          {eligibility_reasons?.profileApproved !== false ? (
+                            <IconCheck className="size-3 text-emerald-600 shrink-0" />
+                          ) : (
+                            <IconX className="size-3 text-rose-600 shrink-0" />
+                          )}
+                          <span className={eligibility_reasons?.profileApproved !== false ? "text-foreground" : "text-rose-700 dark:text-rose-400 font-medium"}>
+                            Profile approved
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {eligibility_reasons?.branch !== false ? (
+                            <IconCheck className="size-3 text-emerald-600 shrink-0" />
+                          ) : (
+                            <IconX className="size-3 text-rose-600 shrink-0" />
+                          )}
+                          <span className={eligibility_reasons?.branch !== false ? "text-foreground" : "text-rose-700 dark:text-rose-400 font-medium"}>
+                            Branch eligible
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {eligibility_reasons?.cgpa !== false ? (
+                            <IconCheck className="size-3 text-emerald-600 shrink-0" />
+                          ) : (
+                            <IconX className="size-3 text-rose-600 shrink-0" />
+                          )}
+                          <span className={eligibility_reasons?.cgpa !== false ? "text-foreground" : "text-rose-700 dark:text-rose-400 font-medium"}>
+                            CGPA (≥{job.min_cgpa})
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {eligibility_reasons?.backlogs !== false ? (
+                            <IconCheck className="size-3 text-emerald-600 shrink-0" />
+                          ) : (
+                            <IconX className="size-3 text-rose-600 shrink-0" />
+                          )}
+                          <span className={eligibility_reasons?.backlogs !== false ? "text-foreground" : "text-rose-700 dark:text-rose-400 font-medium"}>
+                            Backlogs (≤{job.max_backlogs})
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 col-span-2">
+                          {eligibility_reasons?.skills !== false ? (
+                            <IconCheck className="size-3 text-emerald-600 shrink-0" />
+                          ) : (
+                            <IconX className="size-3 text-rose-600 shrink-0" />
+                          )}
+                          <span className={eligibility_reasons?.skills !== false ? "text-foreground" : "text-rose-700 dark:text-rose-400 font-medium"}>
+                            {eligibility_reasons?.skills !== false
+                              ? "Required skills satisfied"
+                              : `Missing skills: ${missing_skills?.join(", ") || "Skills missing"}`}
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/60 pt-3 text-xs">
@@ -523,7 +565,7 @@ export default function StudentJobsPage() {
                           handleApplyJob(
                             mapping?.id ?? null,
                             isEligible,
-                            eligibility_reasons
+                            failed_requirements
                           )
                         }
                         disabled={!isApproved || !mapping || !isEligible}

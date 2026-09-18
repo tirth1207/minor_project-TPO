@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic"
 
 import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
-import { checkStudentEligibility } from "@/lib/eligibility/check-student-eligibility"
+import { getStudentEligibility } from "@/lib/eligibility/check-student-eligibility"
 
 export async function POST(
   request: Request,
@@ -65,11 +65,10 @@ export async function POST(
       return NextResponse.json({ error: "This job mapping is not approved yet" }, { status: 400 })
     }
 
-    // Never trust client-side eligibility flags. Re-run the database eligibility
-    // rule immediately before creating the application.
-    let eligible: boolean
+    // Single source of truth eligibility evaluation
+    let eligibility
     try {
-      eligible = await checkStudentEligibility(supabase, studentId, job.id)
+      eligibility = await getStudentEligibility(supabase, studentId, job.id, orgId)
     } catch (eligibilityError: any) {
       return NextResponse.json(
         { code: "ELIGIBILITY_CHECK_FAILED", error: eligibilityError?.message || "Unable to verify eligibility" },
@@ -77,9 +76,15 @@ export async function POST(
       )
     }
 
-    if (!eligible) {
+    if (!eligibility.eligible) {
       return NextResponse.json(
-        { code: "NOT_ELIGIBLE", error: "You do not meet this job drive's eligibility criteria." },
+        {
+          code: "NOT_ELIGIBLE",
+          error: "You do not meet this job drive's eligibility criteria.",
+          reasons: eligibility.reasons,
+          missingSkills: eligibility.missingSkills,
+          failedRequirements: eligibility.failedRequirements,
+        },
         { status: 403 }
       )
     }

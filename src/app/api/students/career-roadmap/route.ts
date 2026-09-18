@@ -71,14 +71,12 @@ export async function GET() {
 
     const approvedJobs = (mappings || []).filter((m: any) => m.job && m.job.global_status === "APPROVED")
 
-    // Eligibility is authoritative and deterministic. Only eligible jobs are
-    // ever sent to the AI roadmap generator.
     const eligibleJobs: any[] = []
     for (const mapping of approvedJobs) {
       const job = mapping.job as any
       let eligible = false
       try {
-        eligible = await checkStudentEligibility(supabase, studentId, job.id)
+        eligible = await checkStudentEligibility(supabase, studentId, job.id, orgId)
       } catch (eligibilityError) {
         console.error("[Career Roadmap] Eligibility check failed:", eligibilityError)
         return NextResponse.json(
@@ -90,8 +88,6 @@ export async function GET() {
       if (eligible) eligibleJobs.push(mapping)
     }
 
-    // Mock history is part of the roadmap's input, so it must be fetched before
-    // cache validation and included in the cache fingerprint.
     const { data: mocks, error: mocksError } = await supabase
       .from("mock_interviews")
       .select("id, mock_type, overall_score, skill_scores, passed, completed_at, updated_at")

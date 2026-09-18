@@ -83,6 +83,7 @@ export interface Job {
   require_mock: boolean
   mock_pass_score: number
   global_status: string
+  skills?: string[]
   company: {
     id: string
     company_name: string
@@ -102,10 +103,18 @@ export interface JobWithMapping {
   applicant_count: number
   is_eligible?: boolean
   eligibility_reasons?: {
+    profileApproved: boolean
+    notPlaced: boolean
+    collegeMapping: boolean
+    jobApproved: boolean
     branch: boolean
     cgpa: boolean
     backlogs: boolean
+    skills: boolean
   }
+  matched_skills?: string[]
+  missing_skills?: string[]
+  failed_requirements?: string[]
 }
 
 export interface Application {
@@ -243,7 +252,7 @@ interface StudentContextType {
   handleApplyJob: (
     mappingId: string | null,
     isEligible?: boolean,
-    eligibilityReasons?: JobWithMapping["eligibility_reasons"]
+    failedRequirements?: string[]
   ) => Promise<void>
   handleDecideOffer: (offerId: string, status: "ACCEPTED" | "REJECTED") => Promise<void>
   handleStartMock: () => Promise<void>
@@ -264,7 +273,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   const [editAddress, setEditAddress] = React.useState("")
   const [editBacklogs, setEditBacklogs] = React.useState("0")
   const [editSkills, setEditSkills] = React.useState("")
-  const [notification,setNotification] = React.useState<{ notifications: any[]; count: number; hasMore: boolean }>({ notifications: [], count: 0, hasMore: false })
+  const [notification, setNotification] = React.useState<{ notifications: any[]; count: number; hasMore: boolean }>({ notifications: [], count: 0, hasMore: false })
   const [editHobbies, setEditHobbies] = React.useState("")
   const [editMarksheetUrl, setEditMarksheetUrl] = React.useState("")
   const [editSocialLinks, setEditSocialLinks] = React.useState<Record<string, string>>({})
@@ -366,10 +375,10 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   }, [user, initialized, authLoading, router, refreshMockInterviews])
 
   const fetchNotification = React.useCallback(async () => {
-    try{
-      const res = await fetch("/api/notifications", {method: "GET"})
+    try {
+      const res = await fetch("/api/notifications", { method: "GET" })
       const data = await res.json()
-      if(!res.ok){
+      if (!res.ok) {
         setNotification({ notifications: [], count: 0, hasMore: false })
         return
       }
@@ -377,7 +386,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setNotification({ notifications: [], count: 0, hasMore: false })
     }
-  },[])
+  }, [])
 
   React.useEffect(() => {
     if (initialized && !authLoading) {
@@ -440,7 +449,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
   const handleApplyJob = async (
     mappingId: string | null,
     isEligible = true,
-    eligibilityReasons?: JobWithMapping["eligibility_reasons"]
+    failedRequirements?: string[]
   ) => {
     if (!profile) return
     if (profile.profile_status !== "APPROVED") {
@@ -457,27 +466,22 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (!isEligible) {
-      const reasons = eligibilityReasons
-        ? [
-            !eligibilityReasons.branch && "your branch does not match",
-            !eligibilityReasons.cgpa && "your CGPA is below the requirement",
-            !eligibilityReasons.backlogs && "your active backlogs exceed the limit",
-          ].filter(Boolean).join(", ")
-        : "the eligibility criteria are not met"
-
-      if (
-        !confirm(
-          `You are applying despite being ineligible because ${reasons}. Continue anyway?`
-        )
-      ) {
-        return
-      }
+      const reasonsText = failedRequirements && failedRequirements.length > 0
+        ? failedRequirements.join("\n• ")
+        : "You do not meet the eligibility requirements for this job drive."
+      alert(`Cannot apply: You are not eligible for this job drive.\n\nReasons:\n• ${reasonsText}`)
+      return
     }
 
     try {
       const res = await fetch(`/api/students/jobs/${mappingId}/apply`, { method: "POST" })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to apply for this job")
+      if (!res.ok) {
+        const errorMsg = data.failedRequirements?.length
+          ? data.failedRequirements.join("; ")
+          : data.error || "Failed to apply for this job"
+        throw new Error(errorMsg)
+      }
 
       alert("Application sent successfully! Good luck with your recruitment drive!")
       await fetchData(true)

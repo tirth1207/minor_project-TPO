@@ -106,6 +106,7 @@ create table public.job_postings (
     company_id uuid not null references public.company_profiles(id) on delete cascade,
     title varchar not null,
     description text not null,
+    skills text[],
     ctc_min decimal check (ctc_min >= 0),
     ctc_max decimal check (ctc_max >= 0),
     location varchar not null,
@@ -232,6 +233,44 @@ create index idx_mock_interviews_status on public.mock_interviews(status);
 
 -- 4.1 Job Eligibility Engine
 -- Verifies if a student is eligible for a specific job posting
+create or replace function public.normalize_skill(p_skill text)
+returns text
+language plpgsql
+immutable
+as $$
+declare
+    v_raw text;
+begin
+    v_raw := lower(trim(coalesce(p_skill, '')));
+    if v_raw = '' then
+        return '';
+    end if;
+
+    case v_raw
+        when 'c++', 'c plus plus' then return 'cpp';
+        when 'c#', 'c sharp' then return 'csharp';
+        when '.net', 'dotnet' then return 'dotnet';
+        when 'asp.net', 'aspnet' then return 'aspnet';
+        when 'node.js', 'node js', 'nodejs', 'node' then return 'nodejs';
+        when 'react.js', 'react js', 'reactjs', 'react' then return 'reactjs';
+        when 'next.js', 'next js', 'nextjs' then return 'nextjs';
+        when 'vue.js', 'vue js', 'vuejs' then return 'vuejs';
+        when 'express.js', 'express js', 'expressjs' then return 'expressjs';
+        when 'tailwind css', 'tailwind' then return 'tailwind';
+        when 'postgresql', 'postgre sql', 'postgres' then return 'postgres';
+        when 'mongo db', 'mongodb' then return 'mongodb';
+        when 'machine learning', 'machinelearning' then return 'machinelearning';
+        when 'deep learning', 'deeplearning' then return 'deeplearning';
+        when 'artificial intelligence', 'ai' then return 'ai';
+        when 'amazon web services', 'aws' then return 'aws';
+        when 'google cloud platform', 'gcp' then return 'gcp';
+        when 'microsoft azure', 'azure' then return 'azure';
+        else
+            return regexp_replace(regexp_replace(v_raw, '\s+', '', 'g'), '[._\-/#+]+', '', 'g');
+    end case;
+end;
+$$;
+
 create or replace function public.check_student_eligibility(
     p_student_id uuid,
     p_job_id uuid
@@ -263,21 +302,42 @@ begin
           and j.global_status = 'APPROVED'
           and jcm.local_status = 'APPROVED'
 
-          and exists (
-              select 1
-              from public.job_eligible_branches jeb
-              where jeb.job_id = p_job_id
-                and jeb.branch_name = s.branch
+          and (
+              not exists (
+                  select 1 from public.job_eligible_branches jeb
+                  where jeb.job_id = p_job_id
+              )
+              or exists (
+                  select 1
+                  from public.job_eligible_branches jeb
+                  where jeb.job_id = p_job_id
+                    and lower(trim(jeb.branch_name)) = lower(trim(coalesce(s.branch, '')))
+              )
           )
 
-          and s.cgpa >= j.min_cgpa
-          and s.active_backlogs <= j.max_backlogs
+          and coalesce(s.cgpa, 0) >= coalesce(j.min_cgpa, 0)
+          and coalesce(s.active_backlogs, 0) <= coalesce(j.max_backlogs, 0)
+
+          and (
+              j.skills is null
+              or array_length(j.skills, 1) is null
+              or array_length(j.skills, 1) = 0
+              or not exists (
+                  select 1
+                  from unnest(j.skills) req_skill
+                  where not exists (
+                      select 1
+                      from unnest(coalesce(s.skills, '{}'::text[])) stud_skill
+                      where public.normalize_skill(stud_skill) = public.normalize_skill(req_skill)
+                  )
+              )
+          )
     )
     into v_eligible;
 
     return coalesce(v_eligible, false);
 end;
-$$ language plpgsql stable security definer;
+$$;
 
 -- 4.2 Blind Count Helper Function
 -- Returns applicant count without exposing user identities to other students

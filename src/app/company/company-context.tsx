@@ -8,6 +8,7 @@ export interface JobPosting {
   id: string
   title: string
   description: string
+  skills?: string[]
   ctc_min: number | null
   ctc_max: number | null
   location: string
@@ -48,6 +49,7 @@ export interface Applicant {
       id: string
       title: string
       description: string
+      skills?: string[]
       ctc_min: number | null
       ctc_max: number | null
       location: string
@@ -175,7 +177,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const [minCgpa, setMinCgpa] = React.useState("6.00")
   const [maxBacklogs, setMaxBacklogs] = React.useState("0")
   const [requireMock, setRequireMock] = React.useState(false)
-  const [notification,setNotification] = React.useState<{ notifications: any[]; count: number; hasMore: boolean }>({ notifications: [], count: 0, hasMore: false })
+  const [notification, setNotification] = React.useState<{ notifications: any[]; count: number; hasMore: boolean }>({ notifications: [], count: 0, hasMore: false })
   const [mockPassScore, setMockPassScore] = React.useState("50")
   const [branches, setBranches] = React.useState<string[]>([])
   const [postingJob, setPostingJob] = React.useState(false)
@@ -264,10 +266,10 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const fetchNotification = React.useCallback(async () => {
-    try{
-      const res = await fetch("/api/notifications", {method: "GET"})
+    try {
+      const res = await fetch("/api/notifications", { method: "GET" })
       const data = await res.json()
-      if(!res.ok){
+      if (!res.ok) {
         setNotification({ notifications: [], count: 0, hasMore: false })
         return
       }
@@ -275,7 +277,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     } catch {
       setNotification({ notifications: [], count: 0, hasMore: false })
     }
-  },[])
+  }, [])
 
   React.useEffect(() => {
     if (initialized && !authLoading) {
@@ -350,7 +352,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     await fetchOffers()
   }
 
-  return <CompanyContext.Provider value={{ loading, refreshing, error, jobs, companyStatus, selectedJob, setSelectedJob, applicants, offers, jobTitle, setJobTitle,notification, jobDesc, setJobDesc, jobLocation, setJobLocation, workMode, setWorkMode, ctc, setCtc, minCgpa, setMinCgpa, maxBacklogs, setMaxBacklogs, requireMock, setRequireMock, mockPassScore, setMockPassScore, branches, setBranches, postingJob, selectedApplicantIds, setSelectedApplicantIds, extendCtcValues, setExtendCtcValues, fetchData, fetchApplicants, handleCreateJob, handleShortlistApplicant, handleBulkShortlist, handleExtendOffer, handleRevokeOffer, allApplicants, fetchAllApplicants }}>{children}</CompanyContext.Provider>
+  return <CompanyContext.Provider value={{ loading, refreshing, error, jobs, companyStatus, selectedJob, setSelectedJob, applicants, offers, jobTitle, setJobTitle, notification, jobDesc, setJobDesc, jobLocation, setJobLocation, workMode, setWorkMode, ctc, setCtc, minCgpa, setMinCgpa, maxBacklogs, setMaxBacklogs, requireMock, setRequireMock, mockPassScore, setMockPassScore, branches, setBranches, postingJob, selectedApplicantIds, setSelectedApplicantIds, extendCtcValues, setExtendCtcValues, fetchData, fetchApplicants, handleCreateJob, handleShortlistApplicant, handleBulkShortlist, handleExtendOffer, handleRevokeOffer, allApplicants, fetchAllApplicants }}>{children}</CompanyContext.Provider>
 }
 
 export function useCompany() {
