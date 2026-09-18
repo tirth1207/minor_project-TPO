@@ -109,88 +109,12 @@ function SuperAdminDashboardShell({
   ]
 
   const isLoading = authLoading || superAdminLoading
+  // Keep the dashboard shell mounted and visible after the first successful load.
+  // Background auth/data changes must never replace the existing page with a full loader.
+  const [hasLoadedOnce, setHasLoadedOnce] = React.useState(false)
 
-  return (
-    <SidebarProvider>
-      <AppSidebar
-        title="Super Admin"
-        subtitle="Dashboard"
-        navMain={navMains}
-        navSecondary={navSecondary}
-        user={sidebarUser}
-        func={handleLogout}
-      />
-
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b px-6">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-vertical:h-4"
-            />
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/super-admin">
-                    Super Admin
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>Dashboard</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <NotificationCenter />
-            <button
-              type="button"
-              onClick={() => fetchData(true)}
-              disabled={isLoading || refreshing}
-              className="rounded-lg border p-1.5 disabled:opacity-50"
-              title="Refresh Data"
-            >
-              <IconRefresh
-                className={
-                  refreshing ? "size-4 animate-spin" : "size-4"
-                }
-              />
-            </button>
-          </div>
-        </header>
-
-        <div className="flex flex-1 flex-col gap-6 p-6">
-          {error && (
-            <div className="rounded-xl border p-4 text-sm text-destructive">
-              <IconAlertCircle className="mr-2 inline size-4" />
-              {error}
-            </div>
-          )}
-
-          {isLoading ? (
-            <div className="flex min-h-[400px] items-center justify-center">
-              <IconLoader className="size-8 animate-spin" />
-            </div>
-          ) : (
-            children
-          )}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
-  )
-}
-
-export default function SuperAdminLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <SuperAdminProvider>
-      <SuperAdminDashboardShell>{children}</SuperAdminDashboardShell>
-    </SuperAdminProvider>
-  )
-}
+  React.useEffect(() => {
+    if (!authLoading || superAdminLoading) {
+      setHasLoadedOnce(true)
+    }
+  }, [authLoading || superAdminLoading])
