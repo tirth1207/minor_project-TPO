@@ -258,7 +258,7 @@ function StudentDashboardShell({
                 </div>
               )}
 
-              {profile && profile.is_placed && (
+              {/* {profile && profile.is_placed && (
                 <div className="flex items-center gap-3 rounded-xl border border-emerald-200 bg-emerald-50/45 p-4 text-sm text-emerald-800 dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-400">
                   <IconCircleCheck className="h-5 w-5 shrink-0 animate-bounce" />
                   <div>
@@ -271,7 +271,7 @@ function StudentDashboardShell({
                     </p>
                   </div>
                 </div>
-              )}
+              )} */}
 
               {children}
             </>

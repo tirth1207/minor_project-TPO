@@ -34,7 +34,7 @@ export interface StudentProfile {
 
   is_placed: boolean
   mentor_id: string | null
-
+  rejection_reason?: string | null
   user?: {
     id: string
     org_id: string | null
@@ -239,7 +239,7 @@ interface StudentContextType {
   notification: { notifications: any[]; count: number; hasMore: boolean }
   fetchData: (isRefresh?: boolean) => Promise<void>
   refreshMockInterviews: () => Promise<void>
-  handleUpdateProfile: (e: React.FormEvent) => Promise<void>
+  handleUpdateProfile: () => Promise<void>
   handleApplyJob: (
     mappingId: string | null,
     isEligible?: boolean,
@@ -387,8 +387,7 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => { fetchNotification() }, [fetchNotification])
 
-  const handleUpdateProfile = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleUpdateProfile = async () => {
     setUpdatingProfile(true)
 
     try {
@@ -406,8 +405,14 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
           active_backlogs: Number(editBacklogs),
           semester: Number(editSemester),
           branch: editBranch.trim(),
-          skills: editSkills.split(",").map((v) => v.trim()).filter(Boolean),
-          hobbies: editHobbies.split(",").map((v) => v.trim()).filter(Boolean),
+          skills: editSkills
+            .split(",")
+            .map((v) => v.trim())
+            .filter(Boolean),
+          hobbies: editHobbies
+            .split(",")
+            .map((v) => v.trim())
+            .filter(Boolean),
           resume_url: editResumeUrl.trim(),
           marksheet_url: editMarksheetUrl.trim(),
           social_links: editSocialLinks,
@@ -415,12 +420,18 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       })
 
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || "Failed to update profile")
 
-      alert("Profile updated successfully. Your profile is now pending mentor verification.")
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to update profile")
+      }
+
       await fetchData(true)
     } catch (err) {
-      alert(err instanceof Error ? err.message : "An unexpected error occurred")
+      alert(
+        err instanceof Error
+          ? err.message
+          : "An unexpected error occurred"
+      )
     } finally {
       setUpdatingProfile(false)
     }

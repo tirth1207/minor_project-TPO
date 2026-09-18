@@ -35,6 +35,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 type ProfileErrors = Partial<Record<string, string>>
 
@@ -251,8 +259,13 @@ export default function StudentProfilePage() {
     updatingProfile,
     handleUpdateProfile,
   } = useStudent()
-
+  const [showSubmitDialog, setShowSubmitDialog] = React.useState(false)
   const [errors, setErrors] = React.useState<ProfileErrors>({})
+
+  const handleConfirmSubmit = async () => {
+    setShowSubmitDialog(false)
+    await handleUpdateProfile()
+  }
 
   if (!profile) {
     return (
@@ -291,7 +304,7 @@ export default function StudentProfilePage() {
       return
     }
 
-    await handleUpdateProfile(event)
+    setShowSubmitDialog(true)
   }
 
   const inputClass = (field: string) =>
@@ -351,6 +364,19 @@ export default function StudentProfilePage() {
           <AlertDescription>
             Your profile has validation errors. Review the fields
             below before saving your changes.
+          </AlertDescription>
+        </Alert>
+      )}
+      {profile.rejection_reason && profile.profile_status === "REJECTED" && (
+        <Alert variant="destructive">
+          <IconAlertTriangle className="size-4" />
+
+          <AlertTitle>
+            Profile Rejected
+          </AlertTitle>
+
+          <AlertDescription>
+            Your profile has been rejected. Rejection reason: {profile.rejection_reason}
           </AlertDescription>
         </Alert>
       )}
@@ -758,6 +784,72 @@ export default function StudentProfilePage() {
           </Button>
         </div>
       </form>
+      <Dialog
+        open={showSubmitDialog}
+        onOpenChange={(open) => {
+          if (!updatingProfile) {
+            setShowSubmitDialog(open)
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Submit Profile Changes?</DialogTitle>
+
+            <DialogDescription>
+              Are you sure you want to save these changes to your profile?
+              Your profile will be sent back to your mentor for verification.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-lg border bg-muted/50 p-4">
+            <div className="flex items-start gap-3">
+              <IconAlertTriangle className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+
+              <div className="space-y-1">
+                <p className="text-sm font-medium">
+                  Verification required
+                </p>
+
+                <p className="text-sm text-muted-foreground">
+                  Saving your profile will change its status to{" "}
+                  <span className="font-medium text-foreground">
+                    PENDING
+                  </span>
+                  . Placement features that require approval may remain
+                  unavailable until your mentor reviews the changes.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowSubmitDialog(false)}
+              disabled={updatingProfile}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              type="button"
+              onClick={handleConfirmSubmit}
+              disabled={updatingProfile}
+            >
+              {updatingProfile ? (
+                "Saving..."
+              ) : (
+                <>
+                  <IconCheck className="size-4" />
+                  Confirm & Save
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
