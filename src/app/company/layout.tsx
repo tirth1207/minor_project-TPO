@@ -117,111 +117,12 @@ function CompanyDashboardShell({
     navMain.find((item) => item.isActive)?.title ?? "Dashboard"
 
   const isLoading = authLoading || companyLoading
+  // Keep the dashboard shell mounted and visible after the first successful load.
+  // Background auth/data changes must never replace the existing page with a full loader.
+  const [hasLoadedOnce, setHasLoadedOnce] = React.useState(false)
 
-  return (
-    <SidebarProvider>
-      <AppSidebar
-        title="TPO Portal"
-        subtitle="Corporate Partner"
-        navMain={navMain}
-        navSecondary={navSecondary}
-        user={sidebarUser}
-        func={handleLogout}
-      />
-
-      <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-zinc-100 px-6 dark:border-secondary">
-          <div className="flex items-center gap-2">
-            <SidebarTrigger className="-ml-1 text-zinc-500 hover:text-zinc-950 dark:hover:text-zinc-50" />
-            <Separator
-              orientation="vertical"
-              className="mr-2 data-vertical:h-4 data-vertical:self-auto"
-            />
-
-            <Breadcrumb>
-              <BreadcrumbList>
-                <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="/company/jobs">
-                    Corporate Partner
-                  </BreadcrumbLink>
-                </BreadcrumbItem>
-                <BreadcrumbSeparator className="hidden md:block" />
-                <BreadcrumbItem>
-                  <BreadcrumbPage>{currentPage}</BreadcrumbPage>
-                </BreadcrumbItem>
-              </BreadcrumbList>
-            </Breadcrumb>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <NotificationCenter />
-            <button
-              type="button"
-              onClick={() => fetchData(true)}
-              disabled={isLoading || refreshing}
-              title="Refresh Data"
-              className="cursor-pointer rounded-lg border border-secondary p-1.5 text-zinc-500 transition-all hover:bg-zinc-50 hover:text-zinc-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-secondary dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
-            >
-              <IconRefresh
-                className={`h-4.5 w-4.5 ${
-                  refreshing ? "animate-spin" : ""
-                }`}
-              />
-            </button>
-          </div>
-        </header>
-
-        <div className="flex flex-1 flex-col gap-6 p-6">
-          {companyStatus !== "ACTIVE" && (
-            <div className="flex items-center gap-3 rounded-xl border border-amber-200 bg-amber-50/40 p-4 text-sm text-amber-800 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-400">
-              <IconAlertCircle className="h-5 w-5 shrink-0" />
-              <div>
-                <p className="font-bold">
-                  Your corporate account is pending approval
-                </p>
-                <p className="mt-0.5 text-xs">
-                  Your dashboard features are restricted. You can browse, but
-                  cannot publish new job postings until the Super Admin verifies
-                  your corporate credentials.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {error && (
-            <div className="flex items-start gap-3 rounded-2xl border border-rose-200 bg-rose-50/50 p-4 text-sm text-rose-700 dark:border-rose-900/50 dark:bg-rose-950/20 dark:text-rose-400">
-              <IconAlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-              <div className="flex-1">
-                <p className="font-semibold">Failed to load data</p>
-                <p className="mt-0.5 text-xs opacity-90">{error}</p>
-              </div>
-            </div>
-          )}
-
-          {isLoading ? (
-            <div className="flex min-h-[400px] flex-col items-center justify-center gap-2">
-              <IconLoader className="h-8 w-8 animate-spin text-primary" />
-              <span className="text-sm font-medium text-zinc-500">
-                Fetching corporate panel...
-              </span>
-            </div>
-          ) : (
-            children
-          )}
-        </div>
-      </SidebarInset>
-    </SidebarProvider>
-  )
-}
-
-export default function CompanyLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  return (
-    <CompanyProvider>
-      <CompanyDashboardShell>{children}</CompanyDashboardShell>
-    </CompanyProvider>
-  )
-}
+  React.useEffect(() => {
+    if (!authLoading || companyLoading) {
+      setHasLoadedOnce(true)
+    }
+  }, [authLoading || companyLoading])
