@@ -25,9 +25,27 @@ export default function CompanyPostJobPage() {
     setRequireMock,
     mockPassScore,
     setMockPassScore,
+    requiredSkills,
+    setRequiredSkills,
     postingJob,
     handleCreateJob,
   } = useCompany()
+
+  const [skillInput, setSkillInput] = React.useState("")
+
+  const addSkills = (value: string) => {
+    const incoming = value.split(",").map((skill) => skill.trim()).filter(Boolean)
+    if (incoming.length === 0) return
+    setRequiredSkills([...new Set([...requiredSkills, ...incoming])])
+    setSkillInput("")
+  }
+
+  const handleSkillKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter" || event.key === ",") {
+      event.preventDefault()
+      addSkills(skillInput)
+    }
+  }
 
   return (
     <div className="rounded-2xl border border-secondary bg-background p-6 dark:border-secondary dark:bg-background max-w-3xl">
@@ -116,6 +134,29 @@ export default function CompanyPostJobPage() {
             className="w-full h-9 rounded-lg border border-secondary px-3 text-sm focus:outline-primary dark:border-secondary dark:bg-zinc-900 dark:text-zinc-50"
             required
           />
+        </div>
+        <div className="sm:col-span-2">
+          <label className="text-xs font-semibold text-zinc-400 block mb-1">Required Skills</label>
+          <div className="w-full min-h-9 rounded-lg border border-secondary px-2 py-1.5 focus-within:ring-1 focus-within:ring-primary dark:border-secondary dark:bg-zinc-900 flex flex-wrap items-center gap-1.5">
+            {requiredSkills.map((skill) => (
+              <span key={skill} className="inline-flex items-center gap-1 rounded-md bg-zinc-100 px-2 py-1 text-xs font-medium text-zinc-800 dark:bg-zinc-800 dark:text-zinc-100">
+                {skill}
+                <button type="button" onClick={() => setRequiredSkills(requiredSkills.filter((item) => item !== skill))} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50" aria-label={`Remove ${skill}`}>
+                  ×
+                </button>
+              </span>
+            ))}
+            <input
+              type="text"
+              value={skillInput}
+              onChange={(e) => setSkillInput(e.target.value)}
+              onKeyDown={handleSkillKeyDown}
+              onBlur={() => addSkills(skillInput)}
+              placeholder={requiredSkills.length ? "Add another skill..." : "Type a skill and press Enter or use commas..."}
+              className="min-w-[220px] flex-1 h-7 bg-transparent px-1 text-sm outline-none dark:text-zinc-50"
+            />
+          </div>
+          <p className="mt-1 text-[11px] text-zinc-500">Each skill is stored as an array value and is used by the student eligibility engine.</p>
         </div>
         <div className="flex flex-col justify-end pb-1">
           <label className="inline-flex items-center gap-2 cursor-pointer text-sm font-semibold text-zinc-700 dark:text-zinc-300">
