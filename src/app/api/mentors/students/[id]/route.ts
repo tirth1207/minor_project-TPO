@@ -1,19 +1,22 @@
-export const dynamic = "force-dynamic"
-
-import { requireActiveMentor } from "@/lib/auth/require-active-mentor"
 import { NextResponse } from "next/server"
 
-type ProfileStatus =
-  | "PENDING"
-  | "APPROVED"
-  | "REJECTED"
+import { requireActiveMentor } from "@/lib/auth/require-active-mentor"
+
+export const dynamic = "force-dynamic"
+
+type ProfileStatus = "PENDING" | "APPROVED" | "REJECTED"
+
+interface RouteContext {
+  params: Promise<{ id: string }>
+}
 
 export async function GET(
-  request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  _request: Request,
+  { params }: RouteContext
 ) {
   try {
     const { id: studentProfileId } = await params
+
     const auth = await requireActiveMentor()
 
     if (!auth.ok) {
@@ -23,38 +26,95 @@ export async function GET(
       )
     }
 
-    const { supabase, deptId, orgId } = auth
+    const {
+      supabase,
+      deptId,
+      orgId,
+    } = auth
 
-    const { data: student, error: studentError } = await supabase
+    const {
+      data: student,
+      error: studentError,
+    } = await supabase
       .from("student_profiles")
       .select(`
         *,
         user:users!student_profiles_user_id_fkey!inner(
-          id, org_id, dept_id,
-          department:departments!users_dept_id_fkey(id, name)
+          id,
+          org_id,
+          dept_id,
+          department:departments!users_dept_id_fkey(
+            id,
+            name
+          )
         )
       `)
       .eq("id", studentProfileId)
       .maybeSingle()
 
     if (studentError) {
-      console.error("Student lookup failed:", studentError)
-      return NextResponse.json({ error: studentError.message }, { status: 500 })
+      console.error(
+        "Student lookup failed:",
+        studentError
+      )
+
+      return NextResponse.json(
+        { error: studentError.message },
+        { status: 500 }
+      )
     }
 
     if (!student) {
-      return NextResponse.json({ error: "Student profile not found" }, { status: 404 })
+      return NextResponse.json(
+        {
+          error: "Student profile not found",
+        },
+        { status: 404 }
+      )
     }
 
-    if (student.user.dept_id !== deptId || student.user.org_id !== orgId) {
-      return NextResponse.json({ error: "Forbidden: Student belongs to another department or college" }, { status: 403 })
+    const studentUser = Array.isArray(student.user)
+      ? student.user[0]
+      : student.user
+
+    if (!studentUser) {
+      return NextResponse.json(
+        {
+          error: "Student user account could not be resolved",
+        },
+        { status: 400 }
+      )
     }
 
-    return NextResponse.json({ student })
+    if (
+      studentUser.dept_id !== deptId ||
+      studentUser.org_id !== orgId
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Forbidden: Student belongs to another department or college",
+        },
+        { status: 403 }
+      )
+    }
+
+    return NextResponse.json({
+      student,
+    })
   } catch (error: unknown) {
-    console.error("GET mentor student failed:", error)
+    console.error(
+      "GET mentor student failed:",
+      error
+    )
+
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "An unexpected error occurred" },
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "An unexpected error occurred",
+      },
       { status: 500 }
     )
   }
@@ -62,7 +122,7 @@ export async function GET(
 
 export async function PATCH(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: RouteContext
 ) {
   try {
     const { id: studentProfileId } = await params
@@ -83,14 +143,28 @@ export async function PATCH(
       user,
     } = auth
 
-    /* -----------------------------------------------------
-       Parse body
-    ----------------------------------------------------- */
+    /* -------------------------------------------------------
+       Parse request body
+    ------------------------------------------------------- */
 
-    const body = await request.json()
+    let body: {
+      profile_status?: ProfileStatus
+      rejection_reason?: string | null
+    }
+
+    try {
+      body = await request.json()
+    } catch {
+      return NextResponse.json(
+        {
+          error: "Invalid JSON request body",
+        },
+        { status: 400 }
+      )
+    }
 
     const profileStatus =
-      body.profile_status as ProfileStatus
+      body.profile_status
 
     if (
       !profileStatus ||
@@ -108,16 +182,52 @@ export async function PATCH(
       )
     }
 
-    /* -----------------------------------------------------
+    /* -------------------------------------------------------
+       Validate rejection reason
+    ------------------------------------------------------- */
+
+    let rejectionReason: string | null = null
+
+    if (profileStatus === "REJECTED") {
+      rejectionReason =
+        typeof body.rejection_reason === "string"
+          ? body.rejection_reason.trim()
+          : ""
+
+      if (!rejectionReason) {
+        return NextResponse.json(
+          {
+            error:
+              "A rejection reason is required when rejecting a student profile.",
+          },
+          { status: 400 }
+        )
+      }
+
+      if (rejectionReason.length < 5) {
+        return NextResponse.json(
+          {
+            error:
+              "Rejection reason must contain at least 5 characters.",
+          },
+          { status: 400 }
+        )
+      }
+
+      if (rejectionReason.length > 1000) {
+        return NextResponse.json(
+          {
+            error:
+              "Rejection reason cannot exceed 1000 characters.",
+          },
+          { status: 400 }
+        )
+      }
+    }
+
+    /* -------------------------------------------------------
        Find student
-
-       IMPORTANT:
-       id = student_profiles.id
-
-       Explicit FK is required because student_profiles has:
-       - user_id   -> users.id
-       - mentor_id -> users.id
-    ----------------------------------------------------- */
+    ------------------------------------------------------- */
 
     const {
       data: student,
@@ -129,7 +239,7 @@ export async function PATCH(
         user_id,
         mentor_id,
         profile_status,
-
+        rejection_reason,
         student_user:users!student_profiles_user_id_fkey(
           id,
           role,
@@ -163,6 +273,10 @@ export async function PATCH(
       )
     }
 
+    /* -------------------------------------------------------
+       Resolve joined user
+    ------------------------------------------------------- */
+
     const studentUser = Array.isArray(
       student.student_user
     )
@@ -179,9 +293,9 @@ export async function PATCH(
       )
     }
 
-    /* -----------------------------------------------------
+    /* -------------------------------------------------------
        Validate role
-    ----------------------------------------------------- */
+    ------------------------------------------------------- */
 
     if (studentUser.role !== "STUDENT") {
       return NextResponse.json(
@@ -193,9 +307,9 @@ export async function PATCH(
       )
     }
 
-    /* -----------------------------------------------------
-       Validate organization boundary
-    ----------------------------------------------------- */
+    /* -------------------------------------------------------
+       Validate organization
+    ------------------------------------------------------- */
 
     if (studentUser.org_id !== orgId) {
       return NextResponse.json(
@@ -207,9 +321,9 @@ export async function PATCH(
       )
     }
 
-    /* -----------------------------------------------------
-       Validate department boundary
-    ----------------------------------------------------- */
+    /* -------------------------------------------------------
+       Validate department
+    ------------------------------------------------------- */
 
     if (studentUser.dept_id !== deptId) {
       return NextResponse.json(
@@ -221,12 +335,9 @@ export async function PATCH(
       )
     }
 
-    /* -----------------------------------------------------
+    /* -------------------------------------------------------
        Validate mentor assignment
-
-       Student selected a mentor during registration,
-       so only that mentor should approve/reject them.
-    ----------------------------------------------------- */
+    ------------------------------------------------------- */
 
     if (!student.mentor_id) {
       return NextResponse.json(
@@ -248,9 +359,9 @@ export async function PATCH(
       )
     }
 
-    /* -----------------------------------------------------
-       Update approval status
-    ----------------------------------------------------- */
+    /* -------------------------------------------------------
+       Update profile status + rejection reason
+    ------------------------------------------------------- */
 
     const {
       data: updated,
@@ -259,11 +370,24 @@ export async function PATCH(
       .from("student_profiles")
       .update({
         profile_status: profileStatus,
+        rejection_reason:
+          profileStatus === "REJECTED"
+            ? rejectionReason
+            : null,
       })
       .eq("id", studentProfileId)
       .eq("mentor_id", user.id)
       .select(`
-        *
+        *,
+        user:users!student_profiles_user_id_fkey(
+          id,
+          org_id,
+          dept_id,
+          department:departments!users_dept_id_fkey(
+            id,
+            name
+          )
+        )
       `)
       .single()
 
@@ -281,15 +405,20 @@ export async function PATCH(
       )
     }
 
+    /* -------------------------------------------------------
+       Response
+    ------------------------------------------------------- */
+
+    const message =
+      profileStatus === "APPROVED"
+        ? "Student profile approved successfully."
+        : profileStatus === "REJECTED"
+          ? "Student profile rejected successfully."
+          : "Student profile moved back to pending review."
+
     return NextResponse.json({
       student: updated,
-
-      message:
-        profileStatus === "APPROVED"
-          ? "Student profile approved successfully."
-          : profileStatus === "REJECTED"
-            ? "Student profile rejected successfully."
-            : "Student profile moved back to pending review.",
+      message,
     })
   } catch (error: unknown) {
     console.error(
