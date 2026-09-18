@@ -10,6 +10,7 @@ export default function CollegeAdminInvitesPage() {
     departments,
     invites,
     selectedDeptId,
+    setSelectedDeptId,
     generatingInvite,
     latestInviteUrl,
     handleGenerateInvite,
@@ -29,8 +30,10 @@ export default function CollegeAdminInvitesPage() {
               Target Department *
             </label>
             <Select 
-              items={departments.filter((d) => d.status === "ACTIVE").map((d) => ({ value: d.id, label: d.name }))} 
-              value={selectedDeptId} >
+              items={departments.filter((d) => d.status === "ACTIVE").map((d) => ({ value: d.id, label: d.name }))}
+              value={selectedDeptId}
+              onValueChange={setSelectedDeptId}
+            >
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Theme" />
               </SelectTrigger>
