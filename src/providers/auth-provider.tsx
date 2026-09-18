@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { createClient } from "@/lib/supabase/client"
+import type { AuthChangeEvent } from "@supabase/supabase-js"
 
 export type AuthUser = {
   id: string
@@ -75,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event) => {
+    } = supabase.auth.onAuthStateChange((event: AuthChangeEvent) => {
       if (!mounted) return
 
       // Token refresh commonly happens when a background tab becomes active.
