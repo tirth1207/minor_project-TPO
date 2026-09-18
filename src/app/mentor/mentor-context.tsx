@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/providers/auth-provider"
 
 export interface Student {
   id: string
@@ -102,12 +102,7 @@ export function MentorProvider({
   children: React.ReactNode
 }) {
   const router = useRouter()
-
-  // Keep one client instance for this provider.
-  const supabase = React.useMemo(
-    () => createClient(),
-    []
-  )
+  const { user, initialized, loading: authLoading } = useAuth()
 
   const [loading, setLoading] =
     React.useState(true)
@@ -144,24 +139,15 @@ export function MentorProvider({
       setError(null)
 
       try {
-        // -----------------------------------------------
-        // Check session
-        // -----------------------------------------------
-
-        const {
-          data: { user },
-          error: authError,
-        } = await supabase.auth.getUser()
-
-        if (authError || !user) {
-          router.replace("/login")
+        if (!user) {
+          if (initialized && !authLoading) {
+            router.replace("/login")
+          }
           return
         }
 
         // -----------------------------------------------
         // Fetch students
-        //
-        // Server API handles mentor authorization.
         // -----------------------------------------------
 
         const params = new URLSearchParams()
@@ -255,8 +241,10 @@ export function MentorProvider({
       }
     },
     [
+      user,
+      initialized,
+      authLoading,
       router,
-      supabase,
       filterStatus,
     ]
   )
@@ -266,8 +254,10 @@ export function MentorProvider({
   // -------------------------------------------------------
 
   React.useEffect(() => {
-    void fetchData()
-  }, [fetchData])
+    if (initialized && !authLoading) {
+      void fetchData()
+    }
+  }, [initialized, authLoading, fetchData])
 
   // -------------------------------------------------------
   // Update student status

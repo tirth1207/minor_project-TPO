@@ -3,7 +3,7 @@
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/providers/auth-provider"
 import { AppSidebar } from "@/components/app-sidebar"
 import { NotificationCenter } from "@/components/notification-center"
 import { StudentProvider, useStudent } from "./student-context"
@@ -45,66 +45,38 @@ function StudentDashboardShell({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const supabase = createClient()
+  const { user: authUser, loading: authLoading, signOut } = useAuth()
 
   const {
-    loading,
+    loading: studentLoading,
     refreshing,
     error,
     profile,
     fetchData,
   } = useStudent()
 
-  const [user, setUser] = React.useState({
-    name: "Loading...",
-    email: "",
-    avatar: "/avatars/default.jpg",
-  })
+  const sidebarUser = React.useMemo(() => {
+    const name = authUser?.name || "Student Candidate"
+    const email = authUser?.email || ""
+    const avatar = authUser?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
+    return { name, email, avatar }
+  }, [authUser])
 
   React.useEffect(() => {
-    async function fetchUser() {
-      try {
-        const res = await fetch("/api/users/me")
-
-        if (!res.ok) {
-          return
-        }
-
-        const data = await res.json()
-        const email = data.user?.email ?? ""
-        const name =
-          data.studentProfile?.name ||
-          email.split("@")[0] ||
-          "Student Candidate"
-
-        setUser({
-          name,
-          email,
-          avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-            name
-          )}`,
-        })
-      } catch (error) {
-        console.error("Error fetching student user:", error)
-      }
-    }
-
-    fetchUser()
-  }, [])
-
-  React.useEffect(() => {
+    // Only redirect if student provider has loaded and profile status is verified
     if (
-      !loading &&
+      !authLoading &&
+      !studentLoading &&
       profile &&
       profile.profile_status !== "APPROVED" &&
       pathname !== "/student/profile"
     ) {
       router.replace("/student/profile")
     }
-  }, [loading, pathname, profile, router])
+  }, [authLoading, studentLoading, pathname, profile, router])
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await signOut()
     router.push("/login")
   }
 
@@ -197,13 +169,15 @@ function StudentDashboardShell({
                   ? "Career Preferences"
                   : "Interview Prep"
 
+  const isLoading = authLoading || studentLoading
+
   return (
     <SidebarProvider>
       <AppSidebar
         title="Student Portal"
         subtitle="Placement System"
         navMain={studentNavMains}
-        user={user}
+        user={sidebarUser}
         func={handleLogout}
       />
 
@@ -235,7 +209,7 @@ function StudentDashboardShell({
             <button
               type="button"
               onClick={() => fetchData(true)}
-              disabled={loading || refreshing}
+              disabled={isLoading || refreshing}
               className="cursor-pointer rounded-lg border border-secondary p-1.5 text-zinc-500 transition-all hover:bg-zinc-50 hover:text-zinc-950 disabled:opacity-50 dark:border-secondary dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
               title="Refresh Data"
             >
@@ -259,7 +233,7 @@ function StudentDashboardShell({
             </div>
           )}
 
-          {loading ? (
+          {isLoading ? (
             <div className="flex min-h-[400px] flex-col items-center justify-center gap-2">
               <IconLoader className="h-8 w-8 animate-spin text-primary" />
               <span className="text-sm font-medium text-zinc-500">

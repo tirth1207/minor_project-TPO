@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/providers/auth-provider"
 import { AppSidebar } from "@/components/app-sidebar"
 import { NotificationCenter } from "@/components/notification-center"
 import { MentorProvider, useMentor } from "./mentor-context"
@@ -69,59 +69,10 @@ const navSecondary = [
 ]
 
 function MentorDashboardShell({ children }: { children: React.ReactNode }) {
-
-  const [user, setUser] = React.useState({
-        name: "Loading...",
-        email: "",
-        avatar: "/avatars/default.jpg",
-      })
-  
-    React.useEffect(() => {
-      async function fetchUser() {
-        try {
-          const res = await fetch("/api/users/me")
-  
-          if (!res.ok) {
-            console.error(
-              "Failed to fetch user:",
-              res.status,
-              res.statusText
-            )
-            return
-          }
-  
-          const data = await res.json()
-  
-          const email = data.user?.email ?? ""
-  
-          const name =
-            data.companyProfile?.company_name ||
-            email.split("@")[0] ||
-            "College Administrator"
-  
-          setUser({
-            name,
-            email,
-            avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(
-              name
-            )}`,
-          })
-        } catch (error) {
-          console.error(
-            "Error fetching company user:",
-            error
-          )
-        }
-      }
-  
-      fetchUser()
-    }, [])
-
-
   const router = useRouter()
-  const supabase = createClient()
+  const { user: authUser, loading: authLoading, signOut } = useAuth()
   const {
-    loading,
+    loading: mentorLoading,
     refreshing,
     error,
     filterStatus,
@@ -129,17 +80,26 @@ function MentorDashboardShell({ children }: { children: React.ReactNode }) {
     fetchData,
   } = useMentor()
 
+  const sidebarUser = React.useMemo(() => {
+    const name = authUser?.name || "Faculty Mentor"
+    const email = authUser?.email || ""
+    const avatar = authUser?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
+    return { name, email, avatar }
+  }, [authUser])
+
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    await signOut()
     router.push("/login")
   }
+
+  const isLoading = authLoading || mentorLoading
 
   return (
     <SidebarProvider>
       <AppSidebar 
         title="Faculty Mentor"
         subtitle="Verification Dashboard"
-        user={user}
+        user={sidebarUser}
         navMain={navMains}
         navSecondary={navSecondary}
         func={handleLogout}
@@ -156,7 +116,7 @@ function MentorDashboardShell({ children }: { children: React.ReactNode }) {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
-                  <BreadcrumbLink href="#">Faculty Mentor</BreadcrumbLink>
+                  <BreadcrumbLink href="/mentor">Faculty Mentor</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator className="hidden md:block" />
                 <BreadcrumbItem>
@@ -180,7 +140,7 @@ function MentorDashboardShell({ children }: { children: React.ReactNode }) {
             </select>
             <button
               onClick={() => fetchData(true)}
-              disabled={loading || refreshing}
+              disabled={isLoading || refreshing}
               className="p-1.5 rounded-lg border border-secondary text-zinc-500 hover:text-zinc-950 hover:bg-zinc-50 dark:border-secondary dark:text-zinc-400 dark:hover:text-zinc-50 dark:hover:bg-zinc-900 transition-all cursor-pointer disabled:opacity-50"
               title="Refresh Data"
             >
@@ -201,7 +161,7 @@ function MentorDashboardShell({ children }: { children: React.ReactNode }) {
             </div>
           )}
 
-          {loading ? (
+          {isLoading ? (
             <div className="flex flex-col items-center justify-center min-h-[400px] gap-2">
               <IconLoader className="h-8 w-8 text-primary animate-spin" />
               <span className="text-sm text-zinc-500 font-medium">Fetching assigned recruits...</span>

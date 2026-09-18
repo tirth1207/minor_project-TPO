@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/providers/auth-provider"
 
 export interface JobPosting {
   id: string
@@ -156,7 +156,7 @@ const CompanyContext = React.createContext<CompanyContextType | undefined>(undef
 
 export function CompanyProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const supabase = React.useMemo(() => createClient(), [])
+  const { user, initialized, loading: authLoading } = useAuth()
 
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
@@ -188,20 +188,14 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     setError(null)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        router.push("/login")
+        if (initialized && !authLoading) {
+          router.push("/login")
+        }
         return
       }
 
-      const { data: dbUser } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle()
-
-      const role = dbUser?.role || user.app_metadata?.role
-      if (role !== "COMPANY") {
+      if (user.role !== "COMPANY") {
         router.push("/unauthorized")
         return
       }
@@ -221,7 +215,7 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [router, supabase])
+  }, [user, initialized, authLoading, router])
 
   const fetchApplicants = React.useCallback(async () => {
     if (!selectedJob) {
@@ -283,7 +277,12 @@ export function CompanyProvider({ children }: { children: React.ReactNode }) {
     }
   },[])
 
-  React.useEffect(() => { fetchData() }, [fetchData])
+  React.useEffect(() => {
+    if (initialized && !authLoading) {
+      fetchData()
+    }
+  }, [initialized, authLoading, fetchData])
+
   React.useEffect(() => { fetchNotification() }, [fetchNotification])
   React.useEffect(() => { fetchApplicants() }, [fetchApplicants])
   React.useEffect(() => { fetchAllApplicants() }, [fetchAllApplicants])

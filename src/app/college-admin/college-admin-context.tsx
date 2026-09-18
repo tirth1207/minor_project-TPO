@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/providers/auth-provider"
 
 export type ApprovalStatus =
   | "PENDING"
@@ -191,11 +191,7 @@ export function CollegeAdminProvider({
   children: React.ReactNode
 }) {
   const router = useRouter()
-
-  const supabase = React.useMemo(
-    () => createClient(),
-    []
-  )
+  const { user, initialized, loading: authLoading } = useAuth()
 
   // ---------------------------------------------------------
   // General state
@@ -397,19 +393,16 @@ export function CollegeAdminProvider({
       setError(null)
 
       try {
-        // -------------------------------------------------
-        // Authenticate via Server API /api/users/me
-        // -------------------------------------------------
-        const meRes = await fetch("/api/users/me", { cache: "no-store" })
-        if (meRes.status === 401) {
-          clearProtectedData()
-          router.replace("/login")
+        if (!user) {
+          if (initialized && !authLoading) {
+            clearProtectedData()
+            router.replace("/login")
+          }
           return
         }
 
-        const meData = await readResponse(meRes)
-        const role = meData.user?.role
-        const orgId = meData.user?.org_id
+        const role = user.role
+        const orgId = user.org_id
 
         if (role !== "COLLEGE_ADMIN" || !orgId) {
           clearProtectedData()
@@ -450,23 +443,10 @@ export function CollegeAdminProvider({
 
         setOrgStatus(status)
 
-        // -------------------------------------------------
-        // IMPORTANT
-        //
-        // Pending/rejected organization stops here.
-        // Do not request departments, students,
-        // invitations or jobs.
-        // -------------------------------------------------
-
         if (status !== "ACTIVE") {
           clearProtectedData()
           return
         }
-
-        // -------------------------------------------------
-        // Organization is ACTIVE.
-        // Load dashboard resources.
-        // -------------------------------------------------
 
         const [
           departmentsResponse,
@@ -474,7 +454,7 @@ export function CollegeAdminProvider({
           jobsResponse,
           studentsResponse,
           mentorsResponse,
-          notifications
+          notificationsRes
         ] = await Promise.all([
           fetch(
             "/api/college-admin/departments",
@@ -530,7 +510,7 @@ export function CollegeAdminProvider({
           readResponse(jobsResponse),
           readResponse(studentsResponse),
           readResponse(mentorsResponse),
-          readResponse(notifications)
+          readResponse(notificationsRes)
         ])
 
         setDepartments(
@@ -573,12 +553,14 @@ export function CollegeAdminProvider({
         setRefreshing(false)
       }
     },
-    [router, clearProtectedData]
+    [user, initialized, authLoading, router, clearProtectedData]
   )
 
   React.useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    if (initialized && !authLoading) {
+      fetchData()
+    }
+  }, [initialized, authLoading, fetchData])
 
   // ---------------------------------------------------------
   // Create department

@@ -1,8 +1,8 @@
 "use client"
 
 import * as React from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/providers/auth-provider"
 
 export interface StudentProfile {
   id: string
@@ -254,7 +254,7 @@ const StudentContext = React.createContext<StudentContextType | undefined>(undef
 
 export function StudentProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
-  const supabase = createClient()
+  const { user, initialized, loading: authLoading } = useAuth()
 
   const [loading, setLoading] = React.useState(true)
   const [refreshing, setRefreshing] = React.useState(false)
@@ -308,20 +308,14 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
     setError(null)
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        router.push("/login")
+        if (initialized && !authLoading) {
+          router.push("/login")
+        }
         return
       }
 
-      const { data: dbUser } = await supabase
-        .from("users")
-        .select("role")
-        .eq("id", user.id)
-        .maybeSingle()
-
-      const role = dbUser?.role || user.app_metadata?.role
-      if (role !== "STUDENT") {
+      if (user.role !== "STUDENT") {
         router.push("/unauthorized")
         return
       }
@@ -369,7 +363,8 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       setLoading(false)
       setRefreshing(false)
     }
-  }, [router, supabase, refreshMockInterviews])
+  }, [user, initialized, authLoading, router, refreshMockInterviews])
+
   const fetchNotification = React.useCallback(async () => {
     try{
       const res = await fetch("/api/notifications", {method: "GET"})
@@ -383,9 +378,13 @@ export function StudentProvider({ children }: { children: React.ReactNode }) {
       setNotification({ notifications: [], count: 0, hasMore: false })
     }
   },[])
+
   React.useEffect(() => {
-    fetchData()
-  }, [fetchData])
+    if (initialized && !authLoading) {
+      fetchData()
+    }
+  }, [initialized, authLoading, fetchData])
+
   React.useEffect(() => { fetchNotification() }, [fetchNotification])
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
