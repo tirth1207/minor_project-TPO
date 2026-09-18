@@ -1,162 +1,158 @@
 "use client"
 
 import * as React from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 
-type Point = { label: string; value: number; secondary?: number; color?: string }
+export type Point = {
+  label: string
+  value: number
+  secondary?: string
+  color?: string
+}
 
-// Palette of soft, pastel subtle colors (Green, Red, Yellow, Teal, Blue, Purple, Soft Amber, Indigo)
-const PASTEL_PALETTE = [
-  "#86efac", // Soft Pastel Green
-  "#fef08a", // Soft Pastel Yellow / Amber
-  "#fca5a5", // Soft Pastel Red / Rose
-  "#93c5fd", // Soft Pastel Blue
-  "#cbd5e1", // Soft Slate / Neutral Pastel
-  "#c084fc", // Soft Pastel Purple
-  "#99f6e4", // Soft Pastel Teal
-  "#fed7aa", // Soft Pastel Orange
+const CHART_COLORS = [
+  "var(--primary)",
+  "var(--secondary-foreground)",
+  "var(--accent-foreground)",
+  "var(--muted-foreground)",
+  "var(--foreground)",
+  "var(--destructive)",
 ]
 
-function getPastelColor(label: string, index: number, customColor?: string): string {
-  if (customColor) return customColor
-
-  const lower = label.toLowerCase().trim()
-
-  // Positive / Active / Approved / Placed / Passed / Eligible / Selected -> Subtle Pastel Green
-  if (
-    lower.includes("active") ||
-    lower.includes("approved") ||
-    lower.includes("placed") ||
-    lower.includes("passed") ||
-    lower.includes("eligible") ||
-    lower.includes("selected") ||
-    lower.includes("shortlisted") ||
-    lower.includes("high")
-  ) {
-    return "#86efac"
+function getChartColor(point: Point, index: number): string {
+  if (point.color) {
+    return point.color
   }
 
-  // Pending / Applied / Offered / Unplaced -> Subtle Pastel Yellow/Amber
+  const label = point.label.toLowerCase().trim()
+
+  // Positive / successful states
   if (
-    lower.includes("pending") ||
-    lower.includes("applied") ||
-    lower.includes("offered") ||
-    lower.includes("unplaced") ||
-    lower.includes("review")
+    /active|approved|placed|passed|eligible|selected|shortlisted|success|completed|verified|hired/.test(
+      label
+    )
   ) {
-    return "#fef08a"
+    return "var(--primary)"
   }
 
-  // Rejected / Not passed / Not eligible / Backlog / Withdrawn -> Subtle Pastel Red/Rose
+  // Pending / neutral states
   if (
-    lower.includes("reject") ||
-    lower.includes("not passed") ||
-    lower.includes("not eligible") ||
-    lower.includes("backlog") ||
-    lower.includes("withdrawn")
+    /pending|applied|offered|review|processing|waiting|scheduled|progress/.test(
+      label
+    )
   ) {
-    return "#fca5a5"
+    return "var(--accent-foreground)"
   }
 
-  // Entity types: Colleges -> Pastel Teal, Companies -> Pastel Blue, Jobs -> Pastel Purple, Students -> Pastel Indigo
-  if (lower.includes("college") || lower.includes("department") || lower.includes("branch")) return "#99f6e4"
-  if (lower.includes("company")) return "#93c5fd"
-  if (lower.includes("job") || lower.includes("drive") || lower.includes("opening")) return "#c084fc"
-  if (lower.includes("student") || lower.includes("applicant") || lower.includes("mentor")) return "#a5b4fc"
+  // Negative states
+  if (
+    /reject|rejected|not passed|not eligible|backlog|withdrawn|failed|cancelled|inactive|closed/.test(
+      label
+    )
+  ) {
+    return "var(--destructive)"
+  }
 
-  return PASTEL_PALETTE[index % PASTEL_PALETTE.length]
+  // Organization-related
+  if (/college|department|branch|organization/.test(label)) {
+    return "var(--secondary-foreground)"
+  }
+
+  // Company-related
+  if (/company|companies/.test(label)) {
+    return "var(--primary)"
+  }
+
+  // Job-related
+  if (/job|jobs|drive|opening|openings/.test(label)) {
+    return "var(--foreground)"
+  }
+
+  // People-related
+  if (/student|students|applicant|applicants|mentor|mentors/.test(label)) {
+    return "var(--muted-foreground)"
+  }
+
+  return CHART_COLORS[index % CHART_COLORS.length]
 }
 
-export function AnalyticsBars({ title, description, data }: { title: string; description?: string; data: Point[] }) {
-  const max = Math.max(...data.map((d) => d.value), 1)
-  return (
-    <Card>
-      <CardHeader><CardTitle className="text-base">{title}</CardTitle>{description && <CardDescription>{description}</CardDescription>}</CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {data.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">No data available yet.</p> : data.map((item, index) => {
-            const barColor = getPastelColor(item.label, index, item.color)
-            return (
-              <div key={item.label} className="space-y-1.5">
-                <div className="flex justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: barColor }} />
-                    <span className="truncate font-medium">{item.label}</span>
-                  </div>
-                  <span className="tabular-nums text-muted-foreground">{item.value}</span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted/60">
-                  <div className="h-full rounded-full transition-all" style={{ width: `${(item.value / max) * 100}%`, backgroundColor: barColor }} />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      </CardContent>
-    </Card>
-  )
+/* -------------------------------------------------------------------------- */
+/* Analytics Bars                                                             */
+/* -------------------------------------------------------------------------- */
+
+interface AnalyticsBarsProps {
+  data: Point[]
+  title?: string
+  description?: string
 }
 
-export function AnalyticsDonut({ title, description, data }: { title: string; description?: string; data: Point[] }) {
-  const total = data.reduce((sum, item) => sum + item.value, 0)
-  let cursor = 0
-  const stops = data.map((item, index) => {
-    const start = total ? (cursor / total) * 100 : 0
-    cursor += item.value
-    const color = getPastelColor(item.label, index, item.color)
-    return `${item.value === 0 ? "transparent" : color} ${start}% ${total ? (cursor / total) * 100 : 0}%`
-  }).join(", ")
+export function AnalyticsBars({
+  data,
+  title,
+  description,
+}: AnalyticsBarsProps) {
+  const max = Math.max(...data.map((item) => item.value), 1)
 
   return (
     <Card>
-      <CardHeader><CardTitle className="text-base">{title}</CardTitle>{description && <CardDescription>{description}</CardDescription>}</CardHeader>
-      <CardContent>
-        <div className="flex items-center gap-6">
-          <div className="relative size-32 shrink-0 rounded-full" style={{ background: total ? `conic-gradient(${stops})` : "var(--muted)" }}>
-            <div className="absolute inset-5 flex items-center justify-center rounded-full bg-card shadow-inner">
-              <span className="text-2xl font-semibold">{total}</span>
-            </div>
-          </div>
-          <div className="min-w-0 flex-1 space-y-2">
-            {data.map((item, index) => {
-              const itemColor = getPastelColor(item.label, index, item.color)
-              return (
-                <div key={item.label} className="flex items-center justify-between gap-3 text-xs">
-                  <div className="flex items-center gap-2 truncate">
-                    <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: itemColor }} />
-                    <span className="truncate text-muted-foreground">{item.label}</span>
-                  </div>
-                  <span className="font-semibold tabular-nums">{item.value}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
+      {(title || description) && (
+        <CardHeader>
+          {title && <CardTitle>{title}</CardTitle>}
+          {description && (
+            <CardDescription>{description}</CardDescription>
+          )}
+        </CardHeader>
+      )}
 
-export function AnalyticsTrend({ title, description, data }: { title: string; description?: string; data: Point[] }) {
-  const max = Math.max(...data.map((d) => d.value), 1)
-  return (
-    <Card>
-      <CardHeader><CardTitle className="text-base">{title}</CardTitle>{description && <CardDescription>{description}</CardDescription>}</CardHeader>
       <CardContent>
         {data.length === 0 ? (
-          <p className="py-8 text-center text-sm text-muted-foreground">No trend data available yet.</p>
+          <EmptyState />
         ) : (
-          <div className="flex h-48 items-end gap-1 border-b border-border px-1 pt-4">
+          <div className="space-y-5">
             {data.map((item, index) => {
-              const barColor = getPastelColor(item.label, index, item.color)
+              const percentage =
+                item.value > 0 ? (item.value / max) * 100 : 0
+
+              const color = getChartColor(item, index)
+
               return (
-                <div key={item.label} className="group flex min-w-0 flex-1 flex-col items-center justify-end gap-2">
-                  <div
-                    title={`${item.label}: ${item.value}`}
-                    className="w-full max-w-8 rounded-t transition-all"
-                    style={{ height: `${Math.max((item.value / max) * 100, 3)}%`, backgroundColor: barColor }}
-                  />
-                  <span className="max-w-full truncate text-[9px] text-muted-foreground">{item.label}</span>
+                <div
+                  key={`${item.label}-${index}`}
+                  className="space-y-2"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {item.label}
+                      </p>
+
+                      {item.secondary && (
+                        <p className="truncate text-xs text-muted-foreground">
+                          {item.secondary}
+                        </p>
+                      )}
+                    </div>
+
+                    <span className="shrink-0 text-sm font-semibold tabular-nums text-foreground">
+                      {item.value}
+                    </span>
+                  </div>
+
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${Math.min(100, Math.max(0, percentage))}%`,
+                        backgroundColor: color,
+                      }}
+                    />
+                  </div>
                 </div>
               )
             })}
@@ -164,5 +160,232 @@ export function AnalyticsTrend({ title, description, data }: { title: string; de
         )}
       </CardContent>
     </Card>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Analytics Donut                                                            */
+/* -------------------------------------------------------------------------- */
+
+interface AnalyticsDonutProps {
+  data: Point[]
+  title?: string
+  description?: string
+  centerValue?: string | number
+  centerLabel?: string
+}
+
+export function AnalyticsDonut({
+  data,
+  title,
+  description,
+  centerValue,
+  centerLabel,
+}: AnalyticsDonutProps) {
+  const total = data.reduce(
+    (sum, item) => sum + Math.max(0, item.value),
+    0
+  )
+
+  let cursor = 0
+
+  const stops = data
+    .filter((item) => item.value > 0)
+    .map((item, index) => {
+      const percentage =
+        total > 0 ? (item.value / total) * 100 : 0
+
+      const start = cursor
+      const end = cursor + percentage
+
+      cursor = end
+
+      return `${getChartColor(item, index)} ${start}% ${end}%`
+    })
+
+  const donutBackground =
+    total > 0
+      ? `conic-gradient(${stops.join(", ")})`
+      : "var(--muted)"
+
+  return (
+    <Card>
+      {(title || description) && (
+        <CardHeader>
+          {title && <CardTitle>{title}</CardTitle>}
+
+          {description && (
+            <CardDescription>{description}</CardDescription>
+          )}
+        </CardHeader>
+      )}
+
+      <CardContent>
+        {data.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="flex flex-col items-center gap-8 md:flex-col">
+            {/* Donut */}
+            <div className="relative flex h-48 w-48 shrink-0 items-center justify-center">
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: donutBackground,
+                }}
+              />
+
+              {/* Donut center */}
+              <div className="relative z-10 flex h-32 w-32 flex-col items-center justify-center rounded-full border border-border bg-card text-center">
+                <span className="text-2xl font-bold tabular-nums text-foreground">
+                  {centerValue ?? total}
+                </span>
+
+                {centerLabel && (
+                  <span className="mt-1 text-xs text-muted-foreground">
+                    {centerLabel}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="w-full space-y-3">
+              {data.map((item, index) => {
+                const percentage =
+                  total > 0
+                    ? (Math.max(0, item.value) / total) * 100
+                    : 0
+
+                const color = getChartColor(item, index)
+
+                return (
+                  <div
+                    key={`${item.label}-${index}`}
+                    className="flex items-center justify-between gap-4"
+                  >
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span
+                        className="h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{
+                          backgroundColor: color,
+                        }}
+                      />
+
+                      <span className="truncate text-sm text-foreground">
+                        {item.label}
+                      </span>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-sm font-medium tabular-nums text-foreground">
+                        {item.value}
+                      </span>
+
+                      <span className="text-xs tabular-nums text-muted-foreground">
+                        {percentage.toFixed(1)}%
+                      </span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Analytics Trend                                                            */
+/* -------------------------------------------------------------------------- */
+
+interface AnalyticsTrendProps {
+  data: Point[]
+  title?: string
+  description?: string
+}
+
+export function AnalyticsTrend({
+  data,
+  title,
+  description,
+}: AnalyticsTrendProps) {
+  const max = Math.max(...data.map((item) => item.value), 1)
+
+  return (
+    <Card>
+      {(title || description) && (
+        <CardHeader>
+          {title && <CardTitle>{title}</CardTitle>}
+
+          {description && (
+            <CardDescription>{description}</CardDescription>
+          )}
+        </CardHeader>
+      )}
+
+      <CardContent>
+        {data.length === 0 ? (
+          <EmptyState />
+        ) : (
+          <div className="flex h-56 items-end gap-3 overflow-x-auto pb-8">
+            {data.map((item, index) => {
+              const height =
+                item.value > 0 ? (item.value / max) * 100 : 0
+
+              const color = getChartColor(item, index)
+
+              return (
+                <div
+                  key={`${item.label}-${index}`}
+                  className="group flex h-full min-w-12 flex-1 flex-col items-center justify-end"
+                >
+                  {/* Value tooltip */}
+                  <div className="mb-2 opacity-0 transition-opacity group-hover:opacity-100">
+                    <span className="rounded-md border border-border bg-popover px-2 py-1 text-xs font-medium text-popover-foreground shadow-sm">
+                      {item.value}
+                    </span>
+                  </div>
+
+                  {/* Bar */}
+                  <div className="flex h-full w-full items-end justify-center">
+                    <div
+                      className="w-full max-w-12 rounded-t-md transition-all duration-500"
+                      style={{
+                        height: `${Math.min(100, Math.max(0, height))}%`,
+                        backgroundColor: color,
+                      }}
+                    />
+                  </div>
+
+                  {/* Label */}
+                  <span
+                    className="mt-2 max-w-16 truncate text-center text-xs text-muted-foreground"
+                    title={item.label}
+                  >
+                    {item.label}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/* Empty State                                                                */
+/* -------------------------------------------------------------------------- */
+
+function EmptyState() {
+  return (
+    <div className="flex min-h-32 items-center justify-center rounded-lg border border-dashed border-border bg-muted/30">
+      <p className="text-sm text-muted-foreground">
+        No data available
+      </p>
+    </div>
   )
 }

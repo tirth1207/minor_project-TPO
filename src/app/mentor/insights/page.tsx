@@ -600,7 +600,21 @@ function ReadinessRow({
   value: number
   detail: string
 }) {
-  const color = value >= 75 ? "#86efac" : value >= 50 ? "#fef08a" : "#fca5a5"
+  const normalizedValue = Math.min(Math.max(value, 0), 100)
+
+  const indicatorClass =
+    normalizedValue >= 75
+      ? "bg-primary"
+      : normalizedValue >= 50
+        ? "bg-orange-500"
+        : "bg-destructive"
+
+  const textClass =
+    normalizedValue >= 75
+      ? "text-primary"
+      : normalizedValue >= 50
+        ? "text-orange-500"
+        : "text-destructive"
 
   return (
     <div>
@@ -615,15 +629,17 @@ function ReadinessRow({
           </p>
         </div>
 
-        <span className="text-sm font-semibold">
-          {value}%
+        <span className={`text-sm font-semibold ${textClass}`}>
+          {normalizedValue}%
         </span>
       </div>
 
-      <div className="h-2 w-full overflow-hidden rounded-full bg-muted/60">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
         <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${Math.min(Math.max(value, 0), 100)}%`, backgroundColor: color }}
+          className={`h-full rounded-full transition-all duration-500 ${indicatorClass}`}
+          style={{
+            width: `${normalizedValue}%`,
+          }}
         />
       </div>
     </div>
