@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic"
 
 import { requireApprovedStudent } from "@/lib/auth/require-approved-student"
 import { NextResponse } from "next/server"
+import { getStudentEligibility } from "@/lib/eligibility/check-student-eligibility"
 
 type JobBranch = { branch_name: string }
 type CompanyProfile = { id: string; company_name: string; website: string | null } | null
@@ -9,6 +10,7 @@ type Job = {
   id: string
   title: string
   description: string
+  skills: string[] | null
   ctc_min: number | null
   ctc_max: number | null
   location: string
@@ -22,15 +24,6 @@ type Job = {
   job_eligible_branches: JobBranch[]
 }
 type Mapping = { id: string; job_id: string; local_status: string }
-type JobEntry = {
-  job: Omit<Job, "company_profiles" | "job_eligible_branches"> & {
-    company: CompanyProfile
-    branches: JobBranch[]
-  }
-  mapping: { id: string; local_status: string } | null
-  is_eligible: boolean
-  eligibility_reasons: { branch: boolean; cgpa: boolean; backlogs: boolean }
-}
 
 export async function GET() {
   try {
@@ -43,7 +36,7 @@ export async function GET() {
 
     const { data: student, error: studentError } = await supabase
       .from("student_profiles")
-      .select("cgpa, active_backlogs, branch, profile_status, is_placed")
+      .select("id")
       .eq("id", studentId)
       .maybeSingle()
 
@@ -54,7 +47,7 @@ export async function GET() {
     const { data: jobs, error: jobsError } = await supabase
       .from("job_postings")
       .select(`
-        id, title, description, ctc_min, ctc_max, location, work_mode,
+        id, title, description, skills, ctc_min, ctc_max, location, work_mode,
         min_cgpa, max_backlogs, require_mock, mock_pass_score, global_status,
         company_profiles (id, company_name, website),
         job_eligible_branches (branch_name)
@@ -82,43 +75,58 @@ export async function GET() {
       mappingMap.set(m.job_id, { id: m.id, local_status: m.local_status })
     })
 
-    const jobEntries: JobEntry[] = (jobs as Job[] | null ?? []).map((job) => {
-      const eligibleBranches = (job.job_eligible_branches || [])
-        .map((b) => (b.branch_name || "").toLowerCase())
-      const isEligibleBranch =
-        eligibleBranches.length === 0 ||
-        eligibleBranches.includes((student.branch || "").toLowerCase())
-      const isEligibleCgpa = student.cgpa >= job.min_cgpa
-      const isEligibleBacklogs = student.active_backlogs <= job.max_backlogs
-      const isEligible = isEligibleBranch && isEligibleCgpa && isEligibleBacklogs
-      const mapping = mappingMap.get(job.id) ?? null
+    const jobEntries = await Promise.all(
+      (jobs as Job[] | null ?? []).map(async (job) => {
+        const mapping = mappingMap.get(job.id) ?? null
+        let eligibilityDetails = null
 
-      return {
-        job: {
-          id: job.id,
-          title: job.title,
-          description: job.description,
-          ctc_min: job.ctc_min,
-          ctc_max: job.ctc_max,
-          location: job.location,
-          work_mode: job.work_mode,
-          min_cgpa: job.min_cgpa,
-          max_backlogs: job.max_backlogs,
-          require_mock: job.require_mock,
-          mock_pass_score: job.mock_pass_score,
-          global_status: job.global_status,
-          company: job.company_profiles,
-          branches: job.job_eligible_branches || [],
-        },
-        mapping,
-        is_eligible: isEligible,
-        eligibility_reasons: {
-          branch: isEligibleBranch,
-          cgpa: isEligibleCgpa,
-          backlogs: isEligibleBacklogs,
-        },
-      }
-    })
+        try {
+          eligibilityDetails = await getStudentEligibility(
+            supabase,
+            studentId,
+            job.id,
+            orgId
+          )
+        } catch (err) {
+          console.error(`Eligibility calculation failed for job ${job.id}:`, err)
+        }
+
+        return {
+          job: {
+            id: job.id,
+            title: job.title,
+            description: job.description,
+            skills: job.skills || [],
+            ctc_min: job.ctc_min,
+            ctc_max: job.ctc_max,
+            location: job.location,
+            work_mode: job.work_mode,
+            min_cgpa: job.min_cgpa,
+            max_backlogs: job.max_backlogs,
+            require_mock: job.require_mock,
+            mock_pass_score: job.mock_pass_score,
+            global_status: job.global_status,
+            company: job.company_profiles,
+            branches: job.job_eligible_branches || [],
+          },
+          mapping,
+          is_eligible: eligibilityDetails?.eligible ?? false,
+          eligibility_reasons: eligibilityDetails?.reasons ?? {
+            profileApproved: false,
+            notPlaced: false,
+            collegeMapping: false,
+            jobApproved: false,
+            branch: false,
+            cgpa: false,
+            backlogs: false,
+            skills: false,
+          },
+          matched_skills: eligibilityDetails?.matchedSkills ?? [],
+          missing_skills: eligibilityDetails?.missingSkills ?? [],
+          failed_requirements: eligibilityDetails?.failedRequirements ?? [],
+        }
+      })
+    )
 
     const mappingIds = jobEntries
       .filter((entry) => entry.mapping !== null)

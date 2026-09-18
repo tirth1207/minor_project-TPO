@@ -77,7 +77,7 @@ export async function POST(
 
     let eligible: boolean
     try {
-      eligible = await checkStudentEligibility(supabase, studentId, job.id)
+      eligible = await checkStudentEligibility(supabase, studentId, job.id, orgId)
     } catch (eligibilityError: any) {
       return NextResponse.json(
         { success: false, code: "ELIGIBILITY_CHECK_FAILED", error: eligibilityError?.message || "Unable to verify eligibility" },

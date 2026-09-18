@@ -94,12 +94,11 @@ export async function POST() {
       (m: any) => m.job && m.job.global_status === "APPROVED"
     )
 
-    // Use the same authoritative eligibility rules as the normal GET path.
     const eligibleJobs: any[] = []
     for (const mapping of approvedJobs) {
       const job = mapping.job as any
       try {
-        if (await checkStudentEligibility(supabase, studentId, job.id)) {
+        if (await checkStudentEligibility(supabase, studentId, job.id, orgId)) {
           eligibleJobs.push(mapping)
         }
       } catch (eligibilityError) {

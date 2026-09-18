@@ -263,21 +263,43 @@ begin
           and j.global_status = 'APPROVED'
           and jcm.local_status = 'APPROVED'
 
-          and exists (
-              select 1
-              from public.job_eligible_branches jeb
-              where jeb.job_id = p_job_id
-                and jeb.branch_name = s.branch
+          and (
+              not exists (
+                  select 1 from public.job_eligible_branches jeb
+                  where jeb.job_id = p_job_id
+              )
+              or exists (
+                  select 1
+                  from public.job_eligible_branches jeb
+                  where jeb.job_id = p_job_id
+                    and lower(trim(jeb.branch_name)) = lower(trim(coalesce(s.branch, '')))
+              )
           )
 
-          and s.cgpa >= j.min_cgpa
-          and s.active_backlogs <= j.max_backlogs
+          and coalesce(s.cgpa, 0) >= coalesce(j.min_cgpa, 0)
+          and coalesce(s.active_backlogs, 0) <= coalesce(j.max_backlogs, 0)
+
+          and (
+              j.skills is null
+              or array_length(j.skills, 1) is null
+              or array_length(j.skills, 1) = 0
+              or not exists (
+                  select 1
+                  from unnest(j.skills) req_skill
+                  where not exists (
+                      select 1
+                      from unnest(coalesce(s.skills, '{}'::text[])) stud_skill
+                      where lower(regexp_replace(trim(stud_skill), '[^a-zA-Z0-9]', '', 'g')) =
+                            lower(regexp_replace(trim(req_skill), '[^a-zA-Z0-9]', '', 'g'))
+                  )
+              )
+          )
     )
     into v_eligible;
 
     return coalesce(v_eligible, false);
 end;
-$$ language plpgsql stable security definer;
+$$;
 
 -- 4.2 Blind Count Helper Function
 -- Returns applicant count without exposing user identities to other students

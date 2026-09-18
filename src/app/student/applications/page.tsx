@@ -470,7 +470,7 @@ export default function StudentApplicationsPage() {
 
                         <p className="text-[11px] text-emerald-700/70 dark:text-emerald-400/70">
                           ₹{formatLpa(offerAccepted.ctc_offered)} LPA package ·
-                          You're hired!
+                          You&apos;re hired!
                         </p>
                       </div>
                     </div>
