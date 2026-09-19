@@ -711,10 +711,10 @@ function CareerRoadmap({
             <div className="min-w-0">
               <p className="text-[11px] text-muted-foreground">Dream Role</p>
               <p className="truncate text-sm font-semibold">
-                {careerGoal?.dreamJob.split("(")[0] || "Career Goal"}
+                {careerGoal?.dreamJob || "Career Goal"}
               </p>
               <p className="mt-0.5 truncate text-[10px] text-muted-foreground">
-                {careerGoal?.dreamRole.split("(")[1].split(")")[0] ||
+                {careerGoal?.dreamRole ||
                   "Set your target role"}
               </p>
             </div>
@@ -723,7 +723,7 @@ function CareerRoadmap({
             <div className="p-5">
               <p className="text-[11px] text-muted-foreground">Target CTC</p>
               <p className="mt-1 text-sm font-semibold text-primary">
-                ₹{Number(careerGoal?.targetCtc || 0).toLocaleString("en-IN")} PA
+                ₹{Number(careerGoal?.targetCtc || 0).toLocaleString("en-IN")} LPA
               </p>
             </div>
             <div className="border-l p-5">
