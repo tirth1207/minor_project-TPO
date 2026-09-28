@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   const { data: actor } = await supabase
     .from("users")
-    .select("id,role,org_id")
+    .select("id,role,org_id,dept_id")
     .eq("id", user.id)
     .single()
 
@@ -21,8 +21,8 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "You do not have permission to view comparison data" }, { status: 403 })
   }
 
-  if (actor.role === "MENTOR" && scope !== "mentor") {
-    return NextResponse.json({ error: "Mentors can only view mentor placement data" }, { status: 403 })
+  if (actor.role === "MENTOR" && !["college", "department", "mentor"].includes(scope)) {
+    return NextResponse.json({ error: "Mentors cannot view company comparison data" }, { status: 403 })
   }
 
   let query = supabase
@@ -36,7 +36,11 @@ export async function GET(request: Request) {
   }
 
   if (actor.role === "MENTOR") {
-    query = query.eq("mentor_id", actor.id)
+    if (scope === "department") {
+      query = query.eq("department_id", actor.dept_id)
+    } else if (scope === "mentor") {
+      query = query.eq("mentor_id", actor.id)
+    }
   }
 
   const { data, error } = await query
@@ -49,7 +53,7 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 })
 
-  const { data: actor } = await supabase.from("users").select("id,role,org_id").eq("id", user.id).single()
+  const { data: actor } = await supabase.from("users").select("id,role,org_id,dept_id").eq("id", user.id).single()
   if (!actor || !["SA", "COLLEGE_ADMIN", "MENTOR"].includes(actor.role)) {
     return NextResponse.json({ error: "You do not have permission to manage comparison data" }, { status: 403 })
   }
