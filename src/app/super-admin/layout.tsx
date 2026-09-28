@@ -25,7 +25,7 @@ import {
   IconAlertCircle,
   IconBriefcase,
   IconBuilding,
-  IconDashboard,
+  IconChartBar, IconDashboard,
   IconLifebuoy,
   IconLoader,
   IconRefresh,
@@ -80,6 +80,12 @@ function SuperAdminDashboardShell({
       url: "/super-admin/companies",
       icon: <IconBuilding className="size-4" />,
       isActive: pathname.startsWith("/super-admin/companies"),
+    },
+    {
+      title: "Historical Placement",
+      url: "/super-admin/comparison",
+      icon: <IconChartBar className="size-4" />,
+      isActive: pathname.startsWith("/super-admin/comparison"),
     },
     {
       title: "Job Postings",
