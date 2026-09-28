@@ -24,7 +24,7 @@ import {
   IconLoader,
   IconAlertCircle,
   IconRefresh,
-  IconDashboard,
+  IconChartBar, IconDashboard,
   IconBuilding,
   IconLifebuoy,
   IconSend,
@@ -37,6 +37,11 @@ const navMains = [
       title: "Dashboard",
       url: "/mentor",
       icon: <IconDashboard className="size-4" />,
+    },
+    {
+      title: "Placement Comparison",
+      url: "/mentor/comparison",
+      icon: <IconChartBar className="size-4" />,
     },
     {
       title: "Insights",
