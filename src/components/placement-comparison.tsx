@@ -54,15 +54,15 @@ function Metric({ label, value, previous, suffix = "" }: { label: string; value:
   )
 }
 
-export default function PlacementComparison({ canManage = false }: { canManage?: boolean }) {
-  const [scope, setScope] = React.useState<Scope>("college")
+export default function PlacementComparison({ canManage = false, allowedScopes = ["college", "department", "mentor", "company"] as Scope[] }: { canManage?: boolean; allowedScopes?: Scope[] }) {
+  const [scope, setScope] = React.useState<Scope>(allowedScopes[0] || "college")
   const [year, setYear] = React.useState(2025)
   const [compareYear, setCompareYear] = React.useState(2024)
   const [rows, setRows] = React.useState<RecordRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState("")
   const [saving, setSaving] = React.useState(false)
-  const [showForm, setShowForm] = React.useState(false)
+  const [showForm, setShowForm] = React.useState(false)\n\n  React.useEffect(() => {\n    if (!allowedScopes.includes(scope)) setScope(allowedScopes[0] || "college")\n  }, [allowedScopes, scope])
   const [form, setForm] = React.useState({ academic_year: "2025", scope_type: "college", total_students: "438", eligible_students: "389", placed_students: "319", companies_participated: "46", total_offers: "352", avg_ctc: "5.18", median_ctc: "4.70", highest_ctc: "15.20", lowest_ctc: "2.60" })
 
   const load = React.useCallback(async () => {
