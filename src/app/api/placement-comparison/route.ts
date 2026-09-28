@@ -11,12 +11,35 @@ export async function GET(request: Request) {
   const scope = new URL(request.url).searchParams.get("scope") || "college"
   if (!scopes.has(scope)) return NextResponse.json({ error: "Invalid scope" }, { status: 400 })
 
-  const { data, error } = await supabase
+  const { data: actor } = await supabase
+    .from("users")
+    .select("id,role,org_id")
+    .eq("id", user.id)
+    .single()
+
+  if (!actor || !["SA", "COLLEGE_ADMIN", "MENTOR"].includes(actor.role)) {
+    return NextResponse.json({ error: "You do not have permission to view comparison data" }, { status: 403 })
+  }
+
+  if (actor.role === "MENTOR" && scope !== "mentor") {
+    return NextResponse.json({ error: "Mentors can only view mentor placement data" }, { status: 403 })
+  }
+
+  let query = supabase
     .from("placement_comparison_records")
     .select("*")
     .eq("scope_type", scope)
     .order("academic_year", { ascending: false })
 
+  if (actor.role !== "SA") {
+    query = query.eq("org_id", actor.org_id)
+  }
+
+  if (actor.role === "MENTOR") {
+    query = query.eq("mentor_id", actor.id)
+  }
+
+  const { data, error } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data: data || [] })
 }
@@ -39,6 +62,10 @@ export async function POST(request: Request) {
   if (!scopes.has(body.scope_type)) return NextResponse.json({ error: "Invalid scope_type" }, { status: 400 })
   if (body.eligible_students > body.total_students || body.placed_students > body.eligible_students || body.total_offers < body.placed_students) return NextResponse.json({ error: "Placement counts are inconsistent" }, { status: 400 })
 
+  if (actor.role === "MENTOR" && body.scope_type !== "mentor") {
+    return NextResponse.json({ error: "Mentors can only manage mentor placement data" }, { status: 403 })
+  }
+
   let orgId = actor.org_id
   if (actor.role === "SA") {
     orgId = body.org_id || orgId
@@ -50,7 +77,7 @@ export async function POST(request: Request) {
     academic_year: Math.trunc(body.academic_year),
     scope_type: body.scope_type,
     department_id: body.department_id || null,
-    mentor_id: body.mentor_id || null,
+    mentor_id: actor.role === "MENTOR" ? actor.id : (body.mentor_id || null),
     company_id: body.company_id || null,
     department_name: body.department_name || null,
     mentor_name: body.mentor_name || null,
@@ -71,6 +98,9 @@ export async function POST(request: Request) {
     org_id: record.org_id,
     academic_year: record.academic_year,
     scope_type: record.scope_type,
+    ...(record.scope_type === "department" ? { department_id: record.department_id } : {}),
+    ...(record.scope_type === "mentor" ? { mentor_id: record.mentor_id } : {}),
+    ...(record.scope_type === "company" ? { company_id: record.company_id } : {}),
   }).limit(1).maybeSingle()
 
   const result = existing

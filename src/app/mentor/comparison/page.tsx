@@ -1,5 +1,5 @@
 import PlacementComparison from "@/components/placement-comparison"
 
 export default function MentorPlacementComparisonPage() {
-  return <PlacementComparison />
+  return <PlacementComparison allowedScopes={["mentor"]} />
 }
