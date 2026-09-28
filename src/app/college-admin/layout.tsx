@@ -25,7 +25,7 @@ import {
   IconAlertCircle,
   IconBriefcase,
   IconBuilding,
-  IconDashboard,
+  IconChartBar, IconDashboard,
   IconLifebuoy,
   IconLoader,
   IconRefresh,
@@ -87,6 +87,12 @@ function CollegeAdminDashboardShell({
       url: "/college-admin/jobs",
       icon: <IconBriefcase className="size-4" />,
       isActive: pathname.startsWith("/college-admin/jobs"),
+    },
+    {
+      title: "Placement Comparison",
+      url: "/college-admin/comparison",
+      icon: <IconChartBar className="size-4" />,
+      isActive: pathname.startsWith("/college-admin/comparison"),
     },
     {
       title: "Student Roster",
