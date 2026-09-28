@@ -25,7 +25,7 @@ type RecordRow = {
   lowest_ctc: number
 }
 
-const years = [2024, 2025]
+const years = [2024, 2025, 2026]
 
 function pct(placed: number, eligible: number) {
   return eligible ? Math.round((placed / eligible) * 1000) / 10 : 0
@@ -56,14 +56,14 @@ function Metric({ label, value, previous, suffix = "" }: { label: string; value:
 
 export default function PlacementComparison({ canManage = false, allowedScopes = ["college", "department", "mentor", "company"] as Scope[] }: { canManage?: boolean; allowedScopes?: Scope[] }) {
   const [scope, setScope] = React.useState<Scope>(allowedScopes[0] || "college")
-  const [year, setYear] = React.useState(2025)
-  const [compareYear, setCompareYear] = React.useState(2024)
+  const [year, setYear] = React.useState(2026)
+  const [compareYear, setCompareYear] = React.useState(2025)
   const [rows, setRows] = React.useState<RecordRow[]>([])
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState("")
   const [saving, setSaving] = React.useState(false)
   const [showForm, setShowForm] = React.useState(false)
-  const [form, setForm] = React.useState({ academic_year: "2025", scope_type: "college", total_students: "438", eligible_students: "389", placed_students: "319", companies_participated: "46", total_offers: "352", avg_ctc: "5.18", median_ctc: "4.70", highest_ctc: "15.20", lowest_ctc: "2.60" })
+  const [form, setForm] = React.useState({ academic_year: "2026", scope_type: "college", total_students: "438", eligible_students: "389", placed_students: "319", companies_participated: "46", total_offers: "352", avg_ctc: "5.18", median_ctc: "4.70", highest_ctc: "15.20", lowest_ctc: "2.60" })
 
   const load = React.useCallback(async () => {
     setLoading(true); setError("")
