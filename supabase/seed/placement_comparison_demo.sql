@@ -58,7 +58,7 @@ begin
   (v_org,2025,'company',null,null,'CloudMatrix Systems',20,20,11,1,12,6.35,6.00,9.20,4.80),
   (v_org,2024,'company',null,null,'ByteCraft Technologies',20,20,9,1,10,4.35,4.10,5.80,3.20),
   (v_org,2025,'company',null,null,'ByteCraft Technologies',25,25,15,1,16,4.85,4.60,6.40,3.50)
-  on conflict (org_id, academic_year, scope_type, coalesce(department_id::text, ''), coalesce(mentor_id::text, ''), coalesce(company_id::text, ''), coalesce(lower(company_name), ''))
+  on conflict (org_id, academic_year, scope_type, (coalesce(department_id::text, '')), (coalesce(mentor_id::text, '')), (coalesce(company_id::text, '')), (coalesce(lower(company_name), '')))
   do update set
     total_students=excluded.total_students,
     eligible_students=excluded.eligible_students,
