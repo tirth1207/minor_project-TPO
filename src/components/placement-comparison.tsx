@@ -54,8 +54,8 @@ function Metric({ label, value, previous, suffix = "" }: { label: string; value:
   )
 }
 
-export default function PlacementComparison({ canManage = false }: { canManage?: boolean }) {
-  const [scope, setScope] = React.useState<Scope>("college")
+export default function PlacementComparison({ canManage = false, allowedScopes = ["college", "department", "mentor", "company"] as Scope[] }: { canManage?: boolean; allowedScopes?: Scope[] }) {
+  const [scope, setScope] = React.useState<Scope>(allowedScopes[0] || "college")
   const [year, setYear] = React.useState(2025)
   const [compareYear, setCompareYear] = React.useState(2024)
   const [rows, setRows] = React.useState<RecordRow[]>([])
@@ -76,6 +76,10 @@ export default function PlacementComparison({ canManage = false }: { canManage?:
       setError(e instanceof Error ? e.message : "Unable to load placement history")
     } finally { setLoading(false) }
   }, [scope])
+
+  React.useEffect(() => {
+    if (!allowedScopes.includes(scope)) setScope(allowedScopes[0] || "college")
+  }, [allowedScopes, scope])
 
   React.useEffect(() => { load() }, [load])
 
@@ -115,7 +119,7 @@ export default function PlacementComparison({ canManage = false }: { canManage?:
       {error && <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</div>}
 
       <div className="grid gap-3 md:grid-cols-3">
-        <label className="text-sm font-medium">View<select value={scope} onChange={(e) => setScope(e.target.value as Scope)} className="mt-1 h-10 w-full rounded-xl border bg-background px-3"><option value="college">College</option><option value="department">Department</option><option value="mentor">Mentor</option><option value="company">Company</option></select></label>
+        {allowedScopes.length > 1 && <label className="text-sm font-medium">View<select value={scope} onChange={(e) => setScope(e.target.value as Scope)} className="mt-1 h-10 w-full rounded-xl border bg-background px-3">{allowedScopes.map((value) => <option key={value} value={value}>{value[0].toUpperCase()+value.slice(1)}</option>)}</select></label>}
         <label className="text-sm font-medium">Current year<select value={year} onChange={(e) => setYear(Number(e.target.value))} className="mt-1 h-10 w-full rounded-xl border bg-background px-3">{years.map(y => <option key={y} value={y}>{y}-{String(y+1).slice(-2)}</option>)}</select></label>
         <label className="text-sm font-medium">Compare with<select value={compareYear} onChange={(e) => setCompareYear(Number(e.target.value))} className="mt-1 h-10 w-full rounded-xl border bg-background px-3">{years.filter(y => y !== year).map(y => <option key={y} value={y}>{y}-{String(y+1).slice(-2)}</option>)}</select></label>
       </div>
