@@ -99,7 +99,7 @@
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
   --accent: oklch(0.437 0.078 188.216);
-  --accent-foreground: oklch(0.984 0 0);
+  --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
@@ -189,6 +189,39 @@
 .landing-flow-dot { display: inline-block; height: 7px; width: 7px; border-radius: 50%; background: color-mix(in oklab, var(--foreground) 20%, transparent); }
 .landing-cta-panel { position: relative; overflow: hidden; border: 1px solid color-mix(in oklab, var(--primary) 20%, var(--border)); border-radius: 28px; padding: 34px; background: radial-gradient(circle at 82% 50%, color-mix(in oklab, var(--primary) 13%, transparent), transparent 32%), linear-gradient(135deg, color-mix(in oklab, var(--primary) 4%, var(--background)), var(--background)); }
 .landing-cta-orb { position: absolute; right: 8%; top: 50%; display: flex; height: 170px; width: 170px; transform: translateY(-50%); align-items: center; justify-content: center; border: 1px solid color-mix(in oklab, var(--primary) 25%, transparent); border-radius: 50%; color: var(--primary); background: radial-gradient(circle, color-mix(in oklab, var(--primary) 12%, transparent), transparent 68%); box-shadow: 0 0 100px color-mix(in oklab, var(--primary) 12%, transparent); animation: landing-breathe 4s ease-in-out infinite; }
+
+/* Bento illustrations: deliberately monochrome, thin black line-art on white. */
+.landing-dashboard-illustration,
+.landing-ai-illustration,
+.landing-resume-illustration { color: #111; }
+.landing-dashboard-illustration *,
+.landing-ai-illustration * ,
+.landing-resume-illustration * { color: #111; }
+.landing-dashboard-illustration .landing-dashboard-window,
+.landing-dashboard-illustration .landing-float-chip,
+.landing-resume-illustration .landing-paper,
+.landing-resume-illustration .landing-score {
+  border: 1px solid #111;
+  background: #fff;
+  box-shadow: none;
+}
+.landing-dashboard-illustration .landing-dashboard-window { border-radius: 16px; }
+.landing-dashboard-illustration .landing-dashboard-window > div:first-child { width: 80px; height: 2px; border: 1px solid #111; background: #fff !important; border-radius: 999px; }
+.landing-dashboard-illustration .landing-dashboard-window .grid > div { border: 1px solid #111; background: #fff !important; border-radius: 7px; }
+.landing-dashboard-illustration .landing-dashboard-window .grid > div:last-child { background: #fff !important; }
+.landing-dashboard-illustration .landing-dashboard-window .mt-3 { border: 1px solid #111; background: #fff !important; }
+.landing-dashboard-illustration .landing-dashboard-window .mt-3 span { background: #111 !important; border-radius: 2px 2px 0 0; }
+.landing-dashboard-illustration .landing-float-chip { color: #111; border-radius: 999px; }
+.landing-ai-ring { color: #111 !important; border: 1px solid #111 !important; background: #fff !important; box-shadow: none !important; }
+.landing-ai-ring::before,
+.landing-ai-ring::after { border-color: #111 !important; }
+.landing-ai-dot { background: #111 !important; box-shadow: none !important; }
+.landing-ai-line { background: #111 !important; }
+.landing-resume-illustration .landing-paper > div { background: #fff !important; border: 1px solid #111; }
+.landing-resume-illustration .landing-paper > div:first-child { height: 2px; background: #111 !important; border: 0; }
+.landing-resume-illustration .landing-score { color: #111 !important; }
+.landing-resume-illustration .landing-score small { color: #111 !important; }
+
 @media (max-width: 768px) { .landing-nav-wrap { padding: 10px; } .landing-nav { border-radius: 15px; } .landing-bento-card { min-height: 310px; } .landing-dashboard-illustration { width: 85%; } .landing-cta-orb { right: -55px; opacity: .5; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
 @keyframes landing-rise { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
