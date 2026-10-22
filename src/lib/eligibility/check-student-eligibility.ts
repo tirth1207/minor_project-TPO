@@ -226,7 +226,7 @@ export async function getStudentEligibility(
         )
       `)
       .eq("id", studentId)
-      .single(),
+      .maybeSingle(),
 
 
     supabase
