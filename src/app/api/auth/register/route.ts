@@ -7,7 +7,7 @@ import { NextResponse } from "next/server"
 
 const jsonError = (error: string, status = 400) => NextResponse.json({ error }, { status })
 
-function parseStringArray(value: unknown, field: string): string[] | null {
+function parseStringArray(value: unknown): string[] | null {
   if (!Array.isArray(value) || value.length === 0 || value.some((item) => typeof item !== "string")) return null
   const values = value.map((item) => item.trim()).filter(Boolean)
   if (!values.length || values.some((item) => item.length > 100) || values.length > 50) return null
@@ -64,8 +64,8 @@ export async function POST(request: Request) {
     const dob = typeof body.dob === "string" ? body.dob.trim() : ""
     const phone = typeof body.phone === "string" ? body.phone.trim() : ""
     const semester = Number(body.semester)
-    const skills = parseStringArray(body.skills, "skills")
-    const hobbies = parseStringArray(body.hobbies, "hobbies")
+    const skills = parseStringArray(body.skills)
+    const hobbies = parseStringArray(body.hobbies)
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return jsonError("Enter a valid email address.")
     if (password.length < 6 || password.length > 128) return jsonError("Password must contain 6–128 characters.")
