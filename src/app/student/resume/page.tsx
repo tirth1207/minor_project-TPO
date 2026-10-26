@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useStudent } from "../student-context"
+import { useAuth } from "@/providers/auth-provider"
 
 type ResumeProject = { title: string; description: string; technologies: string }
 type ResumeExperience = { company: string; role: string; duration: string; description: string }
@@ -156,7 +157,7 @@ export default function StudentResumeBuilderPage() {
         location: savedResume.location?.trim() || base.location,
         summary: savedResume.summary?.trim() || base.summary,
         skills: savedResume.skills?.trim() || base.skills,
-        hobbies: Array.isArray(savedResume.hobbies) && savedResume.hobbies.length ? savedResume.hobbies : base.hobbies,
+        hobbies: Array.isArray(savedResume.hobbies) ? savedResume.hobbies : base.hobbies,
         linkedin: savedResume.linkedin?.trim() || base.linkedin,
         github: savedResume.github?.trim() || base.github,
         portfolio: savedResume.portfolio?.trim() || base.portfolio,
