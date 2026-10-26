@@ -49,7 +49,7 @@ function calculateAtsScore(resume: ResumeData, targetText: string) {
   return Math.min(100, score)
 }
 
-function defaultResume(name: string, profileSkills: string[] | null, profileHobbies: string[] | null): ResumeData {
+function defaultResume(profileSkills: string[] | null, profileHobbies: string[] | null): ResumeData {
   return {
     headline: "Software Developer",
     summary: "",
@@ -116,7 +116,7 @@ export default function StudentResumeBuilderPage() {
     const storageKey = `${STORAGE_KEY}:${profile.id}`
     const social = profile.social_links || {}
     const base: ResumeData = {
-      ...defaultResume(profile.name, profile.skills, profile.hobbies),
+      ...defaultResume(profile.skills, profile.hobbies),
       summary: profile.bio?.trim() || `Motivated ${profile.name || "student"} with a foundation in ${profile.branch || "computer engineering"} and a focus on building practical projects.`,
       email: authUser?.email || "",
       phone: profile.phone || "",
@@ -128,7 +128,7 @@ export default function StudentResumeBuilderPage() {
         institution: profile.user?.organization?.name || "",
         degree: `${profile.branch || profile.user?.department?.name || "Program"} — Semester ${profile.semester}`,
         duration: "",
-        result: profile.cgpa != null ? `CGPA: ${profile.cgpa}` : "",
+        result: profile.cgpa > 0 ? `CGPA: ${profile.cgpa}` : "",
       }],
     }
 
