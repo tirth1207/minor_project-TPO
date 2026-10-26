@@ -30,6 +30,7 @@ import {
   IconDashboard,
   IconExclamationCircle,
   IconFileCertificate,
+  IconFileText,
   IconGift,
   IconLoader,
   IconRefresh,
@@ -113,6 +114,12 @@ function StudentDashboardShell({
         isActive: pathname?.startsWith("/student/mock"),
       },
       {
+        title: "Resume Builder",
+        url: "/student/resume",
+        icon: <IconFileText className="size-4" />,
+        isActive: pathname?.startsWith("/student/resume"),
+      },
+      {
         title: "AI Career Roadmap",
         url: "/student/roadmap",
         icon: <IconBrain className="size-4" />,
@@ -161,7 +168,11 @@ function StudentDashboardShell({
             ? "My Applications"
             : pathname === "/student/offers"
               ? "Job Offers"
-              : pathname === "/student/roadmap"
+              : pathname?.startsWith("/student/mock")
+                ? "Interview Prep & Mocks"
+                : pathname?.startsWith("/student/resume")
+                  ? "Resume Builder"
+                  : pathname === "/student/roadmap"
               ? "AI Career Roadmap"
               : pathname === "/student/analytics"
                 ? "Career Analytics"
