@@ -14,7 +14,7 @@ type ResumeExperience = { company: string; role: string; duration: string; descr
 type ResumeEducation = { institution: string; degree: string; duration: string; result: string }
 type ResumeData = {
   headline: string; summary: string; email: string; phone: string; location: string
-  linkedin: string; github: string; portfolio: string; skills: string
+  linkedin: string; github: string; portfolio: string; skills: string; hobbies: string[]
   education: ResumeEducation[]; projects: ResumeProject[]; experience: ResumeExperience[]
   certifications: string[]; achievements: string[]; languages: string
 }
@@ -28,7 +28,7 @@ function splitItems(value: string) { return value.split(",").map((item) => item.
 function cleanUrl(value: string) { return value.trim().replace(/^https?:\/\//, "").replace(/\/$/, "") }
 
 function calculateAtsScore(resume: ResumeData, targetText: string) {
-  const content = [resume.headline, resume.summary, resume.skills,
+  const content = [resume.headline, resume.summary, resume.skills, resume.hobbies.join(" "),
     resume.education.map((item) => Object.values(item).join(" ")).join(" "),
     resume.projects.map((item) => Object.values(item).join(" ")).join(" "),
     resume.experience.map((item) => Object.values(item).join(" ")).join(" "),
@@ -48,13 +48,14 @@ function calculateAtsScore(resume: ResumeData, targetText: string) {
   return Math.min(100, score)
 }
 
-function defaultResume(name: string, profileSkills: string[] | null): ResumeData {
+function defaultResume(name: string, profileSkills: string[] | null, profileHobbies: string[] | null): ResumeData {
   return {
     headline: "Software Developer",
-    summary: `Motivated ${name || "student"} with a strong foundation in software development and a focus on building practical, reliable applications.`,
+    summary: "",
     email: "", phone: "", location: "", linkedin: "", github: "", portfolio: "",
-    skills: (profileSkills || []).join(", "), education: [emptyEducation()], projects: [emptyProject()],
-    experience: [], certifications: [], achievements: [], languages: "English, Hindi, Gujarati",
+    skills: (profileSkills || []).join(", "), hobbies: profileHobbies || [],
+    education: [emptyEducation()], projects: [emptyProject()],
+    experience: [], certifications: [], achievements: [], languages: "",
   }
 }
 
@@ -96,28 +97,86 @@ function ResumePreview({ resume, name }: { resume: ResumeData; name: string }) {
     {education.length > 0 && <ResumeSection title="Education"><div className="resume-stack">{education.map((item, index) => <div className="resume-entry" key={index}><div className="resume-entry-top"><div><h3>{item.degree || "Education"}</h3>{item.institution && <p className="resume-muted-strong">{item.institution}</p>}</div>{item.duration && <span className="resume-date">{item.duration}</span>}</div>{item.result && <p className="resume-body-text">{item.result}</p>}</div>)}</div></ResumeSection>}
     {resume.certifications.length > 0 && <ResumeSection title="Certifications"><ul className="resume-list">{resume.certifications.map((item, index) => <li key={index}>{item}</li>)}</ul></ResumeSection>}
     {resume.achievements.length > 0 && <ResumeSection title="Achievements"><ul className="resume-list">{resume.achievements.map((item, index) => <li key={index}>{item}</li>)}</ul></ResumeSection>}
+    {resume.hobbies.length > 0 && <ResumeSection title="Interests"><p className="resume-skill-line">{resume.hobbies.join("  •  ")}</p></ResumeSection>}
     {languages.length > 0 && <ResumeSection title="Languages"><p className="resume-skill-line">{languages.join("  •  ")}</p></ResumeSection>}
   </article>
 }
 
 export default function StudentResumeBuilderPage() {
   const { profile } = useStudent()
+  const { user: authUser } = useAuth()
   const [resume, setResume] = React.useState<ResumeData | null>(null)
   const [saved, setSaved] = React.useState(false)
 
   React.useEffect(() => {
     if (!profile) return
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (stored) { try { setResume(JSON.parse(stored) as ResumeData); return } catch { window.localStorage.removeItem(STORAGE_KEY) } }
+
+    // Scope drafts to the current student so shared devices never expose another student resume.
+    const storageKey = `${STORAGE_KEY}:${profile.id}`
     const social = profile.social_links || {}
-    setResume({ ...defaultResume(profile.name, profile.skills), phone: profile.phone || "", location: profile.address || "", linkedin: social.linkedin || "", github: social.github || "", portfolio: social.portfolio || "", education: [{ institution: profile.user?.organization?.name || "", degree: `${profile.branch} — Semester ${profile.semester}`, duration: "", result: profile.cgpa ? `CGPA: ${profile.cgpa}` : "" }] })
-  }, [profile])
+    const base: ResumeData = {
+      ...defaultResume(profile.name, profile.skills, profile.hobbies),
+      summary: profile.bio?.trim() || `Motivated ${profile.name || "student"} with a foundation in ${profile.branch || "computer engineering"} and a focus on building practical projects.`,
+      email: authUser?.email || "",
+      phone: profile.phone || "",
+      location: profile.address || "",
+      linkedin: social.linkedin || "",
+      github: social.github || "",
+      portfolio: social.portfolio || "",
+      education: [{
+        institution: profile.user?.organization?.name || "",
+        degree: `${profile.branch || profile.user?.department?.name || "Program"} — Semester ${profile.semester}`,
+        duration: "",
+        result: profile.cgpa != null ? `CGPA: ${profile.cgpa}` : "",
+      }],
+    }
+
+    const stored = window.localStorage.getItem(storageKey)
+    if (!stored) { setResume(base); return }
+
+    try {
+      const savedResume = JSON.parse(stored) as Partial<ResumeData>
+      const savedEducation = Array.isArray(savedResume.education) ? savedResume.education : []
+      const education = base.education.map((fallback, index) => {
+        const saved = savedEducation[index] as Partial<ResumeEducation> | undefined
+        return {
+          ...fallback,
+          ...saved,
+          institution: saved?.institution?.trim() || fallback.institution,
+          degree: saved?.degree?.trim() || fallback.degree,
+          result: saved?.result?.trim() || fallback.result,
+        }
+      })
+      education.push(...savedEducation.slice(base.education.length) as ResumeEducation[])
+      setResume({
+        ...base,
+        ...savedResume,
+        email: savedResume.email?.trim() || base.email,
+        phone: savedResume.phone?.trim() || base.phone,
+        location: savedResume.location?.trim() || base.location,
+        summary: savedResume.summary?.trim() || base.summary,
+        skills: savedResume.skills?.trim() || base.skills,
+        hobbies: Array.isArray(savedResume.hobbies) && savedResume.hobbies.length ? savedResume.hobbies : base.hobbies,
+        linkedin: savedResume.linkedin?.trim() || base.linkedin,
+        github: savedResume.github?.trim() || base.github,
+        portfolio: savedResume.portfolio?.trim() || base.portfolio,
+        education,
+        projects: Array.isArray(savedResume.projects) ? savedResume.projects : base.projects,
+        experience: Array.isArray(savedResume.experience) ? savedResume.experience : base.experience,
+        certifications: Array.isArray(savedResume.certifications) ? savedResume.certifications : base.certifications,
+        achievements: Array.isArray(savedResume.achievements) ? savedResume.achievements : base.achievements,
+      })
+    } catch {
+      window.localStorage.removeItem(storageKey)
+      setResume(base)
+    }
+  }, [profile, authUser?.email])
 
   if (!resume) return <div className="flex min-h-[420px] items-center justify-center text-sm text-muted-foreground">Loading resume builder...</div>
 
   const atsScore = calculateAtsScore(resume, "software developer engineer programming javascript typescript react nextjs python sql git api database communication problem solving")
   const update = <K extends keyof ResumeData>(key: K, value: ResumeData[K]) => { setResume((current) => current ? { ...current, [key]: value } : current); setSaved(false) }
-  const saveResume = () => { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(resume)); setSaved(true) }
+  const saveResume = () => { if (!profile) return; window.localStorage.setItem(`${STORAGE_KEY}:${profile.id}`, JSON.stringify(resume)); setSaved(true) }
   const exportJson = () => { const blob = new Blob([JSON.stringify(resume, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${(profile?.name || "student").replace(/\s+/g, "-").toLowerCase()}-resume.json`; anchor.click(); URL.revokeObjectURL(url) }
   const printResume = () => { saveResume(); window.setTimeout(() => window.print(), 80) }
   const addItem = (key: "projects" | "experience" | "education") => { if (key === "projects") update("projects", [...resume.projects, emptyProject()]); if (key === "experience") update("experience", [...resume.experience, emptyExperience()]); if (key === "education") update("education", [...resume.education, emptyEducation()]) }
@@ -178,7 +237,7 @@ export default function StudentResumeBuilderPage() {
 
           <SectionEditor title="Experience" description="Internships, jobs, freelance or practical work." onAdd={() => addItem("experience")}>{resume.experience.map((item, index) => <div key={index} className="space-y-3 rounded-xl border p-4"><div className="grid gap-3 sm:grid-cols-3"><Field label="Company" value={item.company} onChange={(value) => update("experience", resume.experience.map((entry, i) => i === index ? { ...entry, company: value } : entry))} /><Field label="Role" value={item.role} onChange={(value) => update("experience", resume.experience.map((entry, i) => i === index ? { ...entry, role: value } : entry))} /><Field label="Duration" value={item.duration} onChange={(value) => update("experience", resume.experience.map((entry, i) => i === index ? { ...entry, duration: value } : entry))} /></div><Textarea value={item.description} onChange={(event) => update("experience", resume.experience.map((entry, i) => i === index ? { ...entry, description: event.target.value } : entry))} rows={3} placeholder="Describe responsibilities and results." /></div>)}</SectionEditor>
 
-          <Card><CardHeader><CardTitle>Additional sections</CardTitle><CardDescription>Only include information that strengthens your application.</CardDescription></CardHeader><CardContent className="space-y-5"><TagListEditor label="Certifications" items={resume.certifications} onChange={(items) => update("certifications", items)} placeholder="e.g. AWS Cloud Practitioner" /><TagListEditor label="Achievements" items={resume.achievements} onChange={(items) => update("achievements", items)} placeholder="e.g. Hackathon finalist" /><div><label className="mb-1.5 block text-sm font-medium">Languages</label><Input value={resume.languages} onChange={(event) => update("languages", event.target.value)} placeholder="English, Hindi, Gujarati" /></div></CardContent></Card>
+          <Card><CardHeader><CardTitle>Additional sections</CardTitle><CardDescription>Only add details that are not already available in your student profile.</CardDescription></CardHeader><CardContent className="space-y-5"><TagListEditor label="Interests & hobbies" items={resume.hobbies} onChange={(items) => update("hobbies", items)} placeholder="Prefilled from your student profile" /><TagListEditor label="Certifications" items={resume.certifications} onChange={(items) => update("certifications", items)} placeholder="e.g. AWS Cloud Practitioner" /><TagListEditor label="Achievements" items={resume.achievements} onChange={(items) => update("achievements", items)} placeholder="e.g. Hackathon finalist" /><div><label className="mb-1.5 block text-sm font-medium">Languages</label><Input value={resume.languages} onChange={(event) => update("languages", event.target.value)} placeholder="Add languages you speak" /></div></CardContent></Card>
         </div>
 
         <div className="min-w-0 rounded-2xl border bg-muted/25 p-3 shadow-inner sm:p-5"><div className="mb-3 flex items-center justify-between gap-3 px-1"><div><p className="text-sm font-semibold">Live resume</p><p className="text-xs text-muted-foreground">A4 • ATS-friendly • single column</p></div><Badge variant="outline">Preview</Badge></div><div className="resume-print-root overflow-auto rounded-xl bg-neutral-950/90 p-2 shadow-2xl sm:p-5"><ResumePreview resume={resume} name={profile?.name || "Your Name"} /></div></div>
