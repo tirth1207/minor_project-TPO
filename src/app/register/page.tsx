@@ -530,7 +530,7 @@ function RegisterFormContent() {
                 <Label htmlFor="studentMentor">Mentor</Label>
                 <Select value={studentMentor} onValueChange={(value) => setStudentMentor(value ?? "")} disabled={isLoading || mentorsLoading || !inviteToken || availableMentors.length === 0} required>
                   <SelectTrigger id="studentMentor" className="w-full"><SelectValue placeholder={mentorsLoading ? "Loading mentors..." : "Select your mentor"} /></SelectTrigger>
-                  <SelectContent><SelectGroup>{availableMentors.map((mentor) => <SelectItem key={mentor.id} value={mentor.id}><div className="flex flex-col"><span className="font-medium">{mentor.name}</span>{(mentor.designation || mentor.specialization) && <span className="text-xs text-muted-foreground">{[mentor.designation, mentor.specialization].filter(Boolean).join(" • ")}</span>}</div></SelectItem>)}</SelectGroup>
+                  <SelectContent><SelectGroup>{availableMentors.map((mentor) => <SelectItem key={mentor.id} value={mentor.id}><div className="flex flex-col"><span className="font-medium">{mentor.name}</span>{(mentor.designation || mentor.specialization) && <span className="text-xs text-muted-foreground">{[mentor.designation, mentor.specialization].filter(Boolean).join(" • ")}</span>}</div></SelectItem>)}</SelectGroup></SelectContent>
                 </Select>
                 {mentorError && <p className="text-xs text-destructive">{mentorError}</p>}
                 {!mentorError && studentInviteContext && availableMentors.length === 0 && !mentorsLoading && <p className="text-xs text-muted-foreground">No approved mentors are currently available for this department.</p>}
