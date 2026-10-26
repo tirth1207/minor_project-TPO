@@ -173,12 +173,12 @@ function StudentDashboardShell({
                 : pathname?.startsWith("/student/resume")
                   ? "Resume Builder"
                   : pathname === "/student/roadmap"
-                    ? "AI Career Roadmap"
-                    : pathname === "/student/analytics"
-                      ? "Career Analytics"
-                      : pathname === "/student/settings"
-                        ? "Career Preferences"
-                        : "Interview Prep"
+              ? "AI Career Roadmap"
+              : pathname === "/student/analytics"
+                ? "Career Analytics"
+                : pathname === "/student/settings"
+                  ? "Career Preferences"
+                  : "Interview Prep"
 
   const isLoading = authLoading || studentLoading
 
