@@ -53,6 +53,14 @@ function RegisterFormContent() {
   const [studentEmail, setStudentEmail] = useState("")
   const [studentMentor, setStudentMentor] = useState("")
   const [studentPassword, setStudentPassword] = useState("")
+  const [studentName, setStudentName] = useState("")
+  const [studentEnrollmentNo, setStudentEnrollmentNo] = useState("")
+  const [studentDob, setStudentDob] = useState("")
+  const [studentPhone, setStudentPhone] = useState("")
+  const [studentSemester, setStudentSemester] = useState("1")
+  const [studentCgpa, setStudentCgpa] = useState("")
+  const [studentSkills, setStudentSkills] = useState("")
+  const [studentHobbies, setStudentHobbies] = useState("")
   const [inviteToken, setInviteToken] = useState("")
   
   // Company fields
@@ -203,6 +211,14 @@ function RegisterFormContent() {
           password: studentPassword,
           inviteToken,
           mentorId: studentMentor,
+          name: studentName.trim(),
+          enrollmentNo: studentEnrollmentNo.trim(),
+          dob: studentDob,
+          phone: studentPhone.trim(),
+          semester: Number(studentSemester),
+          ...(Number(studentSemester) >= 3 ? { cgpa: Number(studentCgpa) } : {}),
+          skills: studentSkills.split(",").map((value) => value.trim()).filter(Boolean),
+          hobbies: studentHobbies.split(",").map((value) => value.trim()).filter(Boolean),
         }),
       })
 
@@ -496,191 +512,52 @@ function RegisterFormContent() {
         )}
 
         {activeTab === "student" && (
-          <form onSubmit={handleStudentSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="inviteToken">Invitation Token</Label>
-
-              <div className="relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-muted-foreground">
-                  <IconLink className="h-4 w-4" />
-                </span>
-
-                <Input
-                  id="inviteToken"
-                  type="text"
-                  placeholder="Paste invitation token..."
-                  className="pl-10"
-                  value={inviteToken}
-                  onChange={(e) => setInviteToken(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
+          <form onSubmit={handleStudentSubmit} className="space-y-6">
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold">Invitation & Account</h3>
+              <div className="space-y-2">
+                <Label htmlFor="inviteToken">Invitation Token</Label>
+                <Input id="inviteToken" type="text" placeholder="Paste invitation token..." value={inviteToken} onChange={(e) => setInviteToken(e.target.value)} required disabled={isLoading} />
+                <p className="text-xs text-muted-foreground">Use the invitation token provided by your college.</p>
               </div>
-
-              <p className="text-xs text-muted-foreground">
-                Use the invitation token provided by your college.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="studentMentor">
-                Mentor
-              </Label>
-
               {studentInviteContext && (
                 <div className="rounded-lg border bg-muted/40 p-3">
-                  <p className="text-sm font-medium">
-                    {studentInviteContext.organization.name}
-                  </p>
-
-                  <p className="text-xs text-muted-foreground">
-                    {studentInviteContext.department.name}
-                  </p>
+                  <p className="text-sm font-medium">{studentInviteContext.organization.name}</p>
+                  <p className="text-xs text-muted-foreground">{studentInviteContext.department.name}</p>
                 </div>
               )}
-
-              <Select
-                value={studentMentor}
-                onValueChange={(value) => {
-                  setStudentMentor(value ?? "")
-                }}
-                disabled={
-                  isLoading ||
-                  mentorsLoading ||
-                  !inviteToken ||
-                  availableMentors.length === 0
-                }
-                required
-              >
-                <SelectTrigger
-                  id="studentMentor"
-                  className="w-full"
-                >
-                  <SelectValue>
-                    {studentMentor
-                      ? availableMentors.find(
-                          (mentor) => mentor.id === studentMentor
-                        )?.name ?? "Select your mentor"
-                      : mentorsLoading
-                        ? "Loading mentors..."
-                        : !inviteToken
-                          ? "Enter invitation token first"
-                          : availableMentors.length === 0
-                            ? "No approved mentors available"
-                            : "Select your mentor"}
-                  </SelectValue>
-                </SelectTrigger>
-
-                <SelectContent>
-                  <SelectGroup>
-                    {availableMentors.map((mentor) => (
-                      <SelectItem
-                        key={mentor.id}
-                        value={mentor.id}
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium">
-                            {mentor.name}
-                          </span>
-
-                          {(mentor.designation ||
-                            mentor.specialization) && (
-                            <span className="text-xs text-muted-foreground">
-                              {[
-                                mentor.designation,
-                                mentor.specialization,
-                              ]
-                                .filter(Boolean)
-                                .join(" • ")}
-                            </span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-
-              {mentorError && (
-                <p className="text-xs text-destructive">
-                  {mentorError}
-                </p>
-              )}
-
-              {!mentorError &&
-                studentInviteContext &&
-                availableMentors.length === 0 &&
-                !mentorsLoading && (
-                  <p className="text-xs text-muted-foreground">
-                    No approved mentors are currently available for this
-                    department.
-                  </p>
-                )}
-
-              {studentInviteContext &&
-                availableMentors.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    Only approved mentors from your college and department
-                    are shown.
-                  </p>
-                )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="studentEmail">Academic Email</Label>
-
-              <div className="relative">
-                <IconMail className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-
-                <Input
-                  id="studentEmail"
-                  type="email"
-                  placeholder="student@college.edu"
-                  className="pl-10"
-                  value={studentEmail}
-                  onChange={(e) => setStudentEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
+              <div className="space-y-2">
+                <Label htmlFor="studentMentor">Mentor</Label>
+                <Select value={studentMentor} onValueChange={(value) => setStudentMentor(value ?? "")} disabled={isLoading || mentorsLoading || !inviteToken || availableMentors.length === 0} required>
+                  <SelectTrigger id="studentMentor" className="w-full"><SelectValue placeholder={mentorsLoading ? "Loading mentors..." : "Select your mentor"} /></SelectTrigger>
+                  <SelectContent><SelectGroup>{availableMentors.map((mentor) => <SelectItem key={mentor.id} value={mentor.id}><div className="flex flex-col"><span className="font-medium">{mentor.name}</span>{(mentor.designation || mentor.specialization) && <span className="text-xs text-muted-foreground">{[mentor.designation, mentor.specialization].filter(Boolean).join(" • ")}</span>}</div></SelectItem>)}</SelectGroup>
+                </Select>
+                {mentorError && <p className="text-xs text-destructive">{mentorError}</p>}
+                {!mentorError && studentInviteContext && availableMentors.length === 0 && !mentorsLoading && <p className="text-xs text-muted-foreground">No approved mentors are currently available for this department.</p>}
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="studentPassword">Password</Label>
-
-              <div className="relative">
-                <IconLock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-
-                <Input
-                  id="studentPassword"
-                  type="password"
-                  placeholder="Minimum 6 characters"
-                  className="pl-10"
-                  value={studentPassword}
-                  onChange={(e) => setStudentPassword(e.target.value)}
-                  minLength={6}
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              className="h-11 w-full"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <IconLoader2 className="size-4 animate-spin" />
-                  Creating account...
-                </>
-              ) : (
-                <>
-                  Create Student Account
-                  <IconArrowRight className="size-4" />
-                </>
-              )}
+              <div className="space-y-2"><Label htmlFor="studentEmail">Academic Email</Label><Input id="studentEmail" type="email" placeholder="student@college.edu" value={studentEmail} onChange={(e) => setStudentEmail(e.target.value)} required disabled={isLoading} /></div>
+              <div className="space-y-2"><Label htmlFor="studentPassword">Password</Label><Input id="studentPassword" type="password" placeholder="Minimum 6 characters" value={studentPassword} onChange={(e) => setStudentPassword(e.target.value)} minLength={6} required disabled={isLoading} /></div>
+            </section>
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold">Personal Information</h3>
+              <div className="space-y-2"><Label htmlFor="studentName">Full Name</Label><Input id="studentName" autoComplete="name" value={studentName} onChange={(e) => setStudentName(e.target.value)} required minLength={2} maxLength={120} disabled={isLoading} /></div>
+              <div className="space-y-2"><Label htmlFor="studentEnrollmentNo">Enrollment Number</Label><Input id="studentEnrollmentNo" value={studentEnrollmentNo} onChange={(e) => setStudentEnrollmentNo(e.target.value)} required minLength={2} maxLength={50} pattern="[A-Za-z0-9/-]+" title="Use letters, numbers, hyphens or slashes only." disabled={isLoading} /></div>
+              <div className="space-y-2"><Label htmlFor="studentDob">Date of Birth</Label><Input id="studentDob" type="date" value={studentDob} onChange={(e) => setStudentDob(e.target.value)} max={new Date().toISOString().slice(0, 10)} required disabled={isLoading} /></div>
+              <div className="space-y-2"><Label htmlFor="studentPhone">Phone Number</Label><Input id="studentPhone" type="tel" autoComplete="tel" placeholder="+91 98765 43210" value={studentPhone} onChange={(e) => setStudentPhone(e.target.value)} pattern="^[+]?[0-9 ()-]{10,16}$" title="Enter a valid phone number (10–15 digits)." required disabled={isLoading} /></div>
+            </section>
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold">Academic Information</h3>
+              <div className="space-y-2"><Label htmlFor="studentBranch">Branch / Department</Label><Input id="studentBranch" value={studentInviteContext?.department.name ?? ""} readOnly placeholder="Enter a valid invitation token first" disabled /></div>
+              <div className="space-y-2"><Label htmlFor="studentSemester">Current Semester</Label><Select value={studentSemester} onValueChange={(value) => { const next = value ?? "1"; setStudentSemester(next); if (Number(next) < 3) setStudentCgpa(""); }} disabled={isLoading} required><SelectTrigger id="studentSemester"><SelectValue placeholder="Select semester" /></SelectTrigger><SelectContent>{[1,2,3,4,5,6].map((semester) => <SelectItem key={semester} value={String(semester)}>Semester {semester}</SelectItem>)}</SelectContent></Select></div>
+              {Number(studentSemester) >= 3 && <div className="space-y-2"><Label htmlFor="studentCgpa">CGPA (0–10)</Label><Input id="studentCgpa" type="number" min="0" max="10" step="0.01" value={studentCgpa} onChange={(e) => setStudentCgpa(e.target.value)} required disabled={isLoading} /></div>}
+            </section>
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold">Skills & Interests</h3>
+              <div className="space-y-2"><Label htmlFor="studentSkills">Skills</Label><Input id="studentSkills" placeholder="Python, React, SQL" value={studentSkills} onChange={(e) => setStudentSkills(e.target.value)} required disabled={isLoading} /><p className="text-xs text-muted-foreground">Separate skills with commas.</p></div>
+              <div className="space-y-2"><Label htmlFor="studentHobbies">Hobbies</Label><Input id="studentHobbies" placeholder="Reading, Cricket, Robotics" value={studentHobbies} onChange={(e) => setStudentHobbies(e.target.value)} required disabled={isLoading} /><p className="text-xs text-muted-foreground">Separate hobbies with commas.</p></div>
+            </section>
+            <Button type="submit" className="h-11 w-full" disabled={isLoading || mentorsLoading || !studentInviteContext || availableMentors.length === 0}>
+              {isLoading ? <><IconLoader2 className="size-4 animate-spin" />Creating account...</> : <>Create Student Account<IconArrowRight className="size-4" /></>}
             </Button>
           </form>
         )}
